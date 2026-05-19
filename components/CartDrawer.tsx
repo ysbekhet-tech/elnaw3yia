@@ -144,7 +144,7 @@ export default function CartDrawer() {
                   }}
                 >
                   <img
-                    src={item.image || "https://via.placeholder.com/60"}
+                    src={item.images?.[0] || item.image || "https://via.placeholder.com/60"}
                     className="w-16 h-16 object-cover rounded-xl"
                     alt={item.name}
                   />
@@ -163,7 +163,7 @@ export default function CartDrawer() {
                     <div className="flex items-center gap-2 mt-2">
                       <button
                         onClick={() => {
-                          // Fix: Added ! to ID and || "" to Color
+                          // ✅ إضافة علامة التعجب ! لـ item.id
                           removeFromCart(item.id!, item.selectedColor || "");
                           triggerAnim(item.id!, item.selectedColor || "");
                         }}
@@ -200,6 +200,7 @@ export default function CartDrawer() {
                             item.selectedColor || ""
                           );
                           if (success) {
+                            // ✅ إضافة علامة التعجب ! لـ item.id
                             triggerAnim(item.id!, item.selectedColor || "");
                           } else {
                             showError(
@@ -218,7 +219,7 @@ export default function CartDrawer() {
                   </div>
                   <button
                     onClick={() =>
-                      // Fix: Added ! to ID and || "" to Color
+                      // ✅ إضافة علامة التعجب ! لـ item.id
                       deleteFromCart(item.id!, item.selectedColor || "")
                     }
                     className="text-slate-600 hover:text-red-400 transition self-start mt-1"

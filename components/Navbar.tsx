@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Search, ShoppingCart, Heart, User, Menu, ChevronDown, X } from "lucide-react";
+import { Search, ShoppingCart, Heart, User, Menu, ChevronDown, X, LayoutGrid } from "lucide-react"; // ضفنا LayoutGrid
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/app/context/CartContext";
@@ -184,6 +184,17 @@ export default function Navbar() {
                     boxShadow: "0 25px 50px rgba(124,58,237,0.2)"
                   }}
                 >
+                  {/* لينك جميع المنتجات المضاف هنا */}
+                  <Link
+                    href="/products"
+                    onClick={() => setCategoriesOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 hover:bg-purple-500/10 hover:text-purple-400 transition border-b text-slate-300 font-bold"
+                    style={{ borderColor: "rgba(255,255,255,0.05)" }}
+                  >
+                    <LayoutGrid size={16} />
+                    <span>جميع المنتجات</span>
+                  </Link>
+
                   {categories.map((cat) => (
                     <Link
                       key={cat.id}
@@ -207,8 +218,8 @@ export default function Navbar() {
               )}
             </div>
 
+            {/* تم حذف "المنتجات" من هنا */}
             {[{ name: "الرئيسية", href: "/" },
-              { name: "المنتجات", href: "/products" },
               { name: "العروض", href: "/offers" },
               { name: "الجديد", href: "/new" },
               { name: "من نحن", href: "/about" },
@@ -243,6 +254,17 @@ export default function Navbar() {
                   </button>
                 </div>
               </form>
+
+              {/* لينك جميع المنتجات في الموبايل */}
+              <Link
+                href="/products"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-purple-400 hover:bg-purple-500/10 border-b text-sm font-bold transition"
+                style={{ borderColor: "rgba(255,255,255,0.05)" }}
+              >
+                <LayoutGrid size={16} />
+                <span>جميع المنتجات</span>
+              </Link>
 
               {categories.map((cat) => (
                 <Link

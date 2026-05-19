@@ -5,37 +5,28 @@ import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { clearAuthToken, isAuthenticated } from '@/lib/auth';
-import { LogOut, ShieldCheck, Package, ShoppingCart, Megaphone, Bell, X, Truck } from 'lucide-react';
+import { LogOut, ShieldCheck, Package, ShoppingCart, Megaphone, Bell, X, Truck, Tags } from 'lucide-react'; // ✅ استبدلنا Tag و Sparkles بـ Tags
 
 interface Order { id: string; status: string; }
 
 export default function AdminDashboard() {
   const router = useRouter();
   const [authChecked, setAuthChecked] = useState(false);
-  
-  // حالات التنبيه
   const [newOrderAlert, setNewOrderAlert] = useState(false);
   const prevOrdersCount = useRef(0);
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      router.replace('/admin/login');
-      return;
-    }
+    if (!isAuthenticated()) { router.replace('/admin/login'); return; }
     setAuthChecked(true);
-
-    // Real-time Listener للتنبيهات (عشان لو هو واقف في الصفحة الرئيسية يسمع)
     const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Order));
-      
       if (prevOrdersCount.current > 0 && data.length > prevOrdersCount.current) {
         setNewOrderAlert(true);
         setTimeout(() => setNewOrderAlert(false), 5000);
       }
       prevOrdersCount.current = data.length;
     });
-
     return () => unsubscribe();
   }, []);
 
@@ -53,13 +44,13 @@ export default function AdminDashboard() {
     { title: 'إدارة المنتجات', desc: 'إضافة وتعديل الأقسام والمنتجات', icon: Package, href: '/admin/products', color: '#7c3aed' },
     { title: 'إدارة الطلبات', desc: 'متابعة الطلبات الجديدة وتحديث الحالة', icon: ShoppingCart, href: '/admin/orders', color: '#ec4899' },
     { title: 'الإعلانات', desc: 'إدارة الإعلانات والعروض', icon: Megaphone, href: '/admin/ads', color: '#f59e0b' },
-    // ✅ كارت إدارة الشحن الجديد
     { title: 'إدارة الشحن', desc: 'تحديد مناطق التوصيل والمصاريف', icon: Truck, href: '/admin/shipping', color: '#06b6d4' },
+    // ✅ الكارت الجديد اللي بيجمع العروض والجديد
+    { title: 'العروض والجديد', desc: 'تحديد منتجات العروض والوصول حديثاً', icon: Tags, href: '/admin/features', color: '#f97316' },
   ];
 
   return (
     <div className="min-h-screen" style={{ background: "#050510" }}>
-      {/* التنبيه الفوري */}
       {newOrderAlert && (
         <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-6 py-3 rounded-2xl animate-bounce" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)", boxShadow: "0 0 30px rgba(124,58,237,0.5)" }}>
           <Bell size={20} className="text-white" />
@@ -89,8 +80,8 @@ export default function AdminDashboard() {
         <h2 className="text-3xl font-black text-white text-center mb-2">مرحباً بك في لوحة التحكم</h2>
         <p className="text-slate-400 text-center mb-12">اختر القسم الذي تريد إدارته</p>
         
-        {/* ✅ تغيير الـ grid لـ md:grid-cols-2 ليظهر بشكل متناسق (2x2) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* ✅ عدلنا الـ grid عشان يظبط مع عدد الكروت الجديد (5 كروت) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {cards.map((card) => (
             <button
               key={card.title}

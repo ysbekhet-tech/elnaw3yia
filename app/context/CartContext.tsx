@@ -56,9 +56,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
         if (actualRelease > 0) {
           transaction.update(ref, { reserved: increment(-actualRelease) });
-          console.log("Released:", actualRelease, "from reserved. Was:", currentReserved);
-        } else {
-          console.log("Nothing to release. reserved was:", currentReserved);
         }
       });
     } catch (e) {
@@ -139,9 +136,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
+      // ✅ توحيد الألوان: لو فاضي أو undefined خليه String فاضي عشان ميتكررش
+      const colorKey = selectedColor || "";
+
       try {
         await runTransaction(db, async (transaction) => {
-          // Fix: إضافة تحقق للتأكد من وجود ID المنتج قبل استخدامه في الـ Transaction
           if (!product.id) return;
 
           const ref = doc(db, "products", product.id);
@@ -162,19 +161,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const now = Date.now();
 
         setCart((prev) => {
+          // ✅ هنا بقى بنقارن بنفس الطريقة (متوحدين الألوان)
           const exists = prev.find(
-            (i) => i.id === product.id && i.selectedColor === selectedColor
+            (i) => i.id === product.id && (i.selectedColor || "") === colorKey
           );
           if (exists) {
             return prev.map((i) =>
-              i.id === product.id && i.selectedColor === selectedColor
+              i.id === product.id && (i.selectedColor || "") === colorKey
                 ? { ...i, quantity: i.quantity + qty, reservedAt: now }
                 : i
             );
           }
           return [
             ...prev,
-            { ...product, quantity: qty, selectedColor, reservedAt: now },
+            { ...product, quantity: qty, selectedColor: colorKey, reservedAt: now },
           ];
         });
 
@@ -190,8 +190,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const removeFromCart = useCallback(
     async (id: string, selectedColor?: string) => {
+      // ✅ توحيد الألوان هنا كمان
+      const colorKey = selectedColor || "";
+      
       const item = cart.find(
-        (i) => i.id === id && i.selectedColor === selectedColor
+        (i) => i.id === id && (i.selectedColor || "") === colorKey
       );
       if (!item) return;
 
@@ -199,19 +202,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       setCart((prev) => {
         const target = prev.find(
-          (i) => i.id === id && i.selectedColor === selectedColor
+          (i) => i.id === id && (i.selectedColor || "") === colorKey
         );
         if (!target) return prev;
 
         if (target.quantity > 1) {
           return prev.map((i) =>
-            i.id === id && i.selectedColor === selectedColor
+            i.id === id && (i.selectedColor || "") === colorKey
               ? { ...i, quantity: i.quantity - 1 }
               : i
           );
         }
         return prev.filter(
-          (i) => !(i.id === id && i.selectedColor === selectedColor)
+          (i) => !(i.id === id && (i.selectedColor || "") === colorKey)
         );
       });
     },
@@ -220,8 +223,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const deleteFromCart = useCallback(
     async (id: string, selectedColor?: string) => {
+      // ✅ توحيد الألوان هنا كمان
+      const colorKey = selectedColor || "";
+
       const item = cart.find(
-        (i) => i.id === id && i.selectedColor === selectedColor
+        (i) => i.id === id && (i.selectedColor || "") === colorKey
       );
       if (!item) return;
 
@@ -229,7 +235,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
       setCart((prev) =>
         prev.filter(
-          (i) => !(i.id === id && i.selectedColor === selectedColor)
+          (i) => !(i.id === id && (i.selectedColor || "") === colorKey)
         )
       );
     },

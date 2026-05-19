@@ -21,4 +21,6 @@ export interface Product {
   rating?: number;
   hasColors?: boolean;
   colors?: ProductColor[];
+  isOffer?: boolean;     // ✅ جديد: لتحديد المنتجات في العروض
+  isNew?: boolean;       // ✅ جديد: لتحديد المنتجات الجديدة
 }
