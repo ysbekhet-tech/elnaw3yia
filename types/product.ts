@@ -1,30 +1,24 @@
+// src/types/index.ts
+
+export interface ProductColor {
+  name: string;
+  hex: string;
+  image: string;
+}
+
 export interface Product {
-  id: string;
+  id?: string;              // اختياري لأنه يتولد من Firebase
   name: string;
   price: number;
-  originalPrice?: number; // اختياري
-  rating?: number;        // اختياري
-  stock?: number;
-  barcode?: string;
+  originalPrice?: number;
+  description?: string;
+  stock: number;
   category: string;
-  image?: string;
-  createdAt?: any;
-}
-export interface Order {
-  id?: string;
-  customerName: string;
-  customerPhone: string;
-  customerAddress: string;
-  notes?: string;
-  paymentMethod: "cash" | "vodafone" | "instapay" | "card";
-  items: {
-    id: string;
-    name: string;
-    price: number;
-    quantity: number;
-    image?: string;
-  }[];
-  total: number;
-  status: "new" | "preparing" | "shipped" | "delivered" | "cancelled";
-  createdAt: any;
+  barcode: string;
+  image: string;
+  images?: string[];
+  reserved?: number;
+  rating?: number;          // ⚠️ هذا السطر ضروري لإصلاح الخطأ
+  hasColors?: boolean;
+  colors?: ProductColor[];
 }

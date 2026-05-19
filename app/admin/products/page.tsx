@@ -46,7 +46,6 @@ export default function ProductsPage() {
   const [editingPrice, setEditingPrice] = useState<Product | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   
-  // ✅ حالة الترتيب
   const [sortOption, setSortOption] = useState<'name-asc' | 'name-desc' | 'stock-asc' | 'stock-desc'>('name-asc');
 
   const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
@@ -79,9 +78,9 @@ export default function ProductsPage() {
     finally { setLoading(false); }
   };
 
-  // ✅ دالة إضافة منتج (تحديثت لتدعم images array)
   const handleAddProduct = async (formData: Partial<Product>) => {
     try {
+      // استخلاص البيانات مع التأكد من التعامل مع الـ rating
       const { name, price, originalPrice, rating, category, barcode, stock, images, hasColors, colors } = formData;
       
       if (!name || !price || !category || !barcode) {
@@ -93,11 +92,11 @@ export default function ProductsPage() {
         name, 
         price: Number(price), 
         originalPrice: Number(originalPrice) || 0, 
-        rating: Number(rating) || 4.5,
+        rating: Number(rating) || 4.5, // قيمة افتراضية في حال عدم الإدخال
         category, 
         barcode, 
         stock: Number(stock) || 0, 
-        images: images || [], // ✅ حفظ مصفوفة الصور
+        images: images || [],
         hasColors: hasColors || false,
         colors: colors || [],
         createdAt: serverTimestamp(),
@@ -140,7 +139,6 @@ export default function ProductsPage() {
     }
   };
 
-  // ✅ دالة تعديل منتج (تحديثت لتدعم images array)
   const handleEditProduct = async (id: string, updatedData: Partial<Product>) => {
     try {
       await updateDoc(doc(db, 'products', id), updatedData);
@@ -197,13 +195,12 @@ export default function ProductsPage() {
     }
   };
 
-  // ✅ منطق الترتيب
   const sortedProducts = useMemo(() => {
     const prods = [...products];
     if (sortOption === 'name-asc') return prods.sort((a, b) => a.name.localeCompare(b.name));
     if (sortOption === 'name-desc') return prods.sort((a, b) => b.name.localeCompare(a.name));
-    if (sortOption === 'stock-asc') return prods.sort((a, b) => (a.stock || 0) - (b.stock || 0)); // الأقل أولاً
-    if (sortOption === 'stock-desc') return prods.sort((a, b) => (b.stock || 0) - (a.stock || 0)); // الأكثر أولاً
+    if (sortOption === 'stock-asc') return prods.sort((a, b) => (a.stock || 0) - (b.stock || 0));
+    if (sortOption === 'stock-desc') return prods.sort((a, b) => (b.stock || 0) - (a.stock || 0));
     return prods;
   }, [products, sortOption]);
 
@@ -216,7 +213,6 @@ export default function ProductsPage() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <button onClick={() => router.push('/admin')} className="inline-flex items-center gap-2 text-slate-400 hover:text-purple-400 transition font-bold text-sm mb-8"><ArrowRight size={18} /> العودة للوحة التحكم</button>
 
-        {/* 🔴 مستطيل إدارة الأقسام */}
         <div className="rounded-2xl p-6 mb-8" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
           <h2 className="text-xl font-black text-white flex items-center gap-2 mb-5"><Tags size={20} className="text-purple-400" />إدارة الأقسام</h2>
           <div className="flex flex-col gap-4">
@@ -234,25 +230,21 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        {/* 🔵 مستطيل إدارة المنتجات */}
         <div className="rounded-2xl p-6" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
             <div className="flex items-center gap-3">
               <h2 className="text-xl font-black text-white flex items-center gap-2"><Package size={20} className="text-purple-400" />إدارة المنتجات</h2>
-              {/* ✅ عداد المنتجات */}
               <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
                 {products.length} منتج
               </span>
             </div>
 
             <div className="flex items-center gap-3">
-              {/* ✅ أداة الترتيب */}
               <div className="relative group">
                  <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-300 bg-slate-800/50 border border-slate-700 hover:border-purple-500 transition">
                    <Filter size={14} />
                    <span>ترتيب حسب</span>
                  </button>
-                 {/* قائمة الترتيب */}
                  <div className="absolute top-full left-0 mt-2 w-40 rounded-xl overflow-hidden shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20" style={{ background: "#1a1a2e", border: "1px solid rgba(124,58,237,0.3)" }}>
                     <button onClick={() => setSortOption('name-asc')} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-500/20 transition ${sortOption === 'name-asc' ? 'text-purple-400 font-bold' : 'text-slate-400'}`}>الاسم (أ-ي)</button>
                     <button onClick={() => setSortOption('name-desc')} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-500/20 transition ${sortOption === 'name-desc' ? 'text-purple-400 font-bold' : 'text-slate-400'}`}>الاسم (ي-أ)</button>
@@ -269,7 +261,6 @@ export default function ProductsPage() {
 
           {showAddForm && ( <div className="mb-8 p-6 rounded-xl" style={{ background: "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.2)" }}> <h3 className="text-lg font-black text-white mb-5">إضافة منتج جديد</h3> <AdminProductForm onSubmit={handleAddProduct} /> </div> )}
           
-          {/* ✅ تمرير المنتجات المرتبة للجدول */}
           <AdminProductTable products={sortedProducts} onDelete={handleDeleteProduct} onEditPrice={(product) => setEditingPrice(product)} loading={loading} />
         </div>
       </div>

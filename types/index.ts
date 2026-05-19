@@ -5,7 +5,7 @@ export interface ProductColor {
 }
 
 export interface Product {
-  id: string;
+  id?: string;              // جعلناه اختياري لأنه يتم توليده من Firebase
   name: string;
   price: number;
   originalPrice?: number;
@@ -14,8 +14,9 @@ export interface Product {
   category: string;
   barcode: string;
   image: string;
-  images?: string[];        // ✅ جديد: مصفوفة صور إضافية
-  reserved?: number;        // ✅ جديد: الكمية المحجوزة
+  images?: string[];        // مصفوفة صور إضافية
+  reserved?: number;        // الكمية المحجوزة
+  rating?: number;          // ⚠️ هذا هو السطر الذي كان مفقوداً وسبب الخطأ
   hasColors?: boolean;
   colors?: ProductColor[];
 }
