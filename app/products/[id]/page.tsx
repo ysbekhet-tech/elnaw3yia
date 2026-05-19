@@ -20,6 +20,7 @@ import {
   Clock,
 } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
+import { useProductStock } from "../../../hooks/useProductStock";
 
 function isLightColor(hex: string) {
   if (!hex) return false;
@@ -34,7 +35,10 @@ function isLightColor(hex: string) {
 export default function ProductDetails() {
   const { id } = useParams();
   const router = useRouter();
-  const { addToCart, openCart, cart } = useCart();
+  const { addToCart, cart } = useCart();
+  
+  // ✅ نستخدم الـ hook عشان نجيب المخزون المحدث لحظياً
+  const { stock, reserved } = useProductStock(id as string);
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,11 +46,8 @@ export default function ProductDetails() {
   const [added, setAdded] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
   const [selectedColorIndex, setSelectedColorIndex] = useState<number>(0);
-
-  // ✅ حالة الصورة الحالية للتنقل
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  // 🔴 live product data (includes reserved updates)
   useEffect(() => {
     if (!id) return;
     const unsub = onSnapshot(
@@ -65,14 +66,12 @@ export default function ProductDetails() {
     return () => unsub();
   }, [id]);
 
-  // ✅ إعادة تعيين الصورة للبداية عند تغيير المنتج
   useEffect(() => {
     setCurrentImageIndex(0);
     setQuantity(1);
     setSelectedColorIndex(0);
   }, [id]);
 
-  // ✅ تجميع كل الصور في مصفوفة واحدة (دعم القديم والجديد)
   const allImages = (product?.images && product.images.length > 0)
     ? product.images
     : product?.image
@@ -99,20 +98,14 @@ export default function ProductDetails() {
     }, 0);
   }, [cart, product, selectedColorName]);
 
-  // ✅ المتاح فعلياً = stock - reserved - اللي في السلة (عشان ما نحجزش أكتر)
-  const availableStock = useMemo(() => {
-    if (!product) return 0;
-    const reserved = (product as any).reserved || 0;
-    const stock = product.stock || 0;
-    return Math.max(0, stock - reserved);
-  }, [product]);
+  // ✅ المتاح = stock - reserved (محدث لحظياً من Firebase)
+  const availableStock = Math.max(0, stock - reserved);
 
   // ✅ الكمية اللي العميل يقدر يضيفها كمان
   const canAddMore = useMemo(() => {
     return Math.max(0, availableStock - cartQuantity);
   }, [availableStock, cartQuantity]);
 
-  // لو الكمية المختارة أكبر من المتاح، نقللها تلقائياً
   useEffect(() => {
     if (canAddMore > 0 && quantity > canAddMore) {
       setQuantity(canAddMore);
@@ -121,7 +114,6 @@ export default function ProductDetails() {
     }
   }, [canAddMore, quantity]);
 
-  // دوال التنقل بين الصور
   const nextImage = (e?: React.MouseEvent) => {
     e?.stopPropagation();
     setCurrentImageIndex((prev) => (prev + 1) % allImages.length);
@@ -142,7 +134,7 @@ export default function ProductDetails() {
     if (success) {
       setAdded(true);
       setTimeout(() => setAdded(false), 2000);
-      setQuantity(1); // نرجّع العداد للـ 1 بعد الإضافة
+      setQuantity(1);
     } else {
       alert("الكمية المطلوبة غير متوفرة حالياً. يرجى تحديث الصفحة.");
     }
@@ -191,9 +183,7 @@ export default function ProductDetails() {
         </button>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-          {/* ✅ قسم الصور مع معرض التنقل */}
           <div className="bg-slate-800 rounded-2xl overflow-hidden border border-slate-700 relative group">
-            {/* حاوية الصورة الرئيسية */}
             <div
               className="relative h-[320px] cursor-pointer overflow-hidden"
               onClick={() => setShowFullImage(true)}
@@ -213,7 +203,6 @@ export default function ProductDetails() {
                 </span>
               </div>
 
-              {/* ✅ أزرار التنقل (تظهر فقط لو فيه أكتر من صورة) */}
               {allImages.length > 1 && (
                 <>
                   <button
@@ -238,7 +227,6 @@ export default function ProductDetails() {
               )}
             </div>
 
-            {/* ✅ نقاط المؤشر (Dots) */}
             {allImages.length > 1 && (
               <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2 z-10">
                 {allImages.map((_, idx) => (
@@ -267,7 +255,6 @@ export default function ProductDetails() {
             )}
           </div>
 
-          {/* البيانات */}
           <div className="flex flex-col gap-4">
             <div>
               <p className="text-purple-400 font-bold text-sm mb-1">
@@ -278,7 +265,6 @@ export default function ProductDetails() {
               </h1>
             </div>
 
-            {/* قسم الألوان المتاحة */}
             {product.colors && product.colors.length > 0 && (
               <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
                 <h3 className="text-sm font-bold text-purple-400 mb-3">
@@ -319,7 +305,6 @@ export default function ProductDetails() {
               </div>
             )}
 
-            {/* السعر */}
             <div className="flex items-center gap-3">
               <span className="text-2xl font-black text-purple-400">
                 {product.price} ج
@@ -336,7 +321,6 @@ export default function ProductDetails() {
               )}
             </div>
 
-            {/* الوصف */}
             {product.description && (
               <div className="bg-slate-800 border border-slate-700 rounded-xl p-3">
                 <h3 className="text-sm font-bold text-purple-400 mb-1">
@@ -348,14 +332,13 @@ export default function ProductDetails() {
               </div>
             )}
 
-            {/* ✅ المخزون + الكمية في السلة + المتبقي */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <Package size={16} className="text-purple-400" />
                 <span className="text-slate-300 text-sm font-bold">
                   المخزون:{" "}
                   <span className="text-white mr-2">
-                    {product.stock || 0}
+                    {stock}
                   </span>
                 </span>
               </div>
@@ -382,12 +365,11 @@ export default function ProductDetails() {
               {cartQuantity > 0 && (
                 <div className="flex items-center gap-1 text-xs text-slate-500">
                   <Clock size={12} />
-                  <span>محجوز لك لمدة 15 دقيقة</span>
+                  <span>محجوز لك لمدة 10 دقايق</span>
                 </div>
               )}
             </div>
 
-            {/* ✅ عداد الكمية - محدود بالمتاح فعلياً */}
             <div className="flex items-center gap-3">
               <button
                 onClick={() =>
@@ -417,7 +399,6 @@ export default function ProductDetails() {
               </div>
             </div>
 
-            {/* ✅ زر الإضافة */}
             <button
               onClick={handleAddToCart}
               disabled={canAddMore <= 0}
@@ -440,7 +421,6 @@ export default function ProductDetails() {
         </div>
       </div>
 
-      {/* ✅ شاشة عرض الصورة بالحجم الكامل - تدعم التنقل */}
       {showFullImage && (
         <div
           className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 md:p-10 backdrop-blur-sm"
@@ -453,7 +433,6 @@ export default function ProductDetails() {
             <X size={28} />
           </button>
 
-          {/* ✅ أزرار التنقل داخل الشاشة الكاملة */}
           {allImages.length > 1 && (
             <>
               <button
@@ -487,7 +466,6 @@ export default function ProductDetails() {
             onClick={(e) => e.stopPropagation()}
           />
 
-          {/* ✅ عداد الصور في الشاشة الكاملة */}
           {allImages.length > 1 && (
             <div className="absolute bottom-5 text-white/50 text-sm font-bold">
               {currentImageIndex + 1} / {allImages.length}

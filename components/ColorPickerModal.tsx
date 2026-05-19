@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { Product, ProductColor } from "@/types";
 import { useCart } from "@/app/context/CartContext";
+import { useProductStock } from "../hooks/useProductStock";
 import { X, ShoppingCart, Plus, Minus, Check } from "lucide-react";
 
-// دالة تحديد هل اللون فاتح ولا غامق
 function isLightColor(hex: string) {
   if (!hex) return false;
   hex = hex.replace("#", "");
@@ -24,21 +24,32 @@ interface ColorPickerModalProps {
 
 export default function ColorPickerModal({ product, isOpen, onClose }: ColorPickerModalProps) {
   const { addToCart } = useCart();
+  const { stock, reserved } = useProductStock(product?.id);
+  
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [added, setAdded] = useState(false);
 
   if (!isOpen || !product) return null;
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const selectedColorName = product.colors?.[selectedColorIndex]?.name;
-    for (let i = 0; i < quantity; i++) {
-      addToCart(product, true, selectedColorName);
+    const success = await addToCart(product, true, selectedColorName, quantity);
+    
+    if (success) {
+      setAdded(true);
+      setTimeout(() => {
+        setQuantity(1);
+        setSelectedColorIndex(0);
+        setAdded(false);
+        onClose();
+      }, 1500);
     }
-    // إعادة تعيين القيم والإغلاق
-    setQuantity(1);
-    setSelectedColorIndex(0);
-    onClose();
   };
+
+  // ✅ المتاح = stock - reserved (محدث لحظياً من Firebase)
+  const stockAvailable = Math.max(0, stock - reserved);
+  const totalStock = stock;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -49,12 +60,10 @@ export default function ColorPickerModal({ product, isOpen, onClose }: ColorPick
         style={{ background: "rgba(15,15,30,0.98)", border: "1px solid rgba(124,58,237,0.4)", boxShadow: "0 0 40px rgba(124,58,237,0.2)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* زرار الإغلاق */}
         <button onClick={onClose} className="absolute top-4 left-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition">
           <X size={16} className="text-slate-300" />
         </button>
 
-        {/* بيانات المنتج */}
         <div className="flex items-center gap-4 mb-6">
           <img src={product.image || ""} alt={product.name} className="w-16 h-16 rounded-xl object-cover border border-slate-700" />
           <div>
@@ -63,7 +72,6 @@ export default function ColorPickerModal({ product, isOpen, onClose }: ColorPick
           </div>
         </div>
 
-        {/* اختيار اللون */}
         <div className="mb-5">
           <h4 className="text-sm font-bold text-slate-300 mb-3">
             اختر اللون: 
@@ -90,7 +98,18 @@ export default function ColorPickerModal({ product, isOpen, onClose }: ColorPick
           </div>
         </div>
 
-        {/* اختيار الكمية */}
+        <div className="text-xs text-slate-400 mb-3">
+          المتاح: 
+          <span className={`font-bold ${stockAvailable > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            {stockAvailable}
+          </span>
+          {totalStock !== stockAvailable && totalStock > 0 && (
+            <span className="text-slate-500 text-[10px] mr-1">
+              (من أصل {totalStock})
+            </span>
+          )}
+        </div>
+
         <div className="flex items-center justify-between mb-6 bg-slate-800 rounded-xl p-3 border border-slate-700">
           <span className="text-sm font-bold text-slate-300">الكمية:</span>
           <div className="flex items-center gap-3">
@@ -102,8 +121,9 @@ export default function ColorPickerModal({ product, isOpen, onClose }: ColorPick
             </button>
             <span className="text-lg font-black min-w-[30px] text-center text-white">{quantity}</span>
             <button
-              onClick={() => setQuantity((q) => Math.min(product.stock || 99, q + 1))}
-              className="w-8 h-8 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-purple-600 transition"
+              onClick={() => setQuantity((q) => Math.min(stockAvailable, q + 1))}
+              disabled={quantity >= stockAvailable}
+              className="w-8 h-8 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-purple-600 transition disabled:opacity-50"
             >
               <Plus size={14} />
             </button>
@@ -113,13 +133,19 @@ export default function ColorPickerModal({ product, isOpen, onClose }: ColorPick
           </div>
         </div>
 
-        {/* زرار الإضافة للسلة */}
         <button
           onClick={handleAdd}
-          className="w-full h-12 rounded-xl font-bold flex items-center justify-center gap-2 transition text-sm bg-purple-600 hover:bg-purple-700 text-white"
+          disabled={stockAvailable === 0 || added}
+          className={`w-full h-12 rounded-xl font-bold flex items-center justify-center gap-2 transition text-sm ${
+            stockAvailable === 0
+              ? "bg-gray-600 text-white opacity-50 cursor-not-allowed"
+              : added
+              ? "bg-green-600 text-white"
+              : "bg-purple-600 hover:bg-purple-700 text-white"
+          }`}
         >
           <ShoppingCart size={18} />
-          أضف للسلة
+          {stockAvailable === 0 ? "المنتج غير متاح" : added ? "✓ تمت الإضافة!" : "أضف للسلة"}
         </button>
       </div>
     </div>

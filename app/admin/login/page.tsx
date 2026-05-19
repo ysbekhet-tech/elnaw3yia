@@ -12,7 +12,6 @@ export default function AdminLogin() {
   const [showCode, setShowCode] = useState(false);
   const router = useRouter();
 
-  // لو مسجل دخله خلاص، يحوله على الأدمن مباشرة
   useEffect(() => {
     if (isAuthenticated()) {
       router.replace('/admin');
@@ -26,7 +25,10 @@ export default function AdminLogin() {
 
     if (authenticateAdmin(code)) {
       setAuthToken();
-      router.push('/admin');
+      // ✅ الحل هنا: بنستخدم window.location.replace عشان نعمل تحديث كامل للصفحة
+      // وبيضمن إن الـ Dashboard يقرأ الـ Token فوراً من غير ما يعمل لوب أو يحتاج Refresh
+      window.location.replace('/admin');
+      return; // بنوقف هنا عشان ميكملش باقي الكود
     } else {
       setError('الكود غير صحيح، حاول مرة أخرى');
     }
@@ -85,7 +87,7 @@ export default function AdminLogin() {
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="أدخل كود الوصول السري"
-                autoComplete="new-password" // ← ✅✅✅ التعديل الوحيد هنا عشان المتصفح ميحفظش الباسورد
+                autoComplete="new-password"
                 className="w-full px-4 py-3.5 pr-12 rounded-2xl outline-none text-white placeholder-slate-600 text-sm transition"
                 style={{
                   background: "rgba(255,255,255,0.06)",

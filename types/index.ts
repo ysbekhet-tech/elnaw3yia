@@ -1,5 +1,3 @@
-// src/types/index.ts
-
 export interface ProductColor {
   name: string;
   hex: string;
@@ -13,14 +11,21 @@ export interface Product {
   originalPrice?: number;
   description?: string;
   stock: number;
+  reserved?: number;
+  purchased?: number;
   category: string;
   barcode: string;
-  image?: string;        // ⚠️ أضفنا علامة الاستفهام لجعله اختياري
+  image?: string;
   images?: string[];
-  reserved?: number;
   rating?: number;
   hasColors?: boolean;
   colors?: ProductColor[];
-  isOffer?: boolean;     // ✅ جديد: لتحديد المنتجات في العروض
-  isNew?: boolean;       // ✅ جديد: لتحديد المنتجات الجديدة
+  isOffer?: boolean;
+  isNew?: boolean;
+}
+
+export interface CartItem extends Product {
+  quantity: number;
+  selectedColor?: string;
+  addedAt: number;
 }

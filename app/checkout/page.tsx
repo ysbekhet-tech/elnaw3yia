@@ -5,13 +5,11 @@ import { useCart } from "@/app/context/CartContext";
 import { db, auth } from "@/lib/firebase";
 import {
   collection,
-  addDoc,
   serverTimestamp,
   doc,
-  updateDoc,
-  increment,
   onSnapshot,
   runTransaction,
+  getDoc,
 } from "firebase/firestore";
 import {
   RecaptchaVerifier,
@@ -47,9 +45,11 @@ interface Governorate {
   zones: Zone[];
 }
 
+const CART_EXPIRY_MINUTES = 10;
+const CART_EXPIRY_MS = CART_EXPIRY_MINUTES * 60 * 1000;
+
 export default function CheckoutPage() {
-  const { cart, cartTotal, deleteFromCart, removeFromCart, addToCart } =
-    useCart();
+  const { cart, cartTotal, removeFromCart, addToCart, clearLocalCart } = useCart();
   const router = useRouter();
 
   // بيانات الشحن من Firebase
@@ -86,7 +86,6 @@ export default function CheckoutPage() {
       const data = snap.docs.map(
         (d) => ({ id: d.id, ...d.data() } as Governorate)
       );
-      // فلتر المحافظات المفعلة فقط وترتيب أبجدي
       const enabled = data
         .filter((g) => g.enabled)
         .sort((a, b) => a.name.localeCompare(b.name, "ar"));
@@ -96,11 +95,8 @@ export default function CheckoutPage() {
     return () => unsub();
   }, []);
 
-  // المحافظة المختارة
   const selectedGov = governorates.find((g) => g.id === selectedGovId);
-  // المنطقة المختارة (لو موجودة)
   const selectedZone = selectedGov?.zones.find((z) => z.id === selectedZoneId);
-  // حساب مصاريف الشحن
   const shippingCost = selectedGov
     ? selectedGov.zones.length > 0
       ? selectedZone?.shipping ?? 0
@@ -109,7 +105,6 @@ export default function CheckoutPage() {
 
   const grandTotal = cartTotal + shippingCost;
 
-  // هل الفورم كامل؟
   const isFormValid =
     selectedGovId &&
     (selectedGov?.zones.length === 0 || selectedZoneId) &&
@@ -155,6 +150,51 @@ export default function CheckoutPage() {
     return recaptchaVerifierRef.current;
   };
 
+  // ✅ التحقق من المخزون قبل إرسال OTP (مع التعامل مع انتهاء الصلاحية)
+  const validateStockBeforeCheckout = async (): Promise<boolean> => {
+    setStockError(null);
+    try {
+      for (const item of cart) {
+        if (!item.id) {
+          setStockError(`المنتج "${item.name}" لا يحتوي على معرف صالح`);
+          return false;
+        }
+
+        // ✅ التحقق من انتهاء صلاحية المنتج
+        const now = Date.now();
+        if (now - item.addedAt >= CART_EXPIRY_MS) {
+          setStockError(`انتهت صلاحية حجز المنتج "${item.name}"، رجّع أضفه للسلة`);
+          return false;
+        }
+
+        const ref = doc(db, "products", item.id);
+        const snap = await getDoc(ref);
+        
+        if (!snap.exists()) {
+          setStockError(`المنتج "${item.name}" لم يعد متوفراً`);
+          return false;
+        }
+
+        const data = snap.data();
+        const currentStock = data.stock || 0;
+        const currentReserved = data.reserved || 0;
+        const myReservation = item.quantity;
+        const availableForMe = currentStock - currentReserved + myReservation;
+
+        if (availableForMe < item.quantity) {
+          setStockError(
+            `المنتج "${item.name}" نفذت كميته المتاحة. المتبقي: ${currentStock - currentReserved} قطعة`
+          );
+          return false;
+        }
+      }
+      return true;
+    } catch (error) {
+      setStockError("حدث خطأ في التحقق من المخزون، حاول تاني");
+      return false;
+    }
+  };
+
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (cart.length === 0) return;
@@ -164,6 +204,13 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
+      // ✅ التحقق من المخزون قبل إرسال OTP
+      const stockOk = await validateStockBeforeCheckout();
+      if (!stockOk) {
+        setLoading(false);
+        return;
+      }
+
       let phone = form.customerPhone.trim().replace(/[^\d+]/g, "");
       let localPhone = phone;
       if (localPhone.startsWith("+20"))
@@ -221,7 +268,6 @@ export default function CheckoutPage() {
       }
       await confirmationResult.confirm(otpCode);
 
-      // ✅ Atomic stock check + order creation
       const orderRef = doc(collection(db, "orders"));
       const order = {
         customerName: form.customerName,
@@ -238,7 +284,7 @@ export default function CheckoutPage() {
           selectedColor: item.selectedColor || "",
           price: item.price,
           quantity: item.quantity,
-          image: item.image || "",
+          image: item.images?.[0] || item.image || "",
         })),
         total: grandTotal,
         shippingCost,
@@ -247,45 +293,46 @@ export default function CheckoutPage() {
       };
 
       await runTransaction(db, async (transaction) => {
-        // 1. Check stock for all items
         for (const item of cart) {
           if (!item.id) {
             throw new Error(`المنتج "${item.name}" لا يحتوي على معرف صالح`);
           }
           const ref = doc(db, "products", item.id);
           const snap = await transaction.get(ref);
+          
+          if (!snap.exists()) {
+            throw new Error(`المنتج "${item.name}" لم يعد متوفراً`);
+          }
+
           const data = snap.data();
-          const available = (data?.stock || 0) - (data?.reserved || 0);
-          if (available < item.quantity) {
+          const currentStock = data.stock || 0;
+          const currentReserved = data.reserved || 0;
+          const myReservation = item.quantity;
+          const availableForMe = currentStock - currentReserved + myReservation;
+
+          if (availableForMe < item.quantity) {
             throw new Error(
-              `المنتج "${item.name}" نفذت كميته المتاحة. يرجى تعديل السلة.`
+              `المنتج "${item.name}" نفذت كميته المتاحة. المتبقي: ${currentStock - currentReserved} قطعة`
             );
           }
-        }
 
-        // 2. Create order
-        transaction.set(orderRef, order);
-
-        // 3. Finalize stock (reserved becomes sold)
-        for (const item of cart) {
-          if (!item.id) continue;
-          const ref = doc(db, "products", item.id);
+          // ✅ خصم من المخزون وفك الحجز في نفس الوقت
           transaction.update(ref, {
-            stock: increment(-item.quantity),
-            reserved: increment(-item.quantity),
+            stock: currentStock - item.quantity,
+            reserved: Math.max(0, currentReserved - myReservation),
+            purchased: (data.purchased || 0) + item.quantity,
           });
         }
+
+        transaction.set(orderRef, order);
       });
 
-      // Clear cart
-      cart.forEach((item) => {
-        if (!item.id) return;
-        deleteFromCart(item.id, item.selectedColor);
-      });
+      clearLocalCart();
+      
       setOrderId(orderRef.id);
       setSuccess(true);
     } catch (error: any) {
-      if (error.message?.includes("نفذت كميته")) {
+      if (error.message?.includes("نفذت كميته") || error.message?.includes("لم يعد متوفراً") || error.message?.includes("انتهت صلاحية")) {
         setStockError(error.message);
       } else if (error.message?.includes("لا يحتوي على معرف صالح")) {
         setStockError(error.message);
@@ -353,10 +400,10 @@ export default function CheckoutPage() {
           <div>
             <p className="font-bold">{stockError}</p>
             <button
-              onClick={() => router.push("/cart")}
+              onClick={() => router.push("/products")}
               className="text-sm underline hover:text-red-300"
             >
-              العودة للسلة
+              العودة للمنتجات
             </button>
           </div>
         </div>
@@ -366,126 +413,51 @@ export default function CheckoutPage() {
         {/* ---- فورم البيانات ---- */}
         <div className="flex flex-col gap-5">
           {step === "form" && (
-            <form
-              onSubmit={handleSendOtp}
-              className="flex flex-col gap-5"
-            >
+            <form onSubmit={handleSendOtp} className="flex flex-col gap-5">
               <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700">
                 <h2 className="text-xl font-black text-white mb-5 flex items-center gap-2">
-                  <User size={20} className="text-purple-400" /> بيانات
-                  التوصيل
+                  <User size={20} className="text-purple-400" /> بيانات التوصيل
                 </h2>
                 <div className="flex flex-col gap-4">
-                  {/* الاسم */}
                   <div>
-                    <label className="text-sm font-bold text-slate-300 mb-1 block">
-                      الاسم الكامل *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="اكتب اسمك الكامل"
-                      value={form.customerName}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          customerName: e.target.value,
-                        })
-                      }
-                      className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition text-white"
-                    />
+                    <label className="text-sm font-bold text-slate-300 mb-1 block">الاسم الكامل *</label>
+                    <input type="text" required placeholder="اكتب اسمك الكامل" value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition text-white" />
                   </div>
 
-                  {/* الهاتف */}
                   <div>
                     <label className="text-sm font-bold text-slate-300 mb-1 block">
-                      <Phone size={14} className="inline ml-1" /> رقم
-                      الهاتف *
+                      <Phone size={14} className="inline ml-1" /> رقم الهاتف *
                     </label>
-                    <input
-                      type="tel"
-                      required
-                      placeholder="01012345678"
-                      value={form.customerPhone}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          customerPhone: e.target.value,
-                        })
-                      }
-                      className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition text-white"
-                    />
+                    <input type="tel" required placeholder="01012345678" value={form.customerPhone} onChange={(e) => setForm({ ...form, customerPhone: e.target.value })} className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition text-white" />
                   </div>
 
-                  {/* المحافظة */}
                   <div>
                     <label className="text-sm font-bold text-slate-300 mb-1 block">
-                      <MapPin size={14} className="inline ml-1" />{" "}
-                      المحافظة *
+                      <MapPin size={14} className="inline ml-1" /> المحافظة *
                     </label>
                     {shippingLoading ? (
-                      <div className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm text-slate-500">
-                        جاري التحميل...
-                      </div>
+                      <div className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm text-slate-500">جاري التحميل...</div>
                     ) : (
-                      <select
-                        required
-                        value={selectedGovId}
-                        onChange={(e) => {
-                          setSelectedGovId(e.target.value);
-                          setSelectedZoneId("");
-                        }}
-                        className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition text-white"
-                      >
-                        <option
-                          value=""
-                          className="bg-slate-700"
-                        >
-                          اختر المحافظة...
-                        </option>
+                      <select required value={selectedGovId} onChange={(e) => { setSelectedGovId(e.target.value); setSelectedZoneId(""); }} className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition text-white">
+                        <option value="" className="bg-slate-700">اختر المحافظة...</option>
                         {governorates.map((gov) => (
-                          <option
-                            key={gov.id}
-                            value={gov.id}
-                            className="bg-slate-700"
-                          >
-                            {gov.name}
-                            {gov.zones.length === 0
-                              ? ` — شحن ${gov.shipping} ج`
-                              : ""}
+                          <option key={gov.id} value={gov.id} className="bg-slate-700">
+                            {gov.name}{gov.zones.length === 0 ? ` — شحن ${gov.shipping} ج` : ""}
                           </option>
                         ))}
                       </select>
                     )}
                   </div>
 
-                  {/* المنطقة (تظهر فقط لو المحافظة فيها مناطق) */}
                   {selectedGov && selectedGov.zones.length > 0 && (
                     <div>
                       <label className="text-sm font-bold text-slate-300 mb-1 block">
-                        <MapPin size={14} className="inline ml-1" />{" "}
-                        المنطقة *
+                        <MapPin size={14} className="inline ml-1" /> المنطقة *
                       </label>
-                      <select
-                        required
-                        value={selectedZoneId}
-                        onChange={(e) =>
-                          setSelectedZoneId(e.target.value)
-                        }
-                        className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition text-white"
-                      >
-                        <option
-                          value=""
-                          className="bg-slate-700"
-                        >
-                          اختر المنطقة...
-                        </option>
+                      <select required value={selectedZoneId} onChange={(e) => setSelectedZoneId(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition text-white">
+                        <option value="" className="bg-slate-700">اختر المنطقة...</option>
                         {selectedGov.zones.map((zone) => (
-                          <option
-                            key={zone.id}
-                            value={zone.id}
-                            className="bg-slate-700"
-                          >
+                          <option key={zone.id} value={zone.id} className="bg-slate-700">
                             {zone.name} — شحن {zone.shipping} ج
                           </option>
                         ))}
@@ -493,134 +465,53 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
-                  {/* العنوان */}
                   <div>
-                    <label className="text-sm font-bold text-slate-300 mb-1 block">
-                      العنوان بالتفصيل *
-                    </label>
-                    <textarea
-                      required
-                      placeholder="اسم الشارع، رقم البناية، الدور..."
-                      value={form.customerAddress}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          customerAddress: e.target.value,
-                        })
-                      }
-                      className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition resize-none h-20 text-white"
-                    />
+                    <label className="text-sm font-bold text-slate-300 mb-1 block">العنوان بالتفصيل *</label>
+                    <textarea required placeholder="اسم الشارع، رقم البناية، الدور..." value={form.customerAddress} onChange={(e) => setForm({ ...form, customerAddress: e.target.value })} className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition resize-none h-20 text-white" />
                   </div>
 
-                  {/* ملاحظات */}
                   <div>
                     <label className="text-sm font-bold text-slate-300 mb-1 block">
-                      <FileText size={14} className="inline ml-1" />{" "}
-                      ملاحظات (اختياري)
+                      <FileText size={14} className="inline ml-1" /> ملاحظات (اختياري)
                     </label>
-                    <textarea
-                      placeholder="أي ملاحظات إضافية..."
-                      value={form.notes}
-                      onChange={(e) =>
-                        setForm({ ...form, notes: e.target.value })
-                      }
-                      className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition resize-none h-16 text-white"
-                    />
+                    <textarea placeholder="أي ملاحظات إضافية..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition resize-none h-16 text-white" />
                   </div>
                 </div>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading || !isFormValid}
-                className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-900 disabled:opacity-60 text-white font-bold py-4 rounded-2xl text-lg transition flex items-center justify-center gap-2"
-              >
+              <button type="submit" disabled={loading || !isFormValid} className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-900 disabled:opacity-60 text-white font-bold py-4 rounded-2xl text-lg transition flex items-center justify-center gap-2">
                 {loading ? "جاري المعالجة..." : "إتمام الشراء"}
               </button>
             </form>
           )}
 
-          {/* ---- خطوة OTP ---- */}
           {step === "otp" && (
-            <form
-              onSubmit={handleSubmitOrder}
-              className="flex flex-col gap-5"
-            >
+            <form onSubmit={handleSubmitOrder} className="flex flex-col gap-5">
               <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setStep("form");
-                    setOtp(["", "", "", "", "", ""]);
-                    setOtpError("");
-                    setStockError(null);
-                  }}
-                  className="text-slate-400 hover:text-white flex items-center gap-1 mb-4 text-sm"
-                >
+                <button type="button" onClick={() => { setStep("form"); setOtp(["", "", "", "", "", ""]); setOtpError(""); setStockError(null); }} className="text-slate-400 hover:text-white flex items-center gap-1 mb-4 text-sm">
                   <ArrowRight size={16} /> تعديل البيانات
                 </button>
                 <h2 className="text-xl font-black text-white mb-2 flex items-center gap-2">
-                  <ShieldCheck size={24} className="text-purple-400" />{" "}
-                  تأكيد رقم الهاتف
+                  <ShieldCheck size={24} className="text-purple-400" /> تأكيد رقم الهاتف
                 </h2>
                 <p className="text-slate-400 text-sm mb-6">
                   تم إرسال كود مكون من 6 أرقام إلى رقمك
-                  <span className="text-white font-bold mr-1">
-                    {form.customerPhone}
-                  </span>
+                  <span className="text-white font-bold mr-1">{form.customerPhone}</span>
                 </p>
-                <div
-                  className="flex justify-center gap-2 mb-4"
-                  dir="ltr"
-                >
+                <div className="flex justify-center gap-2 mb-4" dir="ltr">
                   {otp.map((data, index) => (
-                    <input
-                      key={index}
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={1}
-                      ref={(el) => {
-                        otpRefs.current[index] = el;
-                      }}
-                      value={data}
-                      onChange={(e) =>
-                        handleOtpChange(e.target, index)
-                      }
-                      onKeyDown={(e) =>
-                        handleOtpKeyDown(e, index)
-                      }
-                      onFocus={(e) => e.target.select()}
-                      className="w-12 h-14 bg-slate-700 border-2 border-slate-600 rounded-xl text-center text-white text-xl font-black outline-none focus:border-purple-400 transition"
-                    />
+                    <input key={index} type="text" inputMode="numeric" maxLength={1} ref={(el) => { otpRefs.current[index] = el; }} value={data} onChange={(e) => handleOtpChange(e.target, index)} onKeyDown={(e) => handleOtpKeyDown(e, index)} onFocus={(e) => e.target.select()} className="w-12 h-14 bg-slate-700 border-2 border-slate-600 rounded-xl text-center text-white text-xl font-black outline-none focus:border-purple-400 transition" />
                   ))}
                 </div>
-                {otpError && (
-                  <p className="text-red-400 text-sm text-center mb-2">
-                    {otpError}
-                  </p>
-                )}
+                {otpError && <p className="text-red-400 text-sm text-center mb-2">{otpError}</p>}
                 <div className="text-center">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStep("form");
-                      setOtp(["", "", "", "", "", ""]);
-                      setOtpError("");
-                    }}
-                    className="text-purple-400 text-sm hover:underline"
-                  >
+                  <button type="button" onClick={() => { setStep("form"); setOtp(["", "", "", "", "", ""]); setOtpError(""); }} className="text-purple-400 text-sm hover:underline">
                     لم تستلم الكود؟ إعادة الإرسال
                   </button>
                 </div>
               </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-900 text-white font-bold py-4 rounded-2xl text-lg transition flex items-center justify-center gap-2"
-              >
-                {loading
-                  ? "جاري التحقق وإرسال الطلب..."
-                  : `تأكيد الطلب — ${grandTotal} ج`}
+              <button type="submit" disabled={loading} className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-900 text-white font-bold py-4 rounded-2xl text-lg transition flex items-center justify-center gap-2">
+                {loading ? "جاري التحقق وإرسال الطلب..." : `تأكيد الطلب — ${grandTotal} ج`}
               </button>
             </form>
           )}
@@ -628,70 +519,26 @@ export default function CheckoutPage() {
 
         {/* ---- ملخص الطلب ---- */}
         <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 h-fit sticky top-24">
-          <h2 className="text-xl font-black text-white mb-5">
-            ملخص الطلب
-          </h2>
+          <h2 className="text-xl font-black text-white mb-5">ملخص الطلب</h2>
           <div className="flex flex-col gap-3 mb-5">
             {cart.map((item) => (
-              <div
-                key={item.id + (item.selectedColor || "")}
-                className="flex items-center gap-3 bg-slate-700 p-3 rounded-xl"
-              >
-                <img
-                  src={
-                    item.image || "https://via.placeholder.com/60"
-                  }
-                  alt={item.name}
-                  className="w-14 h-14 object-cover rounded-lg flex-shrink-0"
-                />
+              <div key={item.id + (item.selectedColor || "")} className="flex items-center gap-3 bg-slate-700 p-3 rounded-xl">
+                <img src={item.images?.[0] || item.image || "https://via.placeholder.com/60"} alt={item.name} className="w-14 h-14 object-cover rounded-lg flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-white text-sm line-clamp-1">
                     {item.name}
-                    {item.selectedColor && (
-                      <span className="text-purple-400 text-xs">
-                        {" "}
-                        ({item.selectedColor})
-                      </span>
-                    )}
+                    {item.selectedColor && <span className="text-purple-400 text-xs"> ({item.selectedColor})</span>}
                   </p>
-                  <p className="text-purple-400 text-xs font-bold">
-                    {item.price} ج للقطعة
-                  </p>
+                  <p className="text-purple-400 text-xs font-bold">{item.price} ج للقطعة</p>
                 </div>
                 <div className="flex flex-col items-end gap-1">
-                  <p className="font-black text-purple-400 text-sm whitespace-nowrap">
-                    {item.price * item.quantity} ج
-                  </p>
+                  <p className="font-black text-purple-400 text-sm whitespace-nowrap">{item.price * item.quantity} ج</p>
                   <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!item.id) return;
-                        removeFromCart(
-                          item.id,
-                          item.selectedColor
-                        );
-                      }}
-                      className="w-6 h-6 rounded-lg bg-slate-600 hover:bg-red-500/30 hover:text-red-400 flex items-center justify-center text-slate-300 transition"
-                    >
+                    <button type="button" onClick={() => { if (!item.id) return; removeFromCart(item.id, item.selectedColor); }} className="w-6 h-6 rounded-lg bg-slate-600 hover:bg-red-500/30 hover:text-red-400 flex items-center justify-center text-slate-300 transition">
                       <Minus size={11} />
                     </button>
-                    <span className="text-sm font-black text-white min-w-[20px] text-center">
-                      {item.quantity}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const success = await addToCart(
-                          item,
-                          false,
-                          item.selectedColor
-                        );
-                        if (!success)
-                          alert("نفذت الكمية المتاحة");
-                      }}
-                      className="w-6 h-6 rounded-lg bg-slate-600 hover:bg-purple-500/30 hover:text-purple-400 flex items-center justify-center text-slate-300 transition"
-                    >
+                    <span className="text-sm font-black text-white min-w-[20px] text-center">{item.quantity}</span>
+                    <button type="button" onClick={async () => { const success = await addToCart(item, false, item.selectedColor); if (!success) alert("نفذت الكمية المتاحة"); }} className="w-6 h-6 rounded-lg bg-slate-600 hover:bg-purple-500/30 hover:text-purple-400 flex items-center justify-center text-slate-300 transition">
                       <Plus size={11} />
                     </button>
                   </div>
@@ -700,38 +547,15 @@ export default function CheckoutPage() {
             ))}
           </div>
           <div className="border-t border-slate-600 pt-4 flex flex-col gap-2">
-            <div className="flex justify-between text-sm text-slate-400">
-              <span>المنتجات</span>
-              <span>{cartTotal} ج</span>
-            </div>
+            <div className="flex justify-between text-sm text-slate-400"><span>المنتجات</span><span>{cartTotal} ج</span></div>
             <div className="flex justify-between text-sm text-slate-400">
               <span>مصاريف الشحن</span>
               {selectedGovId ? (
-                selectedGov?.zones.length && !selectedZoneId ? (
-                  <span className="text-slate-500">
-                    اختر المنطقة أولاً
-                  </span>
-                ) : (
-                  <span className="text-orange-400 font-bold">
-                    {shippingCost} ج
-                  </span>
-                )
-              ) : (
-                <span className="text-slate-500">
-                  اختر المحافظة أولاً
-                </span>
-              )}
+                selectedGov?.zones.length && !selectedZoneId ? <span className="text-slate-500">اختر المنطقة أولاً</span> : <span className="text-orange-400 font-bold">{shippingCost} ج</span>
+              ) : <span className="text-slate-500">اختر المحافظة أولاً</span>}
             </div>
-            <div className="flex justify-between text-sm text-slate-400">
-              <span>طريقة الدفع</span>
-              <span className="text-green-400 font-bold">
-                كاش عند الاستلام
-              </span>
-            </div>
-            <div className="flex justify-between text-xl font-black text-white mt-2 pt-2 border-t border-slate-600">
-              <span>الإجمالي</span>
-              <span className="text-purple-400">{grandTotal} ج</span>
-            </div>
+            <div className="flex justify-between text-sm text-slate-400"><span>طريقة الدفع</span><span className="text-green-400 font-bold">كاش عند الاستلام</span></div>
+            <div className="flex justify-between text-xl font-black text-white mt-2 pt-2 border-t border-slate-600"><span>الإجمالي</span><span className="text-purple-400">{grandTotal} ج</span></div>
           </div>
         </div>
       </div>

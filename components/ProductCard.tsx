@@ -5,16 +5,17 @@ import { Heart, Eye, ShoppingCart, Star, Plus, Minus, ChevronRight, ChevronLeft 
 import { motion, AnimatePresence } from "framer-motion";
 import { Product } from "@/types";
 import { useCart } from "@/app/context/CartContext";
+import { useProductStock } from "../hooks/useProductStock";
 import { useState, useEffect } from "react";
 import ColorPickerModal from "./ColorPickerModal";
 
 export default function ProductCard({ product }: { product: Product }) {
   const { addToCart } = useCart();
+  const { stock, reserved } = useProductStock(product.id);
+  
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
-  // ✅ حالة لتحديد الصورة الحالية
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const discount = product.originalPrice ? Math.round(
@@ -23,12 +24,14 @@ export default function ProductCard({ product }: { product: Product }) {
 
   const isMultiColor = product.hasColors && product.colors && product.colors.length > 0;
 
-  // ✅ تحديد مصفوفة الصور (دعم النظام القديم والجديد)
   const allImages = (product.images && product.images.length > 0)
     ? product.images
     : (product.image ? [product.image] : ["https://via.placeholder.com/400"]);
 
-  // دوال التنقل بين الصور
+  // ✅ المتاح = stock - reserved (محدث لحظياً من Firebase)
+  const stockAvailable = Math.max(0, stock - reserved);
+  const totalStock = stock;
+
   const nextImage = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -41,30 +44,33 @@ export default function ProductCard({ product }: { product: Product }) {
     setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
   };
 
-  // إعادة تعيين الصورة لصفر عند تغيير المنتج (لو الكارت مستخدم في قائمة ديناميكية)
   useEffect(() => {
     setCurrentImageIndex(0);
   }, [product.id]);
 
-  const handleAddToCart = (e: React.MouseEvent) => {
+  const handleAddToCart = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
-    // لو المنتج ليه ألوان، افتح المودال
+    if (quantity > stockAvailable) {
+      alert(`المتاح فقط ${stockAvailable} من هذا المنتج`);
+      setQuantity(stockAvailable);
+      return;
+    }
+
     if (isMultiColor) {
       setIsModalOpen(true);
       return;
     }
 
-    // لو ملوش ألوان، أضفه للسلة بالكمية اللي اختارها
-    for (let i = 0; i < quantity; i++) {
-      addToCart(product, true);
+    const success = await addToCart(product, true, undefined, quantity);
+    if (success) {
+      setAdded(true);
+      setTimeout(() => {
+        setAdded(false);
+        setQuantity(1);
+      }, 2000);
     }
-    setAdded(true);
-    setTimeout(() => {
-      setAdded(false);
-      setQuantity(1);
-    }, 2000);
   };
 
   return (
@@ -90,7 +96,6 @@ export default function ProductCard({ product }: { product: Product }) {
       >
         <Link href={`/products/${product.id}`} className="block relative h-56 overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
           
-          {/* ✅ الصورة الرئيسية مع تغيير سلس */}
           <AnimatePresence mode='wait'>
             <motion.img
               key={currentImageIndex}
@@ -106,7 +111,6 @@ export default function ProductCard({ product }: { product: Product }) {
 
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
 
-          {/* ✅ أزرار التنقل (تظهر فقط لو فيه أكتر من صورة) */}
           {allImages.length > 1 && (
             <>
               <button
@@ -122,7 +126,6 @@ export default function ProductCard({ product }: { product: Product }) {
                 <ChevronLeft size={18} className="rtl:rotate-180" />
               </button>
               
-              {/* نقاط المؤشر (Dots) */}
               <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
                 {allImages.map((_, idx) => (
                   <button
@@ -159,7 +162,6 @@ export default function ProductCard({ product }: { product: Product }) {
           </div>
         </Link>
 
-        {/* أضفنا flex flex-col flex-1 عشان ندفع الزرار لأسفل */}
         <div className="p-5 flex flex-col flex-1">
           <Link
             href={`/category/${encodeURIComponent(product.category)}`}
@@ -187,11 +189,20 @@ export default function ProductCard({ product }: { product: Product }) {
             )}
           </div>
 
-          {/* القسم السفلي (الكمية والزرار) */}
+          <div className="text-xs text-slate-400 mt-1">
+            المتاح: 
+            <span className={`font-bold ${stockAvailable > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              {stockAvailable}
+            </span>
+            {totalStock !== stockAvailable && totalStock > 0 && (
+              <span className="text-slate-500 text-[10px] mr-1">
+                (من أصل {totalStock})
+              </span>
+            )}
+          </div>
+
           <div className="mt-auto pt-3">
-            
             {!isMultiColor ? (
-              /* أزرار الكمية للمنتجات العادية */
               <div className="flex items-center gap-3 mb-3">
                 <button
                   onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.max(1, q - 1)); }}
@@ -204,8 +215,12 @@ export default function ProductCard({ product }: { product: Product }) {
                   {quantity}
                 </span>
                 <button
-                  onClick={(e) => { e.preventDefault(); setQuantity((q) => q + 1); }}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-purple-500/20 transition"
+                  onClick={(e) => { 
+                    e.preventDefault();
+                    setQuantity((q) => Math.min(q + 1, stockAvailable));
+                  }}
+                  disabled={quantity >= stockAvailable}
+                  className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-purple-500/20 transition disabled:opacity-50"
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(124,58,237,0.25)" }}
                 >
                   <Plus size={13} className="text-slate-300" />
@@ -215,28 +230,31 @@ export default function ProductCard({ product }: { product: Product }) {
                 </span>
               </div>
             ) : (
-              /* مساحة فارغة بدل أزرار الكمية عشان تحافظ على نفس مستوى الزرار */
               <div className="h-[35px] mb-3"></div>
             )}
 
-            {/* زرار أضف للسلة (بقى موحد في كل الحالات) */}
             <button
               onClick={handleAddToCart}
+              disabled={stockAvailable === 0}
               className={`w-full h-11 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${
-                added && !isMultiColor
+                stockAvailable === 0
+                  ? "bg-gray-600 text-white cursor-not-allowed opacity-50"
+                  : added && !isMultiColor
                   ? "bg-green-500 text-white"
                   : "gradient-bg text-white hover:opacity-90 glow-purple"
               }`}
             >
               <ShoppingCart size={17} />
-              {added && !isMultiColor ? "✓ تمت الإضافة!" : "أضف للسلة"}
+              {stockAvailable === 0 
+                ? "المنتج غير متاح" 
+                : added && !isMultiColor 
+                ? "✓ تمت الإضافة!" 
+                : "أضف للسلة"}
             </button>
-
           </div>
         </div>
       </motion.div>
 
-      {/* مودال اختيار الألوان والكمية */}
       <ColorPickerModal 
         product={product}
         isOpen={isModalOpen}
