@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import {
@@ -18,7 +18,7 @@ import AdminProductTable from '@/components/AdminProductTable';
 import AdminProductForm from '@/components/AdminProductForm';
 import AdminPriceEditor from '@/components/AdminPriceEditor';
 import { isAuthenticated } from '@/lib/auth';
-import { Package, Plus, X, Upload, Tags, ArrowRight, ArrowUpDown, Filter } from 'lucide-react';
+import { Package, Plus, X, Upload, Tags, ArrowRight, ArrowUpDown, Filter, ImagePlus } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 
 interface Category {
@@ -53,6 +53,8 @@ export default function ProductsPage() {
   const [newCatIcon, setNewCatIcon] = useState('✏️');
   const [newCatImage, setNewCatImage] = useState<File | null>(null);
   const [newCatImagePreview, setNewCatImagePreview] = useState<string | null>(null);
+  const [isCatImageDragging, setIsCatImageDragging] = useState(false);
+  const catDropZoneRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [categories, setCategories] = useState<Category[]>([]);
 
@@ -78,9 +80,92 @@ export default function ProductsPage() {
     finally { setLoading(false); }
   };
 
+  // ✅ دالة تحميل صورة من URL
+  const handleCatImageFromUrl = useCallback(async (url: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      if (!blob.type.startsWith('image/')) {
+        setModalConfig({ isOpen: true, title: 'خطأ', message: 'الرابط ده مش صورة!', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewCatImagePreview(reader.result as string);
+        setNewCatImage(new File([blob], `category_${Date.now()}.jpg`, { type: blob.type }));
+      };
+      reader.readAsDataURL(blob);
+    } catch (error) {
+      console.error("Error loading image from URL:", error);
+      setModalConfig({ isOpen: true, title: 'خطأ', message: 'مقدرش أحمل الصورة من الرابط ده.', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) });
+    }
+  }, []);
+
+  // ✅ Drag & Drop Events للقسم
+  const handleCatDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsCatImageDragging(true);
+  }, []);
+
+  const handleCatDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsCatImageDragging(false);
+  }, []);
+
+  const handleCatDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsCatImageDragging(false);
+
+    // ملفات من الجهاز
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const file = files[0];
+      if (file.type.startsWith('image/')) {
+        setNewCatImage(file);
+        const reader = new FileReader();
+        reader.onloadend = () => setNewCatImagePreview(reader.result as string);
+        reader.readAsDataURL(file);
+      }
+      return;
+    }
+
+    // URLs من المواقع
+    const items = e.dataTransfer.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'string') {
+          item.getAsString(async (url) => {
+            if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || url.startsWith('http')) {
+              await handleCatImageFromUrl(url);
+            }
+          });
+        }
+      }
+    }
+
+    const textData = e.dataTransfer.getData('text/plain');
+    if (textData && textData.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) {
+      await handleCatImageFromUrl(textData);
+    }
+
+    const uriList = e.dataTransfer.getData('text/uri-list');
+    if (uriList) {
+      const urls = uriList.split('\n').filter(url => url.trim() && !url.startsWith('#'));
+      for (const url of urls) {
+        if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) {
+          await handleCatImageFromUrl(url);
+        }
+      }
+    }
+  }, [handleCatImageFromUrl]);
+
   const handleAddProduct = async (formData: Partial<Product>) => {
     try {
-      const { name, price, originalPrice, rating, category, barcode, stock, images, hasColors, colors } = formData;
+      const { name, price, originalPrice, rating, category, barcode, stock, images, hasColors, colors, hasSizes, sizes, minStock } = formData;
       
       if (!name || !price || !category || !barcode) {
         setModalConfig({ isOpen: true, title: 'خطأ', message: 'الاسم والسعر والفئة والباركود مطلوبة', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) });
@@ -95,13 +180,15 @@ export default function ProductsPage() {
         category, 
         barcode, 
         stock: Number(stock) || 0, 
+        minStock: Number(minStock) || 5,
         images: images || [],
         hasColors: hasColors || false,
         colors: colors || [],
+        hasSizes: hasSizes || false,
+        sizes: sizes || [],
         createdAt: serverTimestamp(),
       });
 
-      // ملاحظة: بما أننا جعلنا image اختيارياً في types، لا مشكلة في عدم تمريره هنا
       setProducts([...products, {
         id: docRef.id, 
         name: name!, 
@@ -111,9 +198,12 @@ export default function ProductsPage() {
         category: category!, 
         barcode: barcode!, 
         stock: Number(stock) || 0, 
+        minStock: Number(minStock) || 5,
         images: images || [],
         hasColors: hasColors || false,
         colors: colors || [],
+        hasSizes: hasSizes || false,
+        sizes: sizes || [],
       }]);
       
       setShowAddForm(false);
@@ -219,7 +309,31 @@ export default function ProductsPage() {
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-slate-400 text-sm font-bold whitespace-nowrap">➕ إضافة قسم:</span>
               {!newCatImagePreview && ( <select value={newCatIcon} onChange={(e) => setNewCatIcon(e.target.value)} className="h-10 px-3 rounded-lg text-white text-sm outline-none" style={{ background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.3)" }}> {iconOptions.map((item) => ( <option key={item.icon} value={item.icon} className="bg-slate-800">{item.icon} {item.label}</option> ))} </select> )}
-              <label className="flex items-center gap-2 px-3 h-10 rounded-lg cursor-pointer transition hover:bg-purple-500/20" style={{ background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.3)" }}> <Upload size={16} className="text-purple-400" /> <span className="text-xs text-white">رفع صورة</span> <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} ref={fileInputRef} /> </label>
+              
+              {/* ✅ منطقة سحب وإفلات الصور للقسم */}
+              <div
+                ref={catDropZoneRef}
+                onDragOver={handleCatDragOver}
+                onDragLeave={handleCatDragLeave}
+                onDrop={handleCatDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`flex items-center gap-2 px-3 h-10 rounded-lg cursor-pointer transition ${
+                  isCatImageDragging 
+                    ? 'bg-purple-500/20 border-purple-500' 
+                    : 'hover:bg-purple-500/20'
+                }`}
+                style={{ 
+                  background: isCatImageDragging ? "rgba(124,58,237,0.2)" : "rgba(124,58,237,0.1)", 
+                  border: isCatImageDragging ? "1px solid rgba(124,58,237,0.6)" : "1px solid rgba(124,58,237,0.3)" 
+                }}
+              >
+                <ImagePlus size={16} className={isCatImageDragging ? "text-purple-400" : "text-purple-400"} />
+                <span className="text-xs text-white">
+                  {isCatImageDragging ? "أفلت الصورة هنا..." : "رفع صورة"}
+                </span>
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} ref={fileInputRef} />
+              </div>
+
               {newCatImagePreview && ( <div className="relative w-10 h-10 rounded-full overflow-hidden border border-purple-400 flex-shrink-0"> <img src={newCatImagePreview} alt="preview" className="w-full h-full object-cover" /> <button onClick={() => { setNewCatImage(null); setNewCatImagePreview(null); if(fileInputRef.current) fileInputRef.current.value = ''; }} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px]">×</button> </div> )}
               <input type="text" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="اسم القسم الجديد..." className="flex-1 h-10 px-3 rounded-lg text-white text-sm outline-none placeholder:text-slate-600 min-w-[180px]" style={{ background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.3)" }} onKeyDown={(e) => e.key === "Enter" && handleAddCategory()} />
               <button onClick={handleAddCategory} className="h-10 px-5 rounded-lg font-bold text-white text-sm transition hover:opacity-90 whitespace-nowrap" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}>إضافة</button>

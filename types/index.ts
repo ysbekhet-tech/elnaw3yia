@@ -4,6 +4,13 @@ export interface ProductColor {
   image: string;
 }
 
+// ✅ interface جديد للمقاسات
+export interface ProductSize {
+  length: string;
+  width: string;
+  price: string;
+}
+
 export interface Product {
   id?: string;
   name: string;
@@ -20,12 +27,17 @@ export interface Product {
   rating?: number;
   hasColors?: boolean;
   colors?: ProductColor[];
+  // ✅ حقول المقاسات الجديدة
+  hasSizes?: boolean;
+  sizes?: ProductSize[];
   isOffer?: boolean;
   isNew?: boolean;
 }
 
+// ✅ تحديث CartItem عشان يدعم المقاسات
 export interface CartItem extends Product {
   quantity: number;
   selectedColor?: string;
+  selectedSize?: ProductSize; // المقاس المختار
   addedAt: number;
 }

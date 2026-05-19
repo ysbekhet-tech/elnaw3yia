@@ -1,3 +1,9 @@
+export interface ProductSize {
+  length: string;
+  width: string;
+  price: string;
+}
+
 export interface ProductColor {
   name: string;
   hex: string;
@@ -11,6 +17,7 @@ export interface Product {
   originalPrice?: number;
   description?: string;
   stock: number;
+  minStock?: number; // ✅ الحد الأدنى للتنبيه
   reserved?: number;
   purchased?: number;
   category: string;
@@ -20,6 +27,8 @@ export interface Product {
   rating?: number;
   hasColors?: boolean;
   colors?: ProductColor[];
+  hasSizes?: boolean;
+  sizes?: ProductSize[];
   isOffer?: boolean;
   isNew?: boolean;
 }
@@ -27,5 +36,6 @@ export interface Product {
 export interface CartItem extends Product {
   quantity: number;
   selectedColor?: string;
+  selectedSize?: ProductSize;
   addedAt: number;
 }

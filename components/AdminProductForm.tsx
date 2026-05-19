@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
-import { Upload, ChevronDown, Check, X, Save, Palette, Trash2, Plus, ImagePlus } from "lucide-react";
-import { Product, ProductColor } from "@/types";
+import { Upload, ChevronDown, Check, X, Save, Palette, Trash2, Plus, ImagePlus, Ruler, AlertTriangle } from "lucide-react";
+import { Product, ProductColor, ProductSize } from "@/types";
 
 interface AdminProductFormProps {
   onSubmit: (formData: Partial<Product>) => void;
@@ -19,23 +19,30 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
     barcode: "",
     stock: "",
     description: "",
+    minStock: "5", // ✅ الحد الأدنى الافتراضي للتنبيه
   });
 
-  // ✅ تغيير من صورة واحدة لمصفوفة صور
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
 
   const [categories, setCategories] = useState<string[]>([]);
   const [categoryOpen, setCategoryOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // بيانات الألوان
   const [hasColors, setHasColors] = useState(false);
   const [colors, setColors] = useState<ProductColor[]>([]);
   const [newColorName, setNewColorName] = useState("");
   const [newColorHex, setNewColorHex] = useState("#000000");
   const [newColorImage, setNewColorImage] = useState<string | null>(null);
   const colorFileInputRef = useRef<HTMLInputElement>(null);
+
+  const [hasSizes, setHasSizes] = useState(false);
+  const [sizes, setSizes] = useState<ProductSize[]>([]);
+  const [newLength, setNewLength] = useState("");
+  const [newWidth, setNewWidth] = useState("");
+  const [newSizePrice, setNewSizePrice] = useState("");
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "categories"), (snapshot) => {
@@ -59,23 +66,93 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // ✅ دالة رفع صور متعددة
+  const handleImageFromUrl = useCallback(async (url: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      if (!blob.type.startsWith('image/')) {
+        alert("الرابط ده مش صورة!");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => setImagePreviews(prev => [...prev, reader.result as string]);
+      reader.readAsDataURL(blob);
+    } catch (error) {
+      console.error("Error loading image from URL:", error);
+      alert("مقدرش أحمل الصورة من الرابط ده. جرب ترفعها من الجهاز.");
+    }
+  }, []);
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files) return;
-
-    const newImages: string[] = [...imagePreviews];
     Array.from(files).forEach((file) => {
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
-        reader.onloadend = () => {
-          newImages.push(reader.result as string);
-          setImagePreviews([...newImages]);
-        };
+        reader.onloadend = () => setImagePreviews(prev => [...prev, reader.result as string]);
         reader.readAsDataURL(file);
       }
     });
   };
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  }, []);
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      Array.from(files).forEach((file) => {
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onloadend = () => setImagePreviews(prev => [...prev, reader.result as string]);
+          reader.readAsDataURL(file);
+        }
+      });
+      return;
+    }
+
+    const items = e.dataTransfer.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'string') {
+          item.getAsString(async (url) => {
+            if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || url.startsWith('http')) {
+              await handleImageFromUrl(url);
+            }
+          });
+        }
+      }
+    }
+
+    const textData = e.dataTransfer.getData('text/plain');
+    if (textData && textData.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) {
+      await handleImageFromUrl(textData);
+    }
+
+    const uriList = e.dataTransfer.getData('text/uri-list');
+    if (uriList) {
+      const urls = uriList.split('\n').filter(url => url.trim() && !url.startsWith('#'));
+      for (const url of urls) {
+        if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) {
+          await handleImageFromUrl(url);
+        }
+      }
+    }
+  }, [handleImageFromUrl]);
 
   const handleRemoveImage = (index: number) => {
     const newImages = imagePreviews.filter((_, i) => i !== index);
@@ -91,6 +168,23 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
       reader.readAsDataURL(file);
     }
   };
+
+  const handleColorImageDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const textData = e.dataTransfer.getData('text/plain');
+    if (textData && textData.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) {
+      try {
+        const response = await fetch(textData);
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => setNewColorImage(reader.result as string);
+        reader.readAsDataURL(blob);
+      } catch (error) {
+        alert("مقدرش أحمل الصورة من الرابط ده.");
+      }
+    }
+  }, []);
 
   const handleAddColor = () => {
     if (!newColorName || !newColorImage) {
@@ -108,23 +202,48 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
     setColors(colors.filter((_, i) => i !== index));
   };
 
+  const handleAddSize = () => {
+    if (!newLength || !newWidth || !newSizePrice) {
+      alert("يجب إدخال الطول والعرض والسعر!");
+      return;
+    }
+    setSizes([...sizes, { length: newLength, width: newWidth, price: newSizePrice }]);
+    setNewLength("");
+    setNewWidth("");
+    setNewSizePrice("");
+  };
+
+  const handleRemoveSize = (index: number) => {
+    setSizes(sizes.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    let finalPrice = Number(formData.price);
+    if (hasSizes && sizes.length > 0) {
+      finalPrice = Number(sizes[0].price);
+    }
+
     onSubmit({
       ...formData,
-      price: Number(formData.price),
+      price: finalPrice,
       originalPrice: Number(formData.originalPrice),
       stock: Number(formData.stock),
-      images: imagePreviews, // ✅ إرسال مصفوفة الصور
+      minStock: Number(formData.minStock) || 5, // ✅ إرسال الحد الأدنى
+      images: imagePreviews,
       hasColors: hasColors,
-      colors: hasColors ? colors : [], 
+      colors: hasColors ? colors : [],
+      hasSizes: hasSizes,
+      sizes: hasSizes ? sizes : [],
     });
 
-    // تنظيف الفورم
-    setFormData({ name: "", price: "", originalPrice: "", category: "", barcode: "", stock: "", description: "" });
+    setFormData({ name: "", price: "", originalPrice: "", category: "", barcode: "", stock: "", description: "", minStock: "5" });
     setImagePreviews([]);
     setHasColors(false);
     setColors([]);
+    setHasSizes(false);
+    setSizes([]);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -133,18 +252,41 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {/* ✅ قسم الصور المتعددة */}
       <div className="md:col-span-2">
         <label className="block text-sm font-bold text-slate-400 mb-2">صور المنتج (متعدد)</label>
         <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 px-4 h-12 rounded-xl cursor-pointer transition hover:bg-purple-500/20" style={{ background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.3)" }}>
-              <ImagePlus size={16} className="text-purple-400" />
-              <span className="text-xs text-white">اختر صور</span>
-              <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} ref={fileInputRef} />
-            </label>
-            <span className="text-xs text-slate-500">{imagePreviews.length} صور مختارة</span>
+          <div
+            ref={dropZoneRef}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition cursor-pointer ${
+              isDragging 
+                ? 'border-purple-500 bg-purple-500/10' 
+                : 'border-slate-600 hover:border-purple-400 hover:bg-purple-500/5'
+            }`}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <ImagePlus size={32} className={isDragging ? "text-purple-400" : "text-slate-500"} />
+            <div className="text-center">
+              <p className="text-sm text-slate-300 font-medium">
+                {isDragging ? "أفلت الصور هنا..." : "اسحب الصور هنا أو اضغط لاختيارها"}
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                تقدر تسحب صور من الجهاز أو من أى موقع على النت! 🌐
+              </p>
+            </div>
+            <input 
+              type="file" 
+              accept="image/*" 
+              multiple 
+              className="hidden" 
+              onChange={handleImageChange} 
+              ref={fileInputRef} 
+            />
           </div>
+          
+          <span className="text-xs text-slate-500">{imagePreviews.length} صور مختارة</span>
           
           {imagePreviews.length > 0 && (
             <div className="flex flex-wrap gap-3">
@@ -160,14 +302,96 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
       </div>
 
       <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="اسم المنتج *" required className={inputStyle} style={borderConfig} />
-      <input type="number" name="price" value={formData.price} onChange={handleChange} placeholder="السعر *" required className={inputStyle} style={borderConfig} />
+      
+      {!hasSizes && (
+        <input type="number" name="price" value={formData.price} onChange={handleChange} placeholder="السعر *" required className={inputStyle} style={borderConfig} />
+      )}
+      
       <input type="number" name="originalPrice" value={formData.originalPrice} onChange={handleChange} placeholder="السعر قبل الخصم" className={inputStyle} style={borderConfig} />
       
       <div className="md:col-span-2">
         <textarea name="description" value={formData.description} onChange={handleChange} placeholder="اكتب وصف المنتج..." rows={3} className="w-full px-4 py-3 rounded-xl bg-transparent text-white border focus:outline-none focus:border-purple-500 transition placeholder:text-slate-600 resize-none" style={borderConfig} />
       </div>
 
-      {/* قسم الألوان (كما هو) */}
+      <div className="md:col-span-2 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
+            <Ruler size={16} className="text-purple-400" />
+            هل المنتج بمقاسات مختلفة؟
+          </div>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setHasSizes(false)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasSizes ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400'}`}>لا</button>
+            <button type="button" onClick={() => setHasSizes(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasSizes ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400'}`}>نعم</button>
+          </div>
+        </div>
+        
+        {hasSizes && (
+          <div className="mt-4 border-t border-slate-700 pt-4">
+            {sizes.length > 0 && (
+              <div className="flex flex-wrap gap-3 mb-4">
+                {sizes.map((size, index) => (
+                  <div key={index} className="relative group flex flex-col items-center gap-1 bg-slate-800 rounded-lg p-3 border border-slate-700">
+                    <div className="text-xs text-slate-300 font-bold">
+                      {size.length} × {size.width} سم
+                    </div>
+                    <div className="text-sm text-purple-400 font-bold">
+                      {size.price} جنيه
+                    </div>
+                    <button 
+                      type="button" 
+                      onClick={() => handleRemoveSize(index)} 
+                      className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                    >
+                      <X size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">الطول (سم)</label>
+                <input 
+                  type="number" 
+                  value={newLength} 
+                  onChange={(e) => setNewLength(e.target.value)} 
+                  placeholder="مثال: 100" 
+                  className="w-full h-10 px-3 rounded-lg text-sm bg-slate-800 border border-slate-700 text-white outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">العرض (سم)</label>
+                <input 
+                  type="number" 
+                  value={newWidth} 
+                  onChange={(e) => setNewWidth(e.target.value)} 
+                  placeholder="مثال: 50" 
+                  className="w-full h-10 px-3 rounded-lg text-sm bg-slate-800 border border-slate-700 text-white outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">السعر (جنيه)</label>
+                <input 
+                  type="number" 
+                  value={newSizePrice} 
+                  onChange={(e) => setNewSizePrice(e.target.value)} 
+                  placeholder="مثال: 250" 
+                  className="w-full h-10 px-3 rounded-lg text-sm bg-slate-800 border border-slate-700 text-white outline-none"
+                />
+              </div>
+              <button 
+                type="button" 
+                onClick={handleAddSize} 
+                className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition flex items-center justify-center gap-1"
+              >
+                <Plus size={14} /> إضافة مقاس
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div className="md:col-span-2 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
@@ -181,7 +405,6 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
         </div>
         {hasColors && (
           <div className="mt-4 border-t border-slate-700 pt-4">
-             {/* كود إضافة الألوان كما هو في كودك الأصلي */}
              <div className="flex flex-wrap gap-3 mb-4">
                 {colors.map((color, index) => (
                   <div key={index} className="relative group flex flex-col items-center gap-1">
@@ -207,11 +430,17 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
                 </div>
                 <div>
                   <label className="block text-xs text-slate-500 mb-1">صورة اللون</label>
-                  <label className="flex items-center gap-1 h-10 px-2 rounded-lg cursor-pointer bg-slate-800 border border-slate-700 hover:bg-slate-700 transition">
-                    <Upload size={14} className="text-purple-400" />
-                    <span className="text-xs text-slate-400">{newColorImage ? "تم الاختيار" : "اختر صورة"}</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleColorImageChange} ref={colorFileInputRef} />
-                  </label>
+                  <div 
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={handleColorImageDrop}
+                    className="flex items-center gap-1"
+                  >
+                    <label className="flex items-center gap-1 h-10 px-2 rounded-lg cursor-pointer bg-slate-800 border border-slate-700 hover:bg-slate-700 transition">
+                      <Upload size={14} className="text-purple-400" />
+                      <span className="text-xs text-slate-400">{newColorImage ? "تم الاختيار" : "اختر صورة"}</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleColorImageChange} ref={colorFileInputRef} />
+                    </label>
+                  </div>
                 </div>
                 <button type="button" onClick={handleAddColor} className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition flex items-center justify-center gap-1">
                   <Plus size={14} /> إضافة لون
@@ -239,7 +468,26 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
       </div>
 
       <input type="text" name="barcode" value={formData.barcode} onChange={handleChange} placeholder="الباركود *" required className={inputStyle} style={borderConfig} />
-      <input type="number" name="stock" value={formData.stock} onChange={handleChange} placeholder="الكمية بالمخزن" className={inputStyle} style={borderConfig} />
+      
+            <input type="number" name="stock" value={formData.stock} onChange={handleChange} placeholder="الكمية بالمخزن *" required className={inputStyle} style={borderConfig} />
+
+      {/* ✅ حقل الحد الأدنى للتنبيه - مطلوب ومُسمى واضح */}
+      <div className="relative">
+        <input 
+          type="number" 
+          name="minStock" 
+          value={formData.minStock} 
+          onChange={handleChange} 
+          placeholder="الحد الأدنى للتنبيه *" 
+          required 
+          className={inputStyle} 
+          style={borderConfig} 
+        />
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-red-400">
+          <AlertTriangle size={14} />
+          <span className="text-[10px] font-bold">تنبيه</span>
+        </div>
+      </div>
 
       <div className="md:col-span-2 mt-2">
         <button type="submit" className="w-full h-14 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition hover:opacity-90" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}>

@@ -72,16 +72,21 @@ export default function AdminProductTable({
                 : (product as any).image || '';
 
               const stock = product.stock || 0;
+              const minStock = product.minStock || 5; // ✅ الحد الأدنى للتنبيه
+              const isLowStock = stock > 0 && stock <= minStock; // ✅ هل وصل للحد الأدنى؟
+              const isOutOfStock = stock === 0;
+
               let stockBadgeStyle: React.CSSProperties = {};
               let stockText = `${stock}`;
               let StockIcon: any = null;
 
-              if (stock === 0) {
+              if (isOutOfStock) {
                 stockBadgeStyle = { background: "rgba(100,116,139,0.15)", color: "#94a3b8", border: "1px solid rgba(100,116,139,0.3)" };
                 stockText = "نفذت الكمية";
-              } else if (stock < 5) {
-                stockBadgeStyle = { background: "rgba(239,68,68,0.15)", color: "#f87171", border: "1px solid rgba(239,68,68,0.4)" };
-                stockText = `${stock} (منخفض)`;
+              } else if (isLowStock) {
+                // ✅ لون أحمر للتنبيه عند قرب الانتهاء
+                stockBadgeStyle = { background: "rgba(239,68,68,0.2)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.5)" };
+                stockText = `${stock} (قرب ينتهي!)`;
                 StockIcon = <AlertTriangle size={12} className="ml-1" />;
               } else if (stock < 15) {
                 stockBadgeStyle = { background: "rgba(249,115,22,0.15)", color: "#fb923c", border: "1px solid rgba(249,115,22,0.4)" };
@@ -115,7 +120,24 @@ export default function AdminProductTable({
                     )}
                   </td>
 
-                  <td className="px-4 py-3.5 font-bold text-white text-sm">{product.name}</td>
+                  {/* ✅ اسم المنتج مع تنبيه أحمر لو قرب ينتهي */}
+                  <td className="px-4 py-3.5 font-bold text-sm">
+                    <div className="flex items-center gap-2">
+                      {isLowStock && (
+                        <span 
+                          className="inline-flex items-center justify-center w-5 h-5 rounded-full"
+                          style={{ background: "rgba(239,68,68,0.2)", border: "1px solid rgba(239,68,68,0.5)" }}
+                          title={`الكمية وصلت للحد الأدنى (${minStock})`}
+                        >
+                          <AlertTriangle size={10} className="text-red-400" />
+                        </span>
+                      )}
+                      <span className={isLowStock ? "text-red-400" : "text-white"}>
+                        {product.name}
+                      </span>
+                    </div>
+                  </td>
+
                   <td className="px-4 py-3.5 text-sm">
                     <span
                       className="font-black px-2 py-1 rounded-lg text-xs"
