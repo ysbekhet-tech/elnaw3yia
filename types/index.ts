@@ -1,3 +1,5 @@
+// src/types/index.ts
+
 export interface ProductColor {
   name: string;
   hex: string;
@@ -5,7 +7,7 @@ export interface ProductColor {
 }
 
 export interface Product {
-  id?: string;              // جعلناه اختياري لأنه يتم توليده من Firebase
+  id?: string;
   name: string;
   price: number;
   originalPrice?: number;
@@ -13,10 +15,10 @@ export interface Product {
   stock: number;
   category: string;
   barcode: string;
-  image: string;
-  images?: string[];        // مصفوفة صور إضافية
-  reserved?: number;        // الكمية المحجوزة
-  rating?: number;          // ⚠️ هذا هو السطر الذي كان مفقوداً وسبب الخطأ
+  image?: string;        // ⚠️ أضفنا علامة الاستفهام لجعله اختياري
+  images?: string[];
+  reserved?: number;
+  rating?: number;
   hasColors?: boolean;
   colors?: ProductColor[];
 }

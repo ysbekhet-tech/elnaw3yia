@@ -7,7 +7,7 @@ export interface ProductColor {
 }
 
 export interface Product {
-  id?: string;              // اختياري لأنه يتولد من Firebase
+  id?: string;
   name: string;
   price: number;
   originalPrice?: number;
@@ -15,10 +15,10 @@ export interface Product {
   stock: number;
   category: string;
   barcode: string;
-  image: string;
+  image?: string;        // ⚠️ أضفنا علامة الاستفهام لجعله اختياري
   images?: string[];
   reserved?: number;
-  rating?: number;          // ⚠️ هذا السطر ضروري لإصلاح الخطأ
+  rating?: number;
   hasColors?: boolean;
   colors?: ProductColor[];
 }

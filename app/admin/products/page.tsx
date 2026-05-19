@@ -80,7 +80,6 @@ export default function ProductsPage() {
 
   const handleAddProduct = async (formData: Partial<Product>) => {
     try {
-      // استخلاص البيانات مع التأكد من التعامل مع الـ rating
       const { name, price, originalPrice, rating, category, barcode, stock, images, hasColors, colors } = formData;
       
       if (!name || !price || !category || !barcode) {
@@ -92,7 +91,7 @@ export default function ProductsPage() {
         name, 
         price: Number(price), 
         originalPrice: Number(originalPrice) || 0, 
-        rating: Number(rating) || 4.5, // قيمة افتراضية في حال عدم الإدخال
+        rating: Number(rating) || 4.5,
         category, 
         barcode, 
         stock: Number(stock) || 0, 
@@ -102,6 +101,7 @@ export default function ProductsPage() {
         createdAt: serverTimestamp(),
       });
 
+      // ملاحظة: بما أننا جعلنا image اختيارياً في types، لا مشكلة في عدم تمريره هنا
       setProducts([...products, {
         id: docRef.id, 
         name: name!, 
