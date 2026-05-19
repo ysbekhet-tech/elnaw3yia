@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react"; // 1. استيراد Suspense
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
@@ -8,7 +8,8 @@ import { collection, getDocs } from "firebase/firestore";
 import { Product } from "@/types";
 import { Search, PackageOpen } from "lucide-react";
 
-export default function SearchPage() {
+// 2. وضعنا كل الكود الأصلي في كومبونبت داخلي (Inner Component)
+function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get("q") || ""; // الكلمة اللي بحث عنها
 
@@ -109,5 +110,20 @@ export default function SearchPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// 3. الكومبونبت الرئيسي يقوم بتغليف الكومبونبت الداخلي بـ Suspense
+export default function SearchPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center" style={{ background: "#050510" }}>
+          <p className="text-white font-bold text-xl">جاري البحث...</p>
+        </div>
+      }
+    >
+      <SearchContent />
+    </Suspense>
   );
 }

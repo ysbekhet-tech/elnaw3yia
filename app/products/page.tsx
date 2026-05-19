@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react"; // 1. استيراد Suspense
 import { useSearchParams, useRouter } from "next/navigation";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -14,9 +14,10 @@ interface Category {
   imageUrl?: string;
 }
 
-export default function ProductsPage() {
+// 2. وضعنا كل الكود الأصلي في كومبوننت داخلي (Inner Component)
+function ProductsContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); // الآن هذا الهوك آمن لأنه ج Suspense
   const categoryFromUrl = searchParams.get("category");
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -189,5 +190,20 @@ export default function ProductsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// 3. الكومبوننت الرئيسي يقوم بتغليف الكومبوننت الداخلي بـ Suspense
+export default function ProductsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-7xl mx-auto px-4 py-10 flex justify-center items-center h-96">
+          <p className="text-xl text-slate-500 font-bold">جاري التحميل...</p>
+        </div>
+      }
+    >
+      <ProductsContent />
+    </Suspense>
   );
 }

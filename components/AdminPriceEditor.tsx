@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
 import { Product, ProductColor } from '@/types';
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { X, Save, ChevronDown, Check, Upload, Palette, Plus, ImagePlus, Trash2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
 
 interface AdminPriceEditorProps {
   product: Product | null;
@@ -22,11 +22,9 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // ✅ تغيير لمصفوفة صور
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // بيانات الألوان
   const [hasColors, setHasColors] = useState(false);
   const [colors, setColors] = useState<ProductColor[]>([]);
   const [newColorName, setNewColorName] = useState("");
@@ -44,8 +42,7 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
         name: product.name || '', price: product.price || 0, originalPrice: product.originalPrice || 0,
         stock: product.stock || 0, category: product.category || '', barcode: product.barcode || '', description: product.description || ''
       });
-      
-      // ✅ تحميل الصور الموجودة (دعم النظامين: الجديد والقديم)
+
       if (Array.isArray(product.images) && product.images.length > 0) {
         setImagePreviews(product.images);
       } else if ((product as any).image) {
@@ -110,11 +107,12 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
 
   const handleSubmit = async () => {
     if (!formData.name || formData.price <= 0 || !formData.category || !formData.barcode) { alert('يرجى ملء جميع الحقول المطلوبة'); return; }
+    if (!product.id) { alert('المنتج لا يحتوي على معرف صالح'); return; }
     setIsSubmitting(true);
     try {
       await onSubmit(product.id, {
         ...formData, 
-        images: imagePreviews, // ✅ حفظ مصفوفة الصور
+        images: imagePreviews,
         originalPrice: Number(formData.originalPrice) || 0,
         hasColors: hasColors, colors: hasColors ? colors : []
       });
@@ -125,14 +123,13 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}>
       <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl p-6" style={{ background: "rgba(8,8,20,0.98)", border: "1px solid rgba(124,58,237,0.35)", boxShadow: "0 0 60px rgba(124,58,237,0.2), 0 25px 60px rgba(0,0,0,0.6)" }}>
-        
+
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-black text-white">تعديل بيانات المنتج</h2>
           <button onClick={onClose} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/10 transition" style={{ border: "1px solid rgba(255,255,255,0.1)" }}><X size={18} className="text-slate-400" /></button>
         </div>
 
         <div className="flex flex-col gap-4">
-          {/* ✅ قسم تعديل الصور المتعددة */}
           <div>
             <label className="block text-xs font-bold text-slate-400 mb-1.5">صور المنتج</label>
             <div className="flex flex-col gap-3">
@@ -174,7 +171,6 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
             </div>
           </div>
 
-          {/* الألوان */}
           <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-300">

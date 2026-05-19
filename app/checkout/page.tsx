@@ -249,6 +249,9 @@ export default function CheckoutPage() {
       await runTransaction(db, async (transaction) => {
         // 1. Check stock for all items
         for (const item of cart) {
+          if (!item.id) {
+            throw new Error(`المنتج "${item.name}" لا يحتوي على معرف صالح`);
+          }
           const ref = doc(db, "products", item.id);
           const snap = await transaction.get(ref);
           const data = snap.data();
@@ -265,6 +268,7 @@ export default function CheckoutPage() {
 
         // 3. Finalize stock (reserved becomes sold)
         for (const item of cart) {
+          if (!item.id) continue;
           const ref = doc(db, "products", item.id);
           transaction.update(ref, {
             stock: increment(-item.quantity),
@@ -274,13 +278,16 @@ export default function CheckoutPage() {
       });
 
       // Clear cart
-      cart.forEach((item) =>
-        deleteFromCart(item.id, item.selectedColor)
-      );
+      cart.forEach((item) => {
+        if (!item.id) return;
+        deleteFromCart(item.id, item.selectedColor);
+      });
       setOrderId(orderRef.id);
       setSuccess(true);
     } catch (error: any) {
       if (error.message?.includes("نفذت كميته")) {
+        setStockError(error.message);
+      } else if (error.message?.includes("لا يحتوي على معرف صالح")) {
         setStockError(error.message);
       } else if (error.code === "auth/invalid-verification-code") {
         setOtpError("الكود غير صحيح، حاول تاني");
@@ -658,12 +665,13 @@ export default function CheckoutPage() {
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
+                        if (!item.id) return;
                         removeFromCart(
                           item.id,
                           item.selectedColor
-                        )
-                      }
+                        );
+                      }}
                       className="w-6 h-6 rounded-lg bg-slate-600 hover:bg-red-500/30 hover:text-red-400 flex items-center justify-center text-slate-300 transition"
                     >
                       <Minus size={11} />

@@ -122,106 +122,112 @@ export default function CartDrawer() {
               </button>
             </div>
           ) : (
-            cart.map((item) => (
-              <motion.div
-                key={item.id + (item.selectedColor || "")}
-                animate={
-                  animatedId === item.id + (item.selectedColor || "")
-                    ? {
-                        x: [0, -4, 4, -4, 4, 0],
-                        scale: [1, 1.02, 1],
-                      }
-                    : { x: 0, scale: 1 }
-                }
-                transition={{ duration: 0.25 }}
-                className="flex gap-3 p-3 rounded-2xl"
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid rgba(124,58,237,0.15)",
-                }}
-              >
-                <img
-                  src={item.image || "https://via.placeholder.com/60"}
-                  className="w-16 h-16 object-cover rounded-xl"
-                  alt={item.name}
-                />
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-slate-200 text-sm line-clamp-1">
-                    {item.name}
-                    {item.selectedColor && (
-                      <span className="text-purple-400 text-xs mr-1">
-                        ({item.selectedColor})
-                      </span>
-                    )}
-                  </h3>
-                  <p className="gradient-text font-bold text-sm mt-1">
-                    {item.price} ج
-                  </p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <button
-                      onClick={() => {
-                        removeFromCart(item.id, item.selectedColor);
-                        triggerAnim(item.id, item.selectedColor);
-                      }}
-                      className={`w-7 h-7 flex items-center justify-center rounded-lg transition ${
-                        item.quantity === 1
-                          ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                          : "text-slate-400 hover:bg-white/10"
-                      }`}
-                      style={
-                        item.quantity !== 1
-                          ? { border: "1px solid rgba(255,255,255,0.1)" }
-                          : {}
-                      }
-                    >
-                      <Minus size={13} />
-                    </button>
-                    <motion.span
-                      key={item.quantity}
-                      animate={
-                        animatedId === item.id + (item.selectedColor || "")
-                          ? { scale: [1, 1.4, 1] }
-                          : { scale: 1 }
-                      }
-                      transition={{ duration: 0.2 }}
-                      className="min-w-[24px] text-center font-black text-white"
-                    >
-                      {item.quantity}
-                    </motion.span>
-                    <button
-                      onClick={async () => {
-                        const success = await addToCart(
-                          item,
-                          false,
-                          item.selectedColor
-                        );
-                        if (success) {
-                          triggerAnim(item.id, item.selectedColor);
-                        } else {
-                          showError(
-                            `نفذت الكمية المتاحة من ${item.name}`
-                          );
+            cart.map((item) => {
+              if (!item.id) return null;
+
+              return (
+                <motion.div
+                  key={item.id + (item.selectedColor || "")}
+                  animate={
+                    animatedId === item.id + (item.selectedColor || "")
+                      ? {
+                          x: [0, -4, 4, -4, 4, 0],
+                          scale: [1, 1.02, 1],
                         }
-                      }}
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white/10 transition"
-                      style={{
-                        border: "1px solid rgba(255,255,255,0.1)",
-                      }}
-                    >
-                      <Plus size={13} />
-                    </button>
-                  </div>
-                </div>
-                <button
-                  onClick={() =>
-                    deleteFromCart(item.id, item.selectedColor)
+                      : { x: 0, scale: 1 }
                   }
-                  className="text-slate-600 hover:text-red-400 transition self-start mt-1"
+                  transition={{ duration: 0.25 }}
+                  className="flex gap-3 p-3 rounded-2xl"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(124,58,237,0.15)",
+                  }}
                 >
-                  <Trash2 size={18} />
-                </button>
-              </motion.div>
-            ))
+                  <img
+                    src={item.image || "https://via.placeholder.com/60"}
+                    className="w-16 h-16 object-cover rounded-xl"
+                    alt={item.name}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-slate-200 text-sm line-clamp-1">
+                      {item.name}
+                      {item.selectedColor && (
+                        <span className="text-purple-400 text-xs mr-1">
+                          ({item.selectedColor})
+                        </span>
+                      )}
+                    </h3>
+                    <p className="gradient-text font-bold text-sm mt-1">
+                      {item.price} ج
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <button
+                        onClick={() => {
+                          // Fix: Added ! to ID and || "" to Color
+                          removeFromCart(item.id!, item.selectedColor || "");
+                          triggerAnim(item.id!, item.selectedColor || "");
+                        }}
+                        className={`w-7 h-7 flex items-center justify-center rounded-lg transition ${
+                          item.quantity === 1
+                            ? "bg-red-500/20 text-red-400 border border-red-500/30"
+                            : "text-slate-400 hover:bg-white/10"
+                        }`}
+                        style={
+                          item.quantity !== 1
+                            ? { border: "1px solid rgba(255,255,255,0.1)" }
+                            : {}
+                        }
+                      >
+                        <Minus size={13} />
+                      </button>
+                      <motion.span
+                        key={item.quantity}
+                        animate={
+                          animatedId === item.id + (item.selectedColor || "")
+                            ? { scale: [1, 1.4, 1] }
+                            : { scale: 1 }
+                        }
+                        transition={{ duration: 0.2 }}
+                        className="min-w-[24px] text-center font-black text-white"
+                      >
+                        {item.quantity}
+                      </motion.span>
+                      <button
+                        onClick={async () => {
+                          const success = await addToCart(
+                            item,
+                            false,
+                            item.selectedColor || ""
+                          );
+                          if (success) {
+                            triggerAnim(item.id!, item.selectedColor || "");
+                          } else {
+                            showError(
+                              `نفذت الكمية المتاحة من ${item.name}`
+                            );
+                          }
+                        }}
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white/10 transition"
+                        style={{
+                          border: "1px solid rgba(255,255,255,0.1)",
+                        }}
+                      >
+                        <Plus size={13} />
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() =>
+                      // Fix: Added ! to ID and || "" to Color
+                      deleteFromCart(item.id!, item.selectedColor || "")
+                    }
+                    className="text-slate-600 hover:text-red-400 transition self-start mt-1"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </motion.div>
+              );
+            })
           )}
         </div>
 

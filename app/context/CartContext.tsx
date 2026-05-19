@@ -37,7 +37,7 @@ const RESERVATION_MINUTES = 15;
 const RESERVATION_MS = RESERVATION_MINUTES * 60 * 1000;
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cart, setCart] = useState<CartItem[]>([]); // تم التصحيح هنا
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   const openCart = () => setIsCartOpen(true);
@@ -53,7 +53,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const data = snap.data();
         const currentReserved = data?.reserved || 0;
         const actualRelease = Math.min(qtyToRelease, Math.max(0, currentReserved));
-        
+
         if (actualRelease > 0) {
           transaction.update(ref, { reserved: increment(-actualRelease) });
           console.log("Released:", actualRelease, "from reserved. Was:", currentReserved);
@@ -69,24 +69,31 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const saved = localStorage.getItem("stationery-cart");
     if (saved) {
-      const parsed: CartItem[] = JSON.parse(saved);
-      const now = Date.now();
-      const valid: CartItem[] = [];
-      const expired: CartItem[] = [];
+      try {
+        const parsed: CartItem[] = JSON.parse(saved);
+        const now = Date.now();
+        const valid: CartItem[] = [];
+        const expired: CartItem[] = [];
 
-      parsed.forEach((item) => {
-        if (!item.reservedAt || now - item.reservedAt < RESERVATION_MS) {
-          valid.push(item);
-        } else {
-          expired.push(item);
-        }
-      });
+        parsed.forEach((item) => {
+          if (!item.id) return;
+          if (!item.reservedAt || now - item.reservedAt < RESERVATION_MS) {
+            valid.push(item);
+          } else {
+            expired.push(item);
+          }
+        });
 
-      expired.forEach((item) => {
-        safeReleaseReserved(item.id, item.quantity);
-      });
+        expired.forEach((item) => {
+          if (!item.id) return;
+          safeReleaseReserved(item.id, item.quantity);
+        });
 
-      setCart(valid);
+        setCart(valid);
+      } catch (error) {
+        console.error("Failed to parse cart from localStorage", error);
+        localStorage.removeItem("stationery-cart");
+      }
     }
   }, []);
 
@@ -98,18 +105,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const interval = setInterval(() => {
       const now = Date.now();
       const expired = cart.filter(
-        (item) => item.reservedAt && now - item.reservedAt >= RESERVATION_MS
+        (item) => item.id && item.reservedAt && now - item.reservedAt >= RESERVATION_MS
       );
 
       if (expired.length > 0) {
         expired.forEach((item) => {
+          if (!item.id) return;
           safeReleaseReserved(item.id, item.quantity);
         });
 
         setCart((prev) =>
           prev.filter(
             (item) =>
-              !(item.reservedAt && now - item.reservedAt >= RESERVATION_MS)
+              !(item.id && item.reservedAt && now - item.reservedAt >= RESERVATION_MS)
           )
         );
       }
@@ -126,9 +134,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       qty: number = 1
     ): Promise<boolean> => {
       if (qty <= 0) return false;
+      if (!product.id) {
+        console.error("Product has no ID");
+        return false;
+      }
 
       try {
         await runTransaction(db, async (transaction) => {
+          // Fix: إضافة تحقق للتأكد من وجود ID المنتج قبل استخدامه في الـ Transaction
+          if (!product.id) return;
+
           const ref = doc(db, "products", product.id);
           const snap = await transaction.get(ref);
           if (!snap.exists()) throw new Error("المنتج غير موجود");

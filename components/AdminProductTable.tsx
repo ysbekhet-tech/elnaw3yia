@@ -48,7 +48,6 @@ export default function AdminProductTable({
       <table className="w-full">
         <thead>
           <tr style={{ background: "rgba(124,58,237,0.15)", borderBottom: "1px solid rgba(124,58,237,0.25)" }}>
-            {/* ✅ إضافة عمود الصورة */}
             <th className="px-4 py-3.5 text-center text-sm font-black text-slate-200 w-24">الصورة</th>
             <th className="px-4 py-3.5 text-right text-sm font-black text-slate-200">الاسم</th>
             <th className="px-4 py-3.5 text-right text-sm font-black text-slate-200">السعر</th>
@@ -68,12 +67,10 @@ export default function AdminProductTable({
             </tr>
           ) : (
             products.map((product) => {
-              // ✅ منطق جلب الصورة (دعم المصفوفة الجديدة أو النص القديم)
               const imageUrl = Array.isArray(product.images) && product.images.length > 0 
                 ? product.images[0] 
                 : (product as any).image || '';
 
-              // ✅ منطق تمييز المخزون
               const stock = product.stock || 0;
               let stockBadgeStyle: React.CSSProperties = {};
               let stockText = `${stock}`;
@@ -101,7 +98,6 @@ export default function AdminProductTable({
                   className="border-t transition hover:bg-purple-500/5"
                   style={{ borderColor: "rgba(124,58,237,0.1)" }}
                 >
-                  {/* ✅ عمود الصورة */}
                   <td className="px-4 py-3.5 text-center">
                     {imageUrl ? (
                       <img 
@@ -128,8 +124,7 @@ export default function AdminProductTable({
                       {product.price} جنيه
                     </span>
                   </td>
-                  
-                  {/* ✅ عمود الكمية المعدل */}
+
                   <td className="px-4 py-3.5 text-sm">
                     <span 
                       className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold transition-all"
@@ -142,7 +137,7 @@ export default function AdminProductTable({
 
                   <td className="px-4 py-3.5 text-slate-300 text-sm">{product.category}</td>
                   <td className="px-4 py-3.5 text-slate-400 text-xs font-mono">{product.barcode}</td>
-                  
+
                   <td className="px-4 py-3.5">
                     <div className="flex justify-center gap-2">
                       <button
@@ -154,7 +149,13 @@ export default function AdminProductTable({
                         <Edit2 size={15} />
                       </button>
                       <button
-                        onClick={() => handleDelete(product.id)}
+                        onClick={() => {
+                          if (!product.id) {
+                            console.error('Product ID is undefined');
+                            return;
+                          }
+                          handleDelete(product.id);
+                        }}
                         className="p-2 rounded-xl transition hover:scale-110 min-w-[36px]"
                         style={
                           deleteConfirm === product.id

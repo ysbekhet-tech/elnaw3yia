@@ -24,10 +24,10 @@ export default function Navbar() {
 
   const [categories, setCategories] = useState<Category[]>([]);
 
-  const categoriesRef = useRef(null);
-  const categoriesBtnRef = useRef(null);
-  const mobileMenuRef = useRef(null);
-  const menuBtnRef = useRef(null);
+  const categoriesRef = useRef<HTMLDivElement>(null);
+  const categoriesBtnRef = useRef<HTMLButtonElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "categories"), (snapshot) => {
@@ -48,13 +48,13 @@ export default function Navbar() {
   };
 
   useEffect(() => {
-    function handleClickOutside(e) {
+    function handleClickOutside(e: MouseEvent) {
       if (
         categoriesOpen &&
         categoriesRef.current &&
-        !categoriesRef.current.contains(e.target) &&
+        !categoriesRef.current.contains(e.target as Node) &&
         categoriesBtnRef.current &&
-        !categoriesBtnRef.current.contains(e.target)
+        !categoriesBtnRef.current.contains(e.target as Node)
       ) {
         setCategoriesOpen(false);
       }
@@ -64,13 +64,13 @@ export default function Navbar() {
   }, [categoriesOpen]);
 
   useEffect(() => {
-    function handleClickOutside(e) {
+    function handleClickOutside(e: MouseEvent) {
       if (
         open &&
         mobileMenuRef.current &&
-        !mobileMenuRef.current.contains(e.target) &&
+        !mobileMenuRef.current.contains(e.target as Node) &&
         menuBtnRef.current &&
-        !menuBtnRef.current.contains(e.target)
+        !menuBtnRef.current.contains(e.target as Node)
       ) {
         setOpen(false);
       }
@@ -90,14 +90,13 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50">
-      
+
       <div
         className="glass border-b"
         style={{ borderColor: "rgba(124,58,237,0.2)", background: "rgba(5,5,16,0.85)" }}
       >
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center gap-5">
 
-          {/* ✅ التعديل هنا: تغيير flex-col لـ flex-row وإضافة gap-2 */}
           <Link
             href="/"
             className="flex flex-row items-center gap-2 leading-none group"
@@ -229,7 +228,7 @@ export default function Navbar() {
         <div ref={mobileMenuRef}>
           {open && (
             <div className="md:hidden border-t" style={{ borderColor: "rgba(124,58,237,0.2)", background: "rgba(5,5,16,0.98)" }}>
-              
+
               <form onSubmit={handleSearch} className="p-4 border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
                 <div className="flex items-center rounded-xl overflow-hidden border" style={{ background: "rgba(255,255,255,0.05)", borderColor: "rgba(124,58,237,0.3)" }}>
                   <input
