@@ -165,7 +165,12 @@ export default function ProductsPage() {
 
   const handleAddProduct = async (formData: Partial<Product>) => {
     try {
-      const { name, price, originalPrice, rating, category, barcode, stock, images, hasColors, colors, hasSizes, sizes, minStock } = formData;
+      const { 
+  name, price, originalPrice, rating, category, barcode, stock, 
+  images, hasColors, colors, hasSizes, sizes 
+} = formData;
+
+const minStock = Number((formData as any).minStock) || 5;
       
       if (!name || !price || !category || !barcode) {
         setModalConfig({ isOpen: true, title: 'خطأ', message: 'الاسم والسعر والفئة والباركود مطلوبة', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) });
@@ -198,7 +203,7 @@ export default function ProductsPage() {
         category: category!, 
         barcode: barcode!, 
         stock: Number(stock) || 0, 
-        minStock: Number(minStock) || 5,
+        ...(minStock ? { minStock: Number(minStock) || 5 } : {}),
         images: images || [],
         hasColors: hasColors || false,
         colors: colors || [],

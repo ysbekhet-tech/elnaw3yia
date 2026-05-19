@@ -17,7 +17,7 @@ export interface Product {
   originalPrice?: number;
   description?: string;
   stock: number;
-  minStock?: number; // ✅ الحد الأدنى للتنبيه
+  minStock?: number;  // ✅ الحد الأدنى للتنبيه
   reserved?: number;
   purchased?: number;
   category: string;

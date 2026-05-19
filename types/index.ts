@@ -1,14 +1,13 @@
-export interface ProductColor {
-  name: string;
-  hex: string;
-  image: string;
-}
-
-// ✅ interface جديد للمقاسات
 export interface ProductSize {
   length: string;
   width: string;
   price: string;
+}
+
+export interface ProductColor {
+  name: string;
+  hex: string;
+  image: string;
 }
 
 export interface Product {
@@ -18,6 +17,7 @@ export interface Product {
   originalPrice?: number;
   description?: string;
   stock: number;
+  minStock?: number;  // ✅ الحد الأدنى للتنبيه
   reserved?: number;
   purchased?: number;
   category: string;
@@ -27,17 +27,15 @@ export interface Product {
   rating?: number;
   hasColors?: boolean;
   colors?: ProductColor[];
-  // ✅ حقول المقاسات الجديدة
   hasSizes?: boolean;
   sizes?: ProductSize[];
   isOffer?: boolean;
   isNew?: boolean;
 }
 
-// ✅ تحديث CartItem عشان يدعم المقاسات
 export interface CartItem extends Product {
   quantity: number;
   selectedColor?: string;
-  selectedSize?: ProductSize; // المقاس المختار
+  selectedSize?: ProductSize;
   addedAt: number;
 }
