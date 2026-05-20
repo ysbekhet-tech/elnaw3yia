@@ -13,9 +13,6 @@ interface AdminPriceEditorProps {
   loading?: boolean;
 }
 
-const inputClass = "w-full px-4 py-3 rounded-xl outline-none text-sm text-white placeholder-slate-600 transition";
-const inputStyle = { background: "rgba(255,255,255,0.06)", border: "1px solid rgba(124,58,237,0.3)" };
-
 export default function AdminPriceEditor({ product, onClose, onSubmit, loading = false }: AdminPriceEditorProps) {
   const [formData, setFormData] = useState({
     name: '', price: 0, originalPrice: 0, stock: 0, category: '', barcode: '', description: '', minStock: 5
@@ -235,7 +232,7 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
       await onSubmit(product.id, {
         ...formData, 
         price: finalPrice,
-        minStock: Number(formData.minStock) || 5, // ✅ تحديث الحد الأدنى
+        minStock: Number(formData.minStock) || 5,
         images: imagePreviews,
         originalPrice: Number(formData.originalPrice) || 0,
         hasColors: hasColors, 
@@ -248,17 +245,19 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)" }}>
-      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl p-6" style={{ background: "rgba(8,8,20,0.98)", border: "1px solid rgba(124,58,237,0.35)", boxShadow: "0 0 60px rgba(124,58,237,0.2), 0 25px 60px rgba(0,0,0,0.6)" }}>
+    <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/50 backdrop-blur-sm">
+      <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl p-6 bg-white border border-slate-200 shadow-xl">
 
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-black text-white">تعديل بيانات المنتج</h2>
-          <button onClick={onClose} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/10 transition" style={{ border: "1px solid rgba(255,255,255,0.1)" }}><X size={18} className="text-slate-400" /></button>
+          <h2 className="text-xl font-black text-slate-900">تعديل بيانات المنتج</h2>
+          <button onClick={onClose} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-slate-100 transition border border-slate-200">
+            <X size={18} className="text-slate-500" />
+          </button>
         </div>
 
         <div className="flex flex-col gap-4">
           <div>
-            <label className="block text-xs font-bold text-slate-400 mb-1.5">صور المنتج</label>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">صور المنتج</label>
             <div className="flex flex-col gap-3">
               <div
                 ref={dropZoneRef}
@@ -267,17 +266,17 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                 onDrop={handleDrop}
                 className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed transition cursor-pointer ${
                   isDragging 
-                    ? 'border-purple-500 bg-purple-500/10' 
-                    : 'border-slate-600 hover:border-purple-400 hover:bg-purple-500/5'
+                    ? 'border-purple-500 bg-purple-50' 
+                    : 'border-slate-300 hover:border-purple-400 bg-slate-50 hover:bg-purple-50/30'
                 }`}
                 onClick={() => fileInputRef.current?.click()}
               >
-                <ImagePlus size={24} className={isDragging ? "text-purple-400" : "text-slate-500"} />
+                <ImagePlus size={24} className={isDragging ? "text-purple-600" : "text-slate-400"} />
                 <div className="text-center">
-                  <p className="text-xs text-slate-300 font-medium">
+                  <p className="text-xs text-slate-600 font-medium">
                     {isDragging ? "أفلت الصور هنا..." : "اسحب الصور هنا أو اضغط لاختيارها"}
                   </p>
-                  <p className="text-[10px] text-slate-500 mt-1">
+                  <p className="text-[10px] text-slate-400 mt-1">
                     تقدر تسحب صور من الجهاز أو من أى موقع على النت! 🌐
                   </p>
                 </div>
@@ -287,7 +286,7 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
               {imagePreviews.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {imagePreviews.map((img, idx) => (
-                    <div key={idx} className="relative group w-16 h-16 rounded-xl overflow-hidden border border-purple-500/30">
+                    <div key={idx} className="relative group w-16 h-16 rounded-xl overflow-hidden border border-slate-200">
                       <img src={img} alt="preview" className="w-full h-full object-cover" />
                       <button type="button" onClick={() => handleRemoveImage(idx)} className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X size={12} /></button>
                     </div>
@@ -298,49 +297,50 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-400 mb-1.5">اسم المنتج *</label>
-            <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className={inputClass} style={inputStyle} disabled={isSubmitting} />
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">اسم المنتج *</label>
+            <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-400 mb-1.5">وصف المنتج</label>
-            <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className={inputClass} style={inputStyle} rows={3} disabled={isSubmitting} />
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">وصف المنتج</label>
+            <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition resize-none" rows={3} disabled={isSubmitting} />
           </div>
 
           {!hasSizes && (
             <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1.5">السعر (جنيه) *</label>
-              <input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })} className={inputClass} style={inputStyle} disabled={isSubmitting} />
+              <label className="block text-xs font-bold text-slate-600 mb-1.5">السعر (جنيه) *</label>
+              <input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-bold text-slate-400 mb-1.5">السعر قبل الخصم</label>
-            <input type="number" value={formData.originalPrice} onChange={(e) => setFormData({ ...formData, originalPrice: parseFloat(e.target.value) || 0 })} className={inputClass} style={inputStyle} disabled={isSubmitting} />
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">السعر قبل الخصم</label>
+            <input type="number" value={formData.originalPrice} onChange={(e) => setFormData({ ...formData, originalPrice: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
           </div>
 
-          <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
+          {/* مقاسات */}
+          <div className="rounded-xl p-4 bg-slate-50 border border-slate-200">
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
-                <Ruler size={14} className="text-purple-400" />
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <Ruler size={14} className="text-purple-600" />
                 هل المنتج بمقاسات مختلفة؟
               </div>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => { setHasSizes(false); setSizes([]); }} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasSizes ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400'}`}>لا</button>
-                <button type="button" onClick={() => setHasSizes(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasSizes ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400'}`}>نعم</button>
+                <button type="button" onClick={() => { setHasSizes(false); setSizes([]); }} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasSizes ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>لا</button>
+                <button type="button" onClick={() => setHasSizes(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasSizes ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>نعم</button>
               </div>
             </div>
 
             {hasSizes && (
-              <div className="mt-4 border-t border-slate-700 pt-4">
+              <div className="mt-4 border-t border-slate-200 pt-4">
                 {sizes.length > 0 && (
                   <div className="flex flex-wrap gap-3 mb-4">
                     {sizes.map((size, index) => (
-                      <div key={index} className="relative group flex flex-col items-center gap-1 bg-slate-800 rounded-lg p-3 border border-slate-700">
-                        <div className="text-xs text-slate-300 font-bold">
+                      <div key={index} className="relative group flex flex-col items-center gap-1 bg-white rounded-lg p-3 border border-slate-200 shadow-sm">
+                        <div className="text-xs text-slate-700 font-bold">
                           {size.length} × {size.width} سم
                         </div>
-                        <div className="text-sm text-purple-400 font-bold">
+                        <div className="text-sm text-purple-600 font-bold">
                           {size.price} جنيه
                         </div>
                         <button 
@@ -358,39 +358,17 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                 <div className="grid grid-cols-1 gap-3 items-end">
                   <div>
                     <label className="block text-xs text-slate-500 mb-1">الطول (سم)</label>
-                    <input 
-                      type="number" 
-                      value={newLength} 
-                      onChange={(e) => setNewLength(e.target.value)} 
-                      placeholder="مثال: 100" 
-                      className="w-full h-10 px-3 rounded-lg text-sm bg-slate-800 border border-slate-700 text-white outline-none"
-                    />
+                    <input type="number" value={newLength} onChange={(e) => setNewLength(e.target.value)} placeholder="مثال: 100" className="w-full h-10 px-3 rounded-lg text-sm bg-white border border-slate-200 text-slate-900 outline-none focus:border-purple-400" />
                   </div>
                   <div>
                     <label className="block text-xs text-slate-500 mb-1">العرض (سم)</label>
-                    <input 
-                      type="number" 
-                      value={newWidth} 
-                      onChange={(e) => setNewWidth(e.target.value)} 
-                      placeholder="مثال: 50" 
-                      className="w-full h-10 px-3 rounded-lg text-sm bg-slate-800 border border-slate-700 text-white outline-none"
-                    />
+                    <input type="number" value={newWidth} onChange={(e) => setNewWidth(e.target.value)} placeholder="مثال: 50" className="w-full h-10 px-3 rounded-lg text-sm bg-white border border-slate-200 text-slate-900 outline-none focus:border-purple-400" />
                   </div>
                   <div>
                     <label className="block text-xs text-slate-500 mb-1">السعر (جنيه)</label>
-                    <input 
-                      type="number" 
-                      value={newSizePrice} 
-                      onChange={(e) => setNewSizePrice(e.target.value)} 
-                      placeholder="مثال: 250" 
-                      className="w-full h-10 px-3 rounded-lg text-sm bg-slate-800 border border-slate-700 text-white outline-none"
-                    />
+                    <input type="number" value={newSizePrice} onChange={(e) => setNewSizePrice(e.target.value)} placeholder="مثال: 250" className="w-full h-10 px-3 rounded-lg text-sm bg-white border border-slate-200 text-slate-900 outline-none focus:border-purple-400" />
                   </div>
-                  <button 
-                    type="button" 
-                    onClick={handleAddSize} 
-                    className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition flex items-center justify-center gap-1"
-                  >
+                  <button type="button" onClick={handleAddSize} className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition flex items-center justify-center gap-1">
                     <Plus size={14} /> إضافة مقاس
                   </button>
                 </div>
@@ -398,28 +376,29 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
             )}
           </div>
 
-          <div className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
+          {/* ألوان */}
+          <div className="rounded-xl p-4 bg-slate-50 border border-slate-200">
             <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
-                <Palette size={14} className="text-purple-400" />
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                <Palette size={14} className="text-purple-600" />
                 هل المنتج متعدد الألوان؟
               </div>
               <div className="flex items-center gap-2">
-                <button type="button" onClick={() => { setHasColors(false); setColors([]); }} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasColors ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400'}`}>لا</button>
-                <button type="button" onClick={() => setHasColors(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasColors ? 'bg-purple-600 text-white' : 'bg-slate-800 text-slate-400'}`}>نعم</button>
+                <button type="button" onClick={() => { setHasColors(false); setColors([]); }} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasColors ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>لا</button>
+                <button type="button" onClick={() => setHasColors(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasColors ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>نعم</button>
               </div>
             </div>
 
             {hasColors && (
-              <div className="mt-4 border-t border-slate-700 pt-4">
+              <div className="mt-4 border-t border-slate-200 pt-4">
                 {colors.length > 0 && (
                   <div className="flex flex-wrap gap-3 mb-4">
                     {colors.map((color, index) => (
                       <div key={index} className="relative group flex flex-col items-center gap-1">
-                        <div className="w-12 h-12 rounded-full border-2 border-slate-600 overflow-hidden">
+                        <div className="w-12 h-12 rounded-full border-2 border-slate-200 overflow-hidden shadow-sm">
                           <img src={color.image} alt={color.name} className="w-full h-full object-cover" />
                         </div>
-                        <span className="text-[10px] text-slate-400">{color.name}</span>
+                        <span className="text-[10px] text-slate-600">{color.name}</span>
                         <button type="button" onClick={() => handleRemoveColor(index)} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X size={10} /></button>
                       </div>
                     ))}
@@ -428,24 +407,21 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                 <div className="grid grid-cols-1 gap-3 items-end">
                   <div>
                     <label className="block text-xs text-slate-500 mb-1">اسم اللون</label>
-                    <input type="text" value={newColorName} onChange={(e) => setNewColorName(e.target.value)} placeholder="مثال: أحمر" className="w-full h-10 px-3 rounded-lg text-sm bg-slate-800 border border-slate-700 text-white outline-none" />
+                    <input type="text" value={newColorName} onChange={(e) => setNewColorName(e.target.value)} placeholder="مثال: أحمر" className="w-full h-10 px-3 rounded-lg text-sm bg-white border border-slate-200 text-slate-900 outline-none focus:border-purple-400" />
                   </div>
                   <div>
                     <label className="block text-xs text-slate-500 mb-1">كود اللون</label>
-                    <div className="flex items-center gap-2 h-10 px-2 rounded-lg bg-slate-800 border border-slate-700">
+                    <div className="flex items-center gap-2 h-10 px-2 rounded-lg bg-white border border-slate-200">
                       <input type="color" value={newColorHex} onChange={(e) => setNewColorHex(e.target.value)} className="w-6 h-6 bg-transparent cursor-pointer" />
-                      <span className="text-slate-400 text-xs">{newColorHex}</span>
+                      <span className="text-slate-500 text-xs">{newColorHex}</span>
                     </div>
                   </div>
                   <div>
                     <label className="block text-xs text-slate-500 mb-1">صورة اللون</label>
-                    <div 
-                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                      onDrop={handleColorImageDrop}
-                    >
-                      <label className="flex items-center gap-1 h-10 px-2 rounded-lg cursor-pointer bg-slate-800 border border-slate-700 hover:bg-slate-700 transition">
-                        <Upload size={14} className="text-purple-400" />
-                        <span className="text-xs text-slate-400">{newColorImage ? "تم الاختيار" : "اختر صورة أو اسحب من موقع"}</span>
+                    <div onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }} onDrop={handleColorImageDrop}>
+                      <label className="flex items-center gap-1 h-10 px-2 rounded-lg cursor-pointer bg-white border border-slate-200 hover:bg-slate-50 transition">
+                        <Upload size={14} className="text-purple-600" />
+                        <span className="text-xs text-slate-500">{newColorImage ? "تم الاختيار" : "اختر صورة أو اسحب من موقع"}</span>
                         <input type="file" accept="image/*" className="hidden" onChange={handleColorImageChange} ref={colorFileInputRef} />
                       </label>
                     </div>
@@ -460,38 +436,36 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1.5">الكمية المتاحة</label>
-              <input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })} className={inputClass} style={inputStyle} disabled={isSubmitting} />
+              <label className="block text-xs font-bold text-slate-600 mb-1.5">الكمية المتاحة</label>
+              <input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
             </div>
             
-            {/* ✅ حقل الحد الأدنى للتنبيه */}
             <div>
-              <label className="block text-xs font-bold text-slate-400 mb-1.5 flex items-center gap-1">
-                <AlertTriangle size={12} className="text-red-400" />
+              <label className="block text-xs font-bold text-slate-600 mb-1.5 flex items-center gap-1">
+                <AlertTriangle size={12} className="text-orange-500" />
                 الحد الأدنى للتنبيه
               </label>
               <input 
                 type="number" 
                 value={formData.minStock} 
                 onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value) || 5 })} 
-                className={inputClass} 
-                style={inputStyle} 
+                className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" 
                 disabled={isSubmitting} 
               />
             </div>
           </div>
 
           <div ref={dropdownRef}>
-            <label className="block text-xs font-bold text-slate-400 mb-1.5">الفئة *</label>
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">الفئة *</label>
             <div className="relative">
-              <button type="button" onClick={() => setCategoryOpen(!categoryOpen)} className="w-full px-4 py-3 rounded-xl text-sm text-right flex items-center justify-between transition" style={{ background: "rgba(255,255,255,0.06)", border: categoryOpen ? "1px solid rgba(124,58,237,0.6)" : "1px solid rgba(124,58,237,0.3)", color: formData.category ? "#e2e8f0" : "#4b5563" }} disabled={isSubmitting}>
-                <span>{formData.category || "اختر الفئة"}</span>
+              <button type="button" onClick={() => setCategoryOpen(!categoryOpen)} className="w-full px-4 py-3 rounded-xl text-sm text-right flex items-center justify-between transition bg-slate-50 border border-slate-200 focus:border-purple-400 text-slate-900" disabled={isSubmitting}>
+                <span className={formData.category ? "text-slate-900" : "text-slate-400"}>{formData.category || "اختر الفئة"}</span>
                 <ChevronDown size={16} className="text-slate-400" />
               </button>
               {categoryOpen && (
-                <div className="absolute top-full right-0 left-0 mt-1 rounded-2xl overflow-auto z-50" style={{ background: "rgba(10,10,25,0.99)", border: "1px solid rgba(124,58,237,0.4)", maxHeight: "200px" }}>
+                <div className="absolute top-full right-0 left-0 mt-1 rounded-2xl overflow-auto z-50 bg-white border border-slate-200 shadow-lg max-h-[200px]">
                   {categories.map((cat) => (
-                    <button key={cat} type="button" onClick={() => { setFormData({ ...formData, category: cat }); setCategoryOpen(false); }} className="w-full px-4 py-2.5 text-right text-sm" style={{ color: formData.category === cat ? "#a78bfa" : "#cbd5e1" }}>
+                    <button key={cat} type="button" onClick={() => { setFormData({ ...formData, category: cat }); setCategoryOpen(false); }} className={`w-full px-4 py-2.5 text-right text-sm hover:bg-purple-50 transition ${formData.category === cat ? 'text-purple-700 font-bold' : 'text-slate-600'}`}>
                       {cat}
                     </button>
                   ))}
@@ -501,13 +475,13 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-slate-400 mb-1.5">الباركود *</label>
-            <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} className={inputClass} style={inputStyle} disabled={isSubmitting} />
+            <label className="block text-xs font-bold text-slate-600 mb-1.5">الباركود *</label>
+            <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
           </div>
         </div>
 
         <div className="flex gap-3 mt-6">
-          <button onClick={onClose} disabled={isSubmitting} className="flex-1 py-3 rounded-xl font-bold text-slate-400 hover:text-white transition text-sm" style={{ border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)" }}>إلغاء</button>
+          <button onClick={onClose} disabled={isSubmitting} className="flex-1 py-3 rounded-xl font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition text-sm border border-slate-200 bg-white">إلغاء</button>
           <button onClick={handleSubmit} disabled={isSubmitting || loading} className="flex-1 py-3 rounded-xl font-bold text-white transition text-sm flex items-center justify-center gap-2" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}>
             <Save size={16} /> {isSubmitting || loading ? 'جاري الحفظ...' : 'حفظ التعديلات'}
           </button>
