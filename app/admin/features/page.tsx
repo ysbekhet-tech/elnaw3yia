@@ -39,54 +39,49 @@ export default function FeaturesPage() {
   if (!authChecked) return null;
 
   return (
-    <div className="min-h-screen" style={{ background: "#050510" }}>
+    <div className="min-h-screen bg-slate-50">
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <button onClick={() => router.push('/admin')} className="inline-flex items-center gap-2 text-slate-400 hover:text-purple-400 transition font-bold text-sm mb-8">
+        <button onClick={() => router.push('/admin')} className="inline-flex items-center gap-2 text-slate-500 hover:text-purple-600 transition font-bold text-sm mb-8">
           <ArrowRight size={18} /> العودة للوحة التحكم
         </button>
 
-        <div className="rounded-2xl p-6" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
-          <h2 className="text-xl font-black text-white flex items-center gap-2 mb-2">
-            <Tag size={20} className="text-yellow-400" />
-            <Sparkles size={20} className="text-cyan-400" />
+        <div className="rounded-2xl p-6 bg-white border border-purple-200 shadow-sm">
+          <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 mb-2">
+            <Tag size={20} className="text-yellow-500" />
+            <Sparkles size={20} className="text-cyan-500" />
             إدارة العروض والمنتجات الجديدة
           </h2>
-          <p className="text-sm text-slate-400 mb-6">قم بتفعيل أو إلغاء ظهور المنتج كـ "عرض خاص" أو "وصل حديثاً".</p>
+          <p className="text-sm text-slate-500 mb-6">قم بتفعيل أو إلغاء ظهور المنتج كـ "عرض خاص" أو "وصل حديثاً".</p>
 
           {loading ? (
             <div className="flex justify-center py-10">
-              <Loader2 className="animate-spin text-purple-400" size={30} />
+              <Loader2 className="animate-spin text-purple-600" size={30} />
             </div>
           ) : (
             <div className="space-y-3">
               {products.map((p) => {
-                // ✅ الحل: لو المنتج ملهوش id مش نعرضه، وكده TypeScript بيأكد إن p.id هو string
                 if (!p.id) return null;
 
                 return (
                   <div 
                     key={p.id} 
-                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl gap-4"
-                    style={{ background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-xl gap-4 bg-slate-50 border border-slate-200 hover:border-purple-200 transition"
                   >
-                    {/* بيانات المنتج */}
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       {p.images?.[0] ? (
                         <img src={p.images[0]} alt={p.name} className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
                       ) : (
-                        <div className="w-14 h-14 rounded-lg flex items-center justify-center bg-slate-800 text-xs text-slate-500 flex-shrink-0">صورة</div>
+                        <div className="w-14 h-14 rounded-lg flex items-center justify-center bg-slate-200 text-xs text-slate-500 flex-shrink-0">صورة</div>
                       )}
                       <div className="min-w-0">
-                        <h4 className="text-sm font-bold text-white truncate">{p.name}</h4>
+                        <h4 className="text-sm font-bold text-slate-900 truncate">{p.name}</h4>
                         <p className="text-xs text-slate-500">{p.category} - جنيه {p.price}</p>
                       </div>
                     </div>
 
-                    {/* زرارين التحديد */}
                     <div className="flex items-center gap-6 flex-shrink-0">
-                      {/* زرار العروض */}
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-yellow-400">عرض خاص</span>
+                        <span className="text-xs font-bold text-yellow-600">عرض خاص</span>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
@@ -94,13 +89,12 @@ export default function FeaturesPage() {
                             onChange={() => handleToggle(p.id!, 'isOffer', !!p.isOffer)}
                             className="sr-only peer"
                           />
-                          <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
+                          <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-500"></div>
                         </label>
                       </div>
 
-                      {/* زرار الجديد */}
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-cyan-400">وصل حديثاً</span>
+                        <span className="text-xs font-bold text-cyan-600">وصل حديثاً</span>
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
@@ -108,14 +102,14 @@ export default function FeaturesPage() {
                             onChange={() => handleToggle(p.id!, 'isNew', !!p.isNew)}
                             className="sr-only peer"
                           />
-                          <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                          <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
                         </label>
                       </div>
                     </div>
                   </div>
                 );
               })}
-              {products.length === 0 && <p className="text-center text-slate-500 text-sm py-5">لا توجد منتجات بعد</p>}
+              {products.length === 0 && <p className="text-center text-slate-400 text-sm py-5">لا توجد منتجات بعد</p>}
             </div>
           )}
         </div>

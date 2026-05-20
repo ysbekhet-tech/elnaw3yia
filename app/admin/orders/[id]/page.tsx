@@ -96,7 +96,6 @@ export default function OrderDetailsPage() {
     const newQty = currentQty + change;
     if (newQty < 1) return;
     
-    // ✅ لو بنزود الكمية، نتحقق من المخزون
     if (change > 0) {
       try {
         const productRef = doc(db, 'products', itemId);
@@ -163,7 +162,6 @@ export default function OrderDetailsPage() {
   const handleAddProductToOrder = async (product: Product) => {
     if (!order) return;
     
-    // ✅ التحقق من المخزون قبل الإضافة
     if (!product.stock || product.stock < 1) {
       alert(`المنتج "${product.name}" غير متوفر فى المخزون!`);
       return;
@@ -187,7 +185,6 @@ export default function OrderDetailsPage() {
       let updatedItems: OrderItem[];
 
       if (existingItem) {
-        // ✅ لو موجود، نتحقق إن المخزون يكفى للزيادة
         const productRef = doc(db, 'products', product.id!);
         const productSnap = await getDoc(productRef);
         if (productSnap.exists()) {
@@ -270,7 +267,7 @@ export default function OrderDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#050510" }}>
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="w-12 h-12 rounded-full animate-spin" style={{ border: "3px solid rgba(124,58,237,0.2)", borderTop: "3px solid #7c3aed" }} />
       </div>
     );
@@ -284,8 +281,8 @@ export default function OrderDetailsPage() {
       <style jsx global>{`
   @media print {
     @page {
-      size: 80mm auto;  /* ✅ عرض 80mm والطول تلقائى */
-      margin: 0;        /* ✅ إلغاء الهوامش */
+      size: 80mm auto;
+      margin: 0;
     }
     body * { visibility: hidden; }
     #printable-area, #printable-area * { visibility: visible; }
@@ -293,20 +290,20 @@ export default function OrderDetailsPage() {
       position: absolute; 
       left: 0; 
       top: 0; 
-      width: 72mm;        /* ✅ 72mm بدل 80mm عشان الهوامش */
-      padding: 0;         /* ✅ إلغاء الـ padding */
-      margin: 0 auto;     /* ✅ توسيط */
+      width: 72mm;
+      padding: 0;
+      margin: 0 auto;
       background: white !important; 
       color: black !important; 
       font-family: Arial, sans-serif; 
-      font-size: 11px;    /* ✅ خط أصغر شوية */
+      font-size: 11px;
     }
     .no-print { display: none !important; }
     .print-black { color: black !important; border-color: black !important; }
   }
 `}</style>
 
-      <div className="min-h-screen" style={{ background: "#050510" }}>
+      <div className="min-h-screen bg-slate-50">
         <ConfirmModal 
           isOpen={modalConfig.isOpen} 
           title={modalConfig.title} 
@@ -316,43 +313,43 @@ export default function OrderDetailsPage() {
         />
 
         {showAddProductModal && (
-          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm no-print">
-            <div className="w-full max-w-md rounded-3xl p-6 relative" style={{ background: "#0f0f1a", border: "1px solid rgba(124,58,237,0.4)" }}>
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm no-print">
+            <div className="w-full max-w-md rounded-3xl p-6 relative bg-white border border-purple-200 shadow-xl">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-black text-white flex items-center gap-2">
-                  <Plus size={20} className="text-purple-400" /> إضافة منتج للطلب
+                <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <Plus size={20} className="text-purple-600" /> إضافة منتج للطلب
                 </h2>
                 <button 
                   onClick={() => { setShowAddProductModal(false); setSearchQuery(""); }} 
-                  className="text-slate-400 hover:text-white"
+                  className="text-slate-400 hover:text-slate-900"
                 >
                   <X size={20} />
                 </button>
               </div>
               
               <div className="relative mb-4">
-                <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input 
                   type="text" 
                   value={searchQuery} 
                   onChange={(e) => setSearchQuery(e.target.value)} 
                   placeholder="ابحث باسم المنتج أو الباركود..." 
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl pr-10 pl-4 py-3 text-sm outline-none focus:border-purple-400 transition text-white"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-10 pl-4 py-3 text-sm outline-none focus:border-purple-400 transition text-slate-900"
                   autoFocus
                 />
               </div>
 
               <div className="max-h-64 overflow-y-auto space-y-2">
                 {searchQuery.trim() && filteredProducts.length === 0 && (
-                  <p className="text-center text-slate-500 text-sm py-4">لا توجد منتجات مطابقة</p>
+                  <p className="text-center text-slate-400 text-sm py-4">لا توجد منتجات مطابقة</p>
                 )}
                 {filteredProducts.map((product) => (
                   <div 
                     key={product.id} 
-                    className={`flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 border transition ${
+                    className={`flex items-center gap-3 p-3 rounded-xl bg-slate-50 border transition ${
                       !product.stock || product.stock < 1 
-                        ? 'border-red-500/30 opacity-50 cursor-not-allowed' 
-                        : 'border-slate-700 hover:border-purple-500/50 cursor-pointer'
+                        ? 'border-red-200 opacity-50 cursor-not-allowed' 
+                        : 'border-slate-200 hover:border-purple-300 cursor-pointer'
                     }`}
                     onClick={() => {
                       if (!product.stock || product.stock < 1) {
@@ -362,26 +359,26 @@ export default function OrderDetailsPage() {
                       handleAddProductToOrder(product);
                     }}
                   >
-                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-700 flex-shrink-0">
+                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-200 flex-shrink-0">
                       {Array.isArray(product.images) && product.images.length > 0 ? (
                         <img src={product.images[0]} alt={product.name} className="w-full h-full object-cover" />
                       ) : product.image ? (
                         <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs">📦</div>
+                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">📦</div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-white truncate">{product.name}</p>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-sm font-bold text-slate-900 truncate">{product.name}</p>
+                      <p className="text-xs text-slate-500">
                         {product.price} جنيه | 
-                        <span className={!product.stock || product.stock < 1 ? "text-red-400" : "text-green-400"}>
+                        <span className={!product.stock || product.stock < 1 ? "text-red-500" : "text-green-600"}>
                           {` مخزون: ${product.stock || 0}`}
                         </span>
                       </p>
                     </div>
                     {!product.stock || product.stock < 1 ? (
-                      <span className="text-[10px] text-red-400 font-bold bg-red-500/10 px-2 py-1 rounded">نفذ</span>
+                      <span className="text-[10px] text-red-500 font-bold bg-red-50 px-2 py-1 rounded">نفذ</span>
                     ) : (
                       <button className="w-8 h-8 rounded-lg bg-green-600 hover:bg-green-700 text-white flex items-center justify-center transition">
                         <Plus size={16} />
@@ -395,32 +392,31 @@ export default function OrderDetailsPage() {
         )}
 
         {showDeliveryModal && (
-          <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm no-print">
-            <div className="w-full max-w-md rounded-3xl p-8 relative" style={{ background: "#0f0f1a", border: "1px solid rgba(124,58,237,0.4)" }}>
-              <h2 className="text-xl font-black text-white mb-4 flex items-center gap-2">
-                <Truck size={20} className="text-purple-400" /> تأكيد التجهيز والتوصيل
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm no-print">
+            <div className="w-full max-w-md rounded-3xl p-8 relative bg-white border border-purple-200 shadow-xl">
+              <h2 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-2">
+                <Truck size={20} className="text-purple-600" /> تأكيد التجهيز والتوصيل
               </h2>
-              <p className="text-slate-400 text-sm mb-5">أدخل اسم المندوب المسؤول:</p>
+              <p className="text-slate-500 text-sm mb-5">أدخل اسم المندوب المسؤول:</p>
               <input 
                 type="text" 
                 value={deliveryPersonName} 
                 onChange={(e) => setDeliveryPersonName(e.target.value)} 
                 placeholder="اسم المندوب..." 
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition text-white mb-6" 
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition text-slate-900 mb-6" 
                 autoFocus 
               />
               <div className="flex gap-3">
                 <button 
                   onClick={handleConfirmPrepared} 
                   disabled={updating} 
-                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-900 text-white font-bold py-3 rounded-xl transition"
+                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-bold py-3 rounded-xl transition"
                 >
                   {updating ? "جاري الحفظ..." : "موافق - تم التوصيل"}
                 </button>
                 <button 
                   onClick={() => setShowDeliveryModal(false)} 
-                  className="px-5 py-3 rounded-xl text-slate-400 hover:text-white transition font-bold" 
-                  style={{ border: "1px solid rgba(255,255,255,0.1)" }}
+                  className="px-5 py-3 rounded-xl text-slate-500 hover:text-slate-900 transition font-bold border border-slate-200"
                 >
                   إلغاء
                 </button>
@@ -431,14 +427,13 @@ export default function OrderDetailsPage() {
 
         <div className="max-w-4xl mx-auto px-4 py-10 no-print">
           <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
-            <Link href="/admin/orders" className="inline-flex items-center gap-2 text-slate-400 hover:text-purple-400 transition font-bold text-sm">
+            <Link href="/admin/orders" className="inline-flex items-center gap-2 text-slate-500 hover:text-purple-600 transition font-bold text-sm">
               <ArrowRight size={18} /> العودة لقائمة الطلبات
             </Link>
             <div className="flex gap-2">
               <button 
                 onClick={handlePrint} 
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-blue-400 hover:bg-blue-500/10 transition font-bold text-sm" 
-                style={{ border: "1px solid rgba(59,130,246,0.3)" }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-blue-600 hover:bg-blue-50 transition font-bold text-sm border border-blue-200"
               >
                 <Printer size={16} /> طباعة
               </button>
@@ -450,8 +445,7 @@ export default function OrderDetailsPage() {
                   onConfirm: handleCancelEntireOrder 
                 })} 
                 disabled={updating} 
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 transition font-bold text-sm disabled:opacity-50" 
-                style={{ border: "1px solid rgba(239,68,68,0.3)" }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-red-500 hover:bg-red-50 transition font-bold text-sm disabled:opacity-50 border border-red-200"
               >
                 <Ban size={16} /> إلغاء الطلب
               </button>
@@ -460,19 +454,19 @@ export default function OrderDetailsPage() {
 
           <div className="mb-8 flex justify-between items-start flex-wrap gap-4">
             <div>
-              <h1 className="text-3xl font-black text-white mb-2">
-                تفاصيل الطلب <span className="text-purple-400">#{order.id.slice(0, 6)}</span>
+              <h1 className="text-3xl font-black text-slate-900 mb-2">
+                تفاصيل الطلب <span className="text-purple-600">#{order.id.slice(0, 6)}</span>
               </h1>
-              <div className="flex items-center gap-2 text-slate-400 text-sm">
-                <Calendar size={16} className="text-purple-500" />
+              <div className="flex items-center gap-2 text-slate-500 text-sm">
+                <Calendar size={16} className="text-purple-600" />
                 <span>{formatFirebaseDate(order.createdAt)}</span>
               </div>
             </div>
             <div className="flex flex-col items-end gap-3">
               {order.status === 'delivered' ? (
-                <div className="flex items-center gap-2 bg-green-900/30 border border-green-700/50 px-4 py-2 rounded-xl">
-                  <CheckCircle size={18} className="text-green-400" />
-                  <span className="text-green-400 font-bold text-sm">تم التوصيل ({order.deliveryPerson})</span>
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 px-4 py-2 rounded-xl">
+                  <CheckCircle size={18} className="text-green-600" />
+                  <span className="text-green-600 font-bold text-sm">تم التوصيل ({order.deliveryPerson})</span>
                 </div>
               ) : (
                 <button 
@@ -488,21 +482,21 @@ export default function OrderDetailsPage() {
           </div>
         </div>
 
-        <div id="printable-area" className="max-w-4xl mx-auto px-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)", borderRadius: "1.5rem", padding: "1.5rem" }}>
+        <div id="printable-area" className="max-w-4xl mx-auto px-4 bg-white border border-slate-200 rounded-3xl p-6">
           
           <div className="text-center mb-6 print-black">
-            <h1 className="text-2xl font-black text-white print-black">المكتبة النوعية</h1>
-            <p className="text-sm text-slate-400 print-black mt-1">فاتورة طلب</p>
-            <div className="border-b border-dashed border-slate-600 print-black my-4"></div>
+            <h1 className="text-2xl font-black text-slate-900 print-black">المكتبة النوعية</h1>
+            <p className="text-sm text-slate-500 print-black mt-1">فاتورة طلب</p>
+            <div className="border-b border-dashed border-slate-300 print-black my-4"></div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="print-black">
-              <h2 className="text-lg font-black text-white mb-3 flex items-center gap-2 print-black">
-                <User size={18} className="text-purple-400" /> بيانات العميل
+              <h2 className="text-lg font-black text-slate-900 mb-3 flex items-center gap-2 print-black">
+                <User size={18} className="text-purple-600" /> بيانات العميل
               </h2>
               <div className="space-y-3 text-sm print-black">
-                <p className="text-slate-300 print-black">
+                <p className="text-slate-700 print-black">
                   <span className="text-slate-500 font-bold ml-2">الاسم:</span> {order.customerName}
                 </p>
                 
@@ -514,28 +508,28 @@ export default function OrderDetailsPage() {
                         type="tel" 
                         value={editedPhone} 
                         onChange={(e) => setEditedPhone(e.target.value)} 
-                        className="flex-1 bg-slate-700 border border-purple-500 rounded-lg px-2 py-1 text-white text-sm outline-none" 
+                        className="flex-1 bg-slate-100 border border-purple-300 rounded-lg px-2 py-1 text-slate-900 text-sm outline-none" 
                         dir="ltr" 
                       />
                       <button 
                         onClick={() => handleUpdateCustomerInfo('customerPhone', editedPhone)} 
-                        className="p-1 text-green-400 hover:text-green-300"
+                        className="p-1 text-green-600 hover:text-green-500"
                       >
                         <Save size={16} />
                       </button>
                       <button 
                         onClick={() => setIsEditingPhone(false)} 
-                        className="p-1 text-red-400 hover:text-red-300"
+                        className="p-1 text-red-500 hover:text-red-400"
                       >
                         <X size={16} />
                       </button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 print-black">
-                      <span className="text-slate-300 print-black" dir="ltr">{order.customerPhone}</span>
+                      <span className="text-slate-700 print-black" dir="ltr">{order.customerPhone}</span>
                       <button 
                         onClick={() => { setEditedPhone(order.customerPhone); setIsEditingPhone(true); }} 
-                        className="text-purple-400 hover:text-purple-300 no-print"
+                        className="text-purple-600 hover:text-purple-500 no-print"
                       >
                         <Pencil size={14} />
                       </button>
@@ -551,27 +545,27 @@ export default function OrderDetailsPage() {
                         type="text" 
                         value={editedAddress} 
                         onChange={(e) => setEditedAddress(e.target.value)} 
-                        className="flex-1 bg-slate-700 border border-purple-500 rounded-lg px-2 py-1 text-white text-sm outline-none" 
+                        className="flex-1 bg-slate-100 border border-purple-300 rounded-lg px-2 py-1 text-slate-900 text-sm outline-none" 
                       />
                       <button 
                         onClick={() => handleUpdateCustomerInfo('customerAddress', editedAddress)} 
-                        className="p-1 text-green-400 hover:text-green-300"
+                        className="p-1 text-green-600 hover:text-green-500"
                       >
                         <Save size={16} />
                       </button>
                       <button 
                         onClick={() => setIsEditingAddress(false)} 
-                        className="p-1 text-red-400 hover:text-red-300"
+                        className="p-1 text-red-500 hover:text-red-400"
                       >
                         <X size={16} />
                       </button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 print-black">
-                      <span className="text-slate-300 print-black">{order.customerArea} - {order.customerAddress}</span>
+                      <span className="text-slate-700 print-black">{order.customerArea} - {order.customerAddress}</span>
                       <button 
                         onClick={() => { setEditedAddress(`${order.customerArea} - ${order.customerAddress}`); setIsEditingAddress(true); }} 
-                        className="text-purple-400 hover:text-purple-300 no-print"
+                        className="text-purple-600 hover:text-purple-500 no-print"
                       >
                         <Pencil size={14} />
                       </button>
@@ -582,24 +576,24 @@ export default function OrderDetailsPage() {
               </div>
             </div>
             <div className="print-black">
-              <h2 className="text-lg font-black text-white mb-3 flex items-center gap-2 print-black">
-                <CreditCard size={18} className="text-purple-400" /> الدفع والتوصيل
+              <h2 className="text-lg font-black text-slate-900 mb-3 flex items-center gap-2 print-black">
+                <CreditCard size={18} className="text-purple-600" /> الدفع والتوصيل
               </h2>
               <div className="space-y-2 text-sm print-black">
-                <p className="text-slate-300 print-black">
+                <p className="text-slate-700 print-black">
                   <span className="text-slate-500 font-bold ml-2">الطريقة:</span> 💵 كاش عند الاستلام
                 </p>
-                <p className="text-slate-300 print-black">
+                <p className="text-slate-700 print-black">
                   <span className="text-slate-500 font-bold ml-2">التاريخ:</span> {formatFirebaseDate(order.createdAt)}
                 </p>
                 {order.deliveryPerson && (
-                  <p className="text-green-400 print-black">
+                  <p className="text-green-600 print-black">
                     <span className="text-slate-500 font-bold ml-2">المندوب:</span> {order.deliveryPerson}
                   </p>
                 )}
                 {order.notes && (
-                  <div className="mt-2 p-2 rounded-lg bg-amber-900/20 border border-amber-700/30 print-black">
-                    <p className="text-amber-400 font-bold text-xs print-black">📝 {order.notes}</p>
+                  <div className="mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200 print-black">
+                    <p className="text-amber-700 font-bold text-xs print-black">📝 {order.notes}</p>
                   </div>
                 )}
               </div>
@@ -607,16 +601,15 @@ export default function OrderDetailsPage() {
           </div>
 
           <div className="print-black">
-            <div className="border-b border-dashed border-slate-600 print-black mb-4"></div>
+            <div className="border-b border-dashed border-slate-300 print-black mb-4"></div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-black text-white flex items-center gap-2 print-black">
-                <Package size={18} className="text-purple-400" /> المنتجات
+              <h2 className="text-lg font-black text-slate-900 flex items-center gap-2 print-black">
+                <Package size={18} className="text-purple-600" /> المنتجات
               </h2>
               <button 
                 onClick={() => setShowAddProductModal(true)} 
                 disabled={updating}
-                className="no-print flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-green-400 hover:bg-green-500/10 transition disabled:opacity-50"
-                style={{ border: "1px solid rgba(34,197,94,0.3)" }}
+                className="no-print flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-green-600 hover:bg-green-50 transition disabled:opacity-50 border border-green-200"
               >
                 <Plus size={14} /> إضافة منتج
               </button>
@@ -624,28 +617,28 @@ export default function OrderDetailsPage() {
             
             <div className="flex flex-col gap-2">
               {order.items.map((item) => (
-                <div key={item.id} className="flex items-center gap-3 bg-slate-800/50 p-2 rounded-lg print-black relative">
+                <div key={item.id} className="flex items-center gap-3 bg-slate-50 p-2 rounded-lg print-black relative border border-slate-100">
                   <div className="flex-1 min-w-0 print-black">
-                    <p className="font-bold text-white text-sm print-black">{item.name}</p>
+                    <p className="font-bold text-slate-900 text-sm print-black">{item.name}</p>
                   </div>
                   <div className="flex items-center gap-1 no-print">
                     <button 
                       onClick={() => handleQuantityChange(item.id, item.quantity, -1)} 
                       disabled={updating} 
-                      className="w-7 h-7 rounded-md bg-slate-600 hover:bg-red-500/30 flex items-center justify-center text-slate-300 transition disabled:opacity-50"
+                      className="w-7 h-7 rounded-md bg-slate-200 hover:bg-red-100 flex items-center justify-center text-slate-600 transition disabled:opacity-50"
                     >
                       <Minus size={12} />
                     </button>
-                    <span className="text-sm font-black text-white min-w-[20px] text-center print-black">{item.quantity}</span>
+                    <span className="text-sm font-black text-slate-900 min-w-[20px] text-center print-black">{item.quantity}</span>
                     <button 
                       onClick={() => handleQuantityChange(item.id, item.quantity, 1)} 
                       disabled={updating} 
-                      className="w-7 h-7 rounded-md bg-slate-600 hover:bg-purple-500/30 flex items-center justify-center text-slate-300 transition disabled:opacity-50"
+                      className="w-7 h-7 rounded-md bg-slate-200 hover:bg-purple-100 flex items-center justify-center text-slate-600 transition disabled:opacity-50"
                     >
                       <Plus size={12} />
                     </button>
                   </div>
-                  <p className="font-black text-green-400 text-sm whitespace-nowrap min-w-[60px] text-left print-black">
+                  <p className="font-black text-green-600 text-sm whitespace-nowrap min-w-[60px] text-left print-black">
                     {item.price * item.quantity} ج
                   </p>
                   <button 
@@ -656,7 +649,7 @@ export default function OrderDetailsPage() {
                       onConfirm: () => handleRemoveItem(item.id) 
                     })} 
                     disabled={updating} 
-                    className="absolute top-1 left-1 text-slate-600 hover:text-red-500 transition disabled:opacity-50 no-print"
+                    className="absolute top-1 left-1 text-slate-400 hover:text-red-500 transition disabled:opacity-50 no-print"
                   >
                     <Trash2 size={13} />
                   </button>
@@ -665,18 +658,18 @@ export default function OrderDetailsPage() {
             </div>
           </div>
 
-          <div className="border-t border-slate-700 mt-4 pt-4 flex flex-col gap-1 print-black">
-            <div className="flex justify-between text-sm text-slate-400 print-black">
+          <div className="border-t border-slate-200 mt-4 pt-4 flex flex-col gap-1 print-black">
+            <div className="flex justify-between text-sm text-slate-500 print-black">
               <span>المنتجات</span>
               <span>{itemsTotal} ج</span>
             </div>
-            <div className="flex justify-between text-sm text-slate-400 print-black">
+            <div className="flex justify-between text-sm text-slate-500 print-black">
               <span>الشحن</span>
-              <span className="text-orange-400 font-bold print-black">{order.shippingCost} ج</span>
+              <span className="text-orange-600 font-bold print-black">{order.shippingCost} ج</span>
             </div>
-            <div className="flex justify-between text-xl font-black text-white mt-2 pt-2 border-t-2 border-dashed border-slate-600 print-black">
+            <div className="flex justify-between text-xl font-black text-slate-900 mt-2 pt-2 border-t-2 border-dashed border-slate-300 print-black">
               <span>الإجمالي</span>
-              <span className="text-purple-400 print-black">{order.total} ج</span>
+              <span className="text-purple-600 print-black">{order.total} ج</span>
             </div>
           </div>
         </div>

@@ -18,7 +18,7 @@ import AdminProductTable from '@/components/AdminProductTable';
 import AdminProductForm from '@/components/AdminProductForm';
 import AdminPriceEditor from '@/components/AdminPriceEditor';
 import { isAuthenticated } from '@/lib/auth';
-import { Package, Plus, X, Upload, Tags, ArrowRight, ArrowUpDown, Filter, ImagePlus } from 'lucide-react';
+import { Package, Plus, X, Tags, ArrowRight, Filter, ImagePlus } from 'lucide-react';
 import ConfirmModal from '@/components/ConfirmModal';
 
 interface Category {
@@ -80,7 +80,6 @@ export default function ProductsPage() {
     finally { setLoading(false); }
   };
 
-  // ✅ دالة تحميل صورة من URL
   const handleCatImageFromUrl = useCallback(async (url: string) => {
     try {
       const response = await fetch(url);
@@ -101,25 +100,11 @@ export default function ProductsPage() {
     }
   }, []);
 
-  // ✅ Drag & Drop Events للقسم
-  const handleCatDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsCatImageDragging(true);
-  }, []);
-
-  const handleCatDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsCatImageDragging(false);
-  }, []);
+  const handleCatDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsCatImageDragging(true); }, []);
+  const handleCatDragLeave = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsCatImageDragging(false); }, []);
 
   const handleCatDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsCatImageDragging(false);
-
-    // ملفات من الجهاز
+    e.preventDefault(); e.stopPropagation(); setIsCatImageDragging(false);
     const files = e.dataTransfer.files;
     if (files.length > 0) {
       const file = files[0];
@@ -131,46 +116,41 @@ export default function ProductsPage() {
       }
       return;
     }
-
-    // URLs من المواقع
     const items = e.dataTransfer.items;
     if (items) {
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
         if (item.kind === 'string') {
           item.getAsString(async (url) => {
-            if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || url.startsWith('http')) {
-              await handleCatImageFromUrl(url);
-            }
+            if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || url.startsWith('http')) await handleCatImageFromUrl(url);
           });
         }
       }
     }
-
     const textData = e.dataTransfer.getData('text/plain');
-    if (textData && textData.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) {
-      await handleCatImageFromUrl(textData);
-    }
-
+    if (textData && textData.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) await handleCatImageFromUrl(textData);
     const uriList = e.dataTransfer.getData('text/uri-list');
     if (uriList) {
       const urls = uriList.split('\n').filter(url => url.trim() && !url.startsWith('#'));
-      for (const url of urls) {
-        if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) {
-          await handleCatImageFromUrl(url);
-        }
-      }
+      for (const url of urls) { if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) await handleCatImageFromUrl(url); }
     }
   }, [handleCatImageFromUrl]);
 
+  // ✅ دالة إخفاء وإظهار المنتج
+  const handleToggleVisibility = async (id: string, currentVisibility: boolean) => {
+    try {
+      await updateDoc(doc(db, 'products', id), { isActive: !currentVisibility });
+      setProducts(products.map(p => p.id === id ? { ...p, isActive: !currentVisibility } : p));
+    } catch (error) {
+      console.error(error);
+      setModalConfig({ isOpen: true, title: 'خطأ', message: 'حدث خطأ في تحديث حالة المنتج', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) });
+    }
+  };
+
   const handleAddProduct = async (formData: Partial<Product>) => {
     try {
-      const { 
-  name, price, originalPrice, rating, category, barcode, stock, 
-  images, hasColors, colors, hasSizes, sizes 
-} = formData;
-
-const minStock = Number((formData as any).minStock) || 5;
+      const { name, price, originalPrice, rating, category, barcode, stock, images, hasColors, colors, hasSizes, sizes } = formData;
+      const minStock = Number((formData as any).minStock) || 5;
       
       if (!name || !price || !category || !barcode) {
         setModalConfig({ isOpen: true, title: 'خطأ', message: 'الاسم والسعر والفئة والباركود مطلوبة', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) });
@@ -178,37 +158,17 @@ const minStock = Number((formData as any).minStock) || 5;
       }
       
       const docRef = await addDoc(collection(db, 'products'), {
-        name, 
-        price: Number(price), 
-        originalPrice: Number(originalPrice) || 0, 
-        rating: Number(rating) || 4.5,
-        category, 
-        barcode, 
-        stock: Number(stock) || 0, 
-        minStock: Number(minStock) || 5,
-        images: images || [],
-        hasColors: hasColors || false,
-        colors: colors || [],
-        hasSizes: hasSizes || false,
-        sizes: sizes || [],
-        createdAt: serverTimestamp(),
+        name, price: Number(price), originalPrice: Number(originalPrice) || 0, rating: Number(rating) || 4.5,
+        category, barcode, stock: Number(stock) || 0, minStock: Number(minStock) || 5,
+        images: images || [], hasColors: hasColors || false, colors: colors || [],
+        hasSizes: hasSizes || false, sizes: sizes || [], createdAt: serverTimestamp(), isActive: true // المنتج يكون ظاهر افتراضياً
       });
 
       setProducts([...products, {
-        id: docRef.id, 
-        name: name!, 
-        price: Number(price), 
-        originalPrice: Number(originalPrice) || 0,
-        rating: Number(rating) || 4.5, 
-        category: category!, 
-        barcode: barcode!, 
-        stock: Number(stock) || 0, 
-        ...(minStock ? { minStock: Number(minStock) || 5 } : {}),
-        images: images || [],
-        hasColors: hasColors || false,
-        colors: colors || [],
-        hasSizes: hasSizes || false,
-        sizes: sizes || [],
+        id: docRef.id, name: name!, price: Number(price), originalPrice: Number(originalPrice) || 0,
+        rating: Number(rating) || 4.5, category: category!, barcode: barcode!, stock: Number(stock) || 0, 
+        minStock: Number(minStock) || 5, images: images || [], hasColors: hasColors || false, colors: colors || [],
+        hasSizes: hasSizes || false, sizes: sizes || [], isActive: true
       }]);
       
       setShowAddForm(false);
@@ -302,85 +262,97 @@ const minStock = Number((formData as any).minStock) || 5;
   if (!authChecked) return null;
 
   return (
-    <div className="min-h-screen" style={{ background: "#050510" }}>
+    <div className="min-h-screen bg-slate-50">
       <ConfirmModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} onConfirm={modalConfig.onConfirm} onCancel={() => setModalConfig({ ...modalConfig, isOpen: false })} confirmText={modalConfig.title.includes('حذف') ? 'تأكيد الحذف' : 'موافق'} cancelText="رجوع" />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <button onClick={() => router.push('/admin')} className="inline-flex items-center gap-2 text-slate-400 hover:text-purple-400 transition font-bold text-sm mb-8"><ArrowRight size={18} /> العودة للوحة التحكم</button>
+        <button onClick={() => router.push('/admin')} className="inline-flex items-center gap-2 text-slate-500 hover:text-purple-600 transition font-bold text-sm mb-8"><ArrowRight size={18} /> العودة للوحة التحكم</button>
 
-        <div className="rounded-2xl p-6 mb-8" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
-          <h2 className="text-xl font-black text-white flex items-center gap-2 mb-5"><Tags size={20} className="text-purple-400" />إدارة الأقسام</h2>
+        {/* قسم إدارة الأقسام */}
+        <div className="bg-white rounded-2xl p-6 mb-8 border border-slate-200 shadow-sm">
+          <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 mb-5"><Tags size={20} className="text-purple-600" />إدارة الأقسام</h2>
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-slate-400 text-sm font-bold whitespace-nowrap">➕ إضافة قسم:</span>
-              {!newCatImagePreview && ( <select value={newCatIcon} onChange={(e) => setNewCatIcon(e.target.value)} className="h-10 px-3 rounded-lg text-white text-sm outline-none" style={{ background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.3)" }}> {iconOptions.map((item) => ( <option key={item.icon} value={item.icon} className="bg-slate-800">{item.icon} {item.label}</option> ))} </select> )}
+              <span className="text-slate-600 text-sm font-bold whitespace-nowrap">➕ إضافة قسم:</span>
+              {!newCatImagePreview && ( 
+                <select value={newCatIcon} onChange={(e) => setNewCatIcon(e.target.value)} className="h-10 px-3 rounded-lg text-slate-900 text-sm outline-none bg-slate-50 border border-slate-300 focus:border-purple-400"> 
+                  {iconOptions.map((item) => ( <option key={item.icon} value={item.icon}>{item.icon} {item.label}</option> ))} 
+                </select> 
+              )}
               
-              {/* ✅ منطقة سحب وإفلات الصور للقسم */}
               <div
                 ref={catDropZoneRef}
                 onDragOver={handleCatDragOver}
                 onDragLeave={handleCatDragLeave}
                 onDrop={handleCatDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`flex items-center gap-2 px-3 h-10 rounded-lg cursor-pointer transition ${
-                  isCatImageDragging 
-                    ? 'bg-purple-500/20 border-purple-500' 
-                    : 'hover:bg-purple-500/20'
+                className={`flex items-center gap-2 px-3 h-10 rounded-lg cursor-pointer transition border ${
+                  isCatImageDragging ? 'bg-purple-50 border-purple-400' : 'bg-slate-50 border-slate-300 hover:border-purple-400'
                 }`}
-                style={{ 
-                  background: isCatImageDragging ? "rgba(124,58,237,0.2)" : "rgba(124,58,237,0.1)", 
-                  border: isCatImageDragging ? "1px solid rgba(124,58,237,0.6)" : "1px solid rgba(124,58,237,0.3)" 
-                }}
               >
-                <ImagePlus size={16} className={isCatImageDragging ? "text-purple-400" : "text-purple-400"} />
-                <span className="text-xs text-white">
+                <ImagePlus size={16} className="text-purple-600" />
+                <span className="text-xs text-slate-700">
                   {isCatImageDragging ? "أفلت الصورة هنا..." : "رفع صورة"}
                 </span>
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} ref={fileInputRef} />
               </div>
 
               {newCatImagePreview && ( <div className="relative w-10 h-10 rounded-full overflow-hidden border border-purple-400 flex-shrink-0"> <img src={newCatImagePreview} alt="preview" className="w-full h-full object-cover" /> <button onClick={() => { setNewCatImage(null); setNewCatImagePreview(null); if(fileInputRef.current) fileInputRef.current.value = ''; }} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px]">×</button> </div> )}
-              <input type="text" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="اسم القسم الجديد..." className="flex-1 h-10 px-3 rounded-lg text-white text-sm outline-none placeholder:text-slate-600 min-w-[180px]" style={{ background: "rgba(124,58,237,0.1)", border: "1px solid rgba(124,58,237,0.3)" }} onKeyDown={(e) => e.key === "Enter" && handleAddCategory()} />
+              <input type="text" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="اسم القسم الجديد..." className="flex-1 h-10 px-3 rounded-lg text-slate-900 text-sm outline-none placeholder:text-slate-400 min-w-[180px] bg-slate-50 border border-slate-300 focus:border-purple-400" onKeyDown={(e) => e.key === "Enter" && handleAddCategory()} />
               <button onClick={handleAddCategory} className="h-10 px-5 rounded-lg font-bold text-white text-sm transition hover:opacity-90 whitespace-nowrap" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}>إضافة</button>
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
-              {categories.length === 0 ? ( <span className="text-xs text-slate-600">لا توجد أقسام بعد...</span> ) : ( categories.map((cat) => ( <div key={cat.id} className="flex items-center gap-2 px-3 py-1.5 rounded-full group transition" style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.4)" }}> {cat.imageUrl ? <img src={cat.imageUrl} alt={cat.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" /> : <span className="text-sm">{cat.icon}</span>} <span className="text-xs font-bold text-purple-300">{cat.name}</span> <button onClick={() => handleDeleteCategory(cat.id, cat.name)} className="text-slate-500 hover:text-red-400 transition opacity-0 group-hover:opacity-100" title="حذف القسم"><X size={14} /></button> </div> )) )}
+              {categories.length === 0 ? ( <span className="text-xs text-slate-400">لا توجد أقسام بعد...</span> ) : ( categories.map((cat) => ( 
+                <div key={cat.id} className="flex items-center gap-2 px-3 py-1.5 rounded-full group transition bg-purple-50 border border-purple-200"> 
+                  {cat.imageUrl ? <img src={cat.imageUrl} alt={cat.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" /> : <span className="text-sm">{cat.icon}</span>} 
+                  <span className="text-xs font-bold text-purple-700">{cat.name}</span> 
+                  <button onClick={() => handleDeleteCategory(cat.id, cat.name)} className="text-slate-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100" title="حذف القسم"><X size={14} /></button> 
+                </div> 
+              )) )}
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl p-6" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
+        {/* قسم إدارة المنتجات */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-black text-white flex items-center gap-2"><Package size={20} className="text-purple-400" />إدارة المنتجات</h2>
-              <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+              <h2 className="text-xl font-black text-slate-900 flex items-center gap-2"><Package size={20} className="text-purple-600" />إدارة المنتجات</h2>
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
                 {products.length} منتج
               </span>
             </div>
 
             <div className="flex items-center gap-3">
               <div className="relative group">
-                 <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-300 bg-slate-800/50 border border-slate-700 hover:border-purple-500 transition">
+                 <button className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:border-purple-400 transition">
                    <Filter size={14} />
                    <span>ترتيب حسب</span>
                  </button>
-                 <div className="absolute top-full left-0 mt-2 w-40 rounded-xl overflow-hidden shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20" style={{ background: "#1a1a2e", border: "1px solid rgba(124,58,237,0.3)" }}>
-                    <button onClick={() => setSortOption('name-asc')} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-500/20 transition ${sortOption === 'name-asc' ? 'text-purple-400 font-bold' : 'text-slate-400'}`}>الاسم (أ-ي)</button>
-                    <button onClick={() => setSortOption('name-desc')} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-500/20 transition ${sortOption === 'name-desc' ? 'text-purple-400 font-bold' : 'text-slate-400'}`}>الاسم (ي-أ)</button>
-                    <button onClick={() => setSortOption('stock-desc')} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-500/20 transition ${sortOption === 'stock-desc' ? 'text-purple-400 font-bold' : 'text-slate-400'}`}>الأكثر مخزوناً</button>
-                    <button onClick={() => setSortOption('stock-asc')} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-500/20 transition ${sortOption === 'stock-asc' ? 'text-purple-400 font-bold' : 'text-slate-400'}`}>الأقل مخزوناً</button>
+                 <div className="absolute top-full left-0 mt-2 w-40 rounded-xl overflow-hidden shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 bg-white border border-slate-200">
+                    <button onClick={() => setSortOption('name-asc')} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-50 transition ${sortOption === 'name-asc' ? 'text-purple-600 font-bold' : 'text-slate-600'}`}>الاسم (أ-ي)</button>
+                    <button onClick={() => setSortOption('name-desc')} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-50 transition ${sortOption === 'name-desc' ? 'text-purple-600 font-bold' : 'text-slate-600'}`}>الاسم (ي-أ)</button>
+                    <button onClick={() => setSortOption('stock-desc')} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-50 transition ${sortOption === 'stock-desc' ? 'text-purple-600 font-bold' : 'text-slate-600'}`}>الأكثر مخزوناً</button>
+                    <button onClick={() => setSortOption('stock-asc')} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-50 transition ${sortOption === 'stock-asc' ? 'text-purple-600 font-bold' : 'text-slate-600'}`}>الأقل مخزوناً</button>
                  </div>
               </div>
 
-              <button onClick={() => setShowAddForm(!showAddForm)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition" style={{ background: showAddForm ? "rgba(239,68,68,0.2)" : "linear-gradient(135deg, #7c3aed, #ec4899)", border: showAddForm ? "1px solid rgba(239,68,68,0.4)" : "none", color: showAddForm ? "#f87171" : "white" }}> 
+              <button onClick={() => setShowAddForm(!showAddForm)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition" style={{ background: showAddForm ? "white" : "linear-gradient(135deg, #7c3aed, #ec4899)", border: showAddForm ? "1px solid #fecaca" : "none", color: showAddForm ? "#ef4444" : "white" }}> 
                 {showAddForm ? <X size={16} /> : <Plus size={16} />} {showAddForm ? 'إلغاء الإضافة' : 'إضافة منتج جديد'} 
               </button>
             </div>
           </div>
 
-          {showAddForm && ( <div className="mb-8 p-6 rounded-xl" style={{ background: "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.2)" }}> <h3 className="text-lg font-black text-white mb-5">إضافة منتج جديد</h3> <AdminProductForm onSubmit={handleAddProduct} /> </div> )}
+          {showAddForm && ( <div className="mb-8 p-6 rounded-xl bg-slate-50 border border-slate-200"> <h3 className="text-lg font-black text-slate-900 mb-5">إضافة منتج جديد</h3> <AdminProductForm onSubmit={handleAddProduct} /> </div> )}
           
-          <AdminProductTable products={sortedProducts} onDelete={handleDeleteProduct} onEditPrice={(product) => setEditingPrice(product)} loading={loading} />
+          {/* ✅ ضفت onToggleVisibility كـ Prop للجدول */}
+          <AdminProductTable 
+            products={sortedProducts} 
+            onDelete={handleDeleteProduct} 
+            onEditPrice={(product) => setEditingPrice(product)} 
+            onToggleVisibility={handleToggleVisibility}
+            loading={loading} 
+          />
         </div>
       </div>
 

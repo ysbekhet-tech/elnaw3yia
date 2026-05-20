@@ -21,7 +21,10 @@ export default function FeaturedProducts() {
           ...doc.data()
         })) as Product[];
 
-        setProducts(productList);
+        // ✅ تعديل إخفاء المنتج: بنفلتر النتيجة عشان نشيل اللي الـ active بتاعها false
+        const visibleProducts = productList.filter(p => p.isActive !== false);
+
+        setProducts(visibleProducts);
       } catch (error) {
         console.error("حصل خطأ في جلب المنتجات:", error);
       } finally {

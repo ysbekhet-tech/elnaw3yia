@@ -5,7 +5,7 @@ import { db } from '@/lib/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { Product } from '@/types';
 import { Sparkles, Loader2 } from 'lucide-react';
-import ProductCard from '@/components/ProductCard'; // ✅ استدعاء الكارت
+import ProductCard from '@/components/ProductCard'; 
 
 export default function NewArrivalsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -17,7 +17,11 @@ export default function NewArrivalsPage() {
         setLoading(true);
         const q = query(collection(db, 'products'), where('isNew', '==', true));
         const snapshot = await getDocs(q);
-        const newList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+        
+        // ✅ تعديل إخفاء المنتج: بنفلتر النتيجة عشان نشيل اللي الـ active بتاعها false
+        const newList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product))
+                                    .filter(p => p.isActive !== false);
+                                    
         setProducts(newList);
       } catch (error) {
         console.error('خطأ في جلب المنتجات الجديدة:', error);
@@ -52,7 +56,6 @@ export default function NewArrivalsPage() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {products.map((product) => (
-              // ✅ استخدام الكومبوننت مباشرة
               <ProductCard key={product.id} product={product} />
             ))}
           </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react"; // 1. استيراد Suspense
+import { useEffect, useState, Suspense } from "react"; 
 import { useSearchParams, useRouter } from "next/navigation";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -14,10 +14,9 @@ interface Category {
   imageUrl?: string;
 }
 
-// 2. وضعنا كل الكود الأصلي في كومبوننت داخلي (Inner Component)
 function ProductsContent() {
   const router = useRouter();
-  const searchParams = useSearchParams(); // الآن هذا الهوك آمن لأنه ج Suspense
+  const searchParams = useSearchParams(); 
   const categoryFromUrl = searchParams.get("category");
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -66,7 +65,9 @@ function ProductsContent() {
   }, []);
 
   useEffect(() => {
-    let result = products;
+    // ✅ تعديل إخفاء المنتج: بنفلتر المنتجات عشان نشيل اللي الـ active بتاعها false
+    let result = products.filter((p) => p.isActive !== false);
+
     if (activeCategory !== "الكل") {
       result = result.filter((p) => p.category === activeCategory);
     }
@@ -193,7 +194,6 @@ function ProductsContent() {
   );
 }
 
-// 3. الكومبوننت الرئيسي يقوم بتغليف الكومبوننت الداخلي بـ Suspense
 export default function ProductsPage() {
   return (
     <Suspense

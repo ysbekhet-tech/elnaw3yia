@@ -17,7 +17,7 @@ export interface Product {
   originalPrice?: number;
   description?: string;
   stock: number;
-  minStock?: number;  // ✅ الحد الأدنى للتنبيه
+  minStock?: number; // ✅ الحد الأدنى للتنبيه
   reserved?: number;
   purchased?: number;
   category: string;
@@ -31,6 +31,7 @@ export interface Product {
   sizes?: ProductSize[];
   isOffer?: boolean;
   isNew?: boolean;
+  isActive?: boolean;
 }
 
 export interface CartItem extends Product {
