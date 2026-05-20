@@ -41,9 +41,7 @@ export default function FeaturesPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-5xl mx-auto px-4 py-8">
-        <button onClick={() => router.push('/admin')} className="inline-flex items-center gap-2 text-slate-500 hover:text-purple-600 transition font-bold text-sm mb-8">
-          <ArrowRight size={18} /> العودة للوحة التحكم
-        </button>
+      
 
         <div className="rounded-2xl p-6 bg-white border border-purple-200 shadow-sm">
           <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 mb-2">

@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "./Providers";
-import AdBanner from "@/components/AdBanner";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import LayoutShell from "@/components/LayoutShell"; // ✅ استدعاء الكومبوننت الجديد
 import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
@@ -17,19 +15,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // ✅ تمت إضافة data-scroll-behavior="smooth"
     <html lang="ar" dir="rtl" data-scroll-behavior="smooth">
       <body>
         <Providers>
-
-          <AdBanner />
-          <Navbar />
-
-          <main className="min-h-screen">
+          
+          {/* ✅ الكومبوننت ده هو اللي يتحكم في إظهار وإخفاء الـ Navbar والـ Footer */}
+          <LayoutShell>
             {children}
-          </main>
-
-          <Footer />
+          </LayoutShell>
 
           {/* 🔔 Toast Notifications */}
           <Toaster

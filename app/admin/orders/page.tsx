@@ -98,11 +98,15 @@ export default function OrdersPage() {
 
     const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Order));
-      setOrders(data);
+      const allData = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Order));
+      
+      // ✅ فلترة الطلبات: إزالة طلبات الـ POS اللي بتبدأ بـ pos_
+      const websiteOrders = allData.filter(order => !order.id.startsWith('pos'));
+      
+      setOrders(websiteOrders);
       setLoading(false);
 
-      const currentIds = new Set(data.map((o) => o.id));
+      const currentIds = new Set(websiteOrders.map((o) => o.id));
       const newIds: string[] = [];
 
       currentIds.forEach((id) => {
@@ -224,13 +228,6 @@ export default function OrdersPage() {
       )}
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <button
-          onClick={() => router.push('/admin')}
-          className="inline-flex items-center gap-2 text-slate-500 hover:text-purple-600 transition font-bold text-sm mb-8"
-        >
-          <ArrowRight size={18} /> العودة للوحة التحكم
-        </button>
-
         <div className="rounded-2xl p-6 bg-white border border-purple-200 shadow-sm">
           <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
             <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">

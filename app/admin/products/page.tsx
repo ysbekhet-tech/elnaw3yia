@@ -266,7 +266,7 @@ export default function ProductsPage() {
       <ConfirmModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} onConfirm={modalConfig.onConfirm} onCancel={() => setModalConfig({ ...modalConfig, isOpen: false })} confirmText={modalConfig.title.includes('حذف') ? 'تأكيد الحذف' : 'موافق'} cancelText="رجوع" />
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-        <button onClick={() => router.push('/admin')} className="inline-flex items-center gap-2 text-slate-500 hover:text-purple-600 transition font-bold text-sm mb-8"><ArrowRight size={18} /> العودة للوحة التحكم</button>
+      
 
         {/* قسم إدارة الأقسام */}
         <div className="bg-white rounded-2xl p-6 mb-8 border border-slate-200 shadow-sm">
