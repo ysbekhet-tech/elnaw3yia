@@ -19,7 +19,7 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
     barcode: "",
     stock: "",
     description: "",
-    minStock: "5", // ✅ الحد الأدنى الافتراضي للتنبيه
+    minStock: "5",
   });
 
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -230,7 +230,7 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
       price: finalPrice,
       originalPrice: Number(formData.originalPrice),
       stock: Number(formData.stock),
-      minStock: Number(formData.minStock) || 5, // ✅ إرسال الحد الأدنى
+      minStock: Number(formData.minStock) || 5,
       images: imagePreviews,
       hasColors: hasColors,
       colors: hasColors ? colors : [],
@@ -247,13 +247,14 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const inputStyle = "w-full h-12 px-4 rounded-xl bg-transparent text-white border focus:outline-none focus:border-purple-500 transition placeholder:text-slate-600";
+  const inputStyle = "w-full h-12 px-4 rounded-xl bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500 transition placeholder:text-slate-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+  const innerInputStyle = "w-full h-10 px-3 rounded-lg bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500 transition placeholder:text-slate-400 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
   const borderConfig = { borderColor: "rgba(124,58,237,0.3)" };
 
   return (
     <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="md:col-span-2">
-        <label className="block text-sm font-bold text-slate-400 mb-2">صور المنتج (متعدد)</label>
+        <label className="block text-sm font-bold text-black mb-2">صور المنتج (متعدد)</label>
         <div className="flex flex-col gap-3">
           <div
             ref={dropZoneRef}
@@ -269,7 +270,7 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
           >
             <ImagePlus size={32} className={isDragging ? "text-purple-400" : "text-slate-500"} />
             <div className="text-center">
-              <p className="text-sm text-slate-300 font-medium">
+              <p className="text-sm text-black font-medium">
                 {isDragging ? "أفلت الصور هنا..." : "اسحب الصور هنا أو اضغط لاختيارها"}
               </p>
               <p className="text-xs text-slate-500 mt-1">
@@ -286,7 +287,7 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
             />
           </div>
           
-          <span className="text-xs text-slate-500">{imagePreviews.length} صور مختارة</span>
+          <span className="text-xs text-black font-bold">{imagePreviews.length} صور مختارة</span>
           
           {imagePreviews.length > 0 && (
             <div className="flex flex-wrap gap-3">
@@ -310,12 +311,12 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
       <input type="number" name="originalPrice" value={formData.originalPrice} onChange={handleChange} placeholder="السعر قبل الخصم" className={inputStyle} style={borderConfig} />
       
       <div className="md:col-span-2">
-        <textarea name="description" value={formData.description} onChange={handleChange} placeholder="اكتب وصف المنتج..." rows={3} className="w-full px-4 py-3 rounded-xl bg-transparent text-white border focus:outline-none focus:border-purple-500 transition placeholder:text-slate-600 resize-none" style={borderConfig} />
+        <textarea name="description" value={formData.description} onChange={handleChange} placeholder="اكتب وصف المنتج..." rows={3} className="w-full px-4 py-3 rounded-xl bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500 transition placeholder:text-slate-400 resize-none" style={borderConfig} />
       </div>
 
       <div className="md:col-span-2 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
+          <div className="flex items-center gap-2 text-sm font-bold text-black">
             <Ruler size={16} className="text-purple-400" />
             هل المنتج بمقاسات مختلفة؟
           </div>
@@ -331,7 +332,7 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
               <div className="flex flex-wrap gap-3 mb-4">
                 {sizes.map((size, index) => (
                   <div key={index} className="relative group flex flex-col items-center gap-1 bg-slate-800 rounded-lg p-3 border border-slate-700">
-                    <div className="text-xs text-slate-300 font-bold">
+                    <div className="text-xs text-black font-bold">
                       {size.length} × {size.width} سم
                     </div>
                     <div className="text-sm text-purple-400 font-bold">
@@ -351,34 +352,16 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
               <div>
-                <label className="block text-xs text-slate-500 mb-1">الطول (سم)</label>
-                <input 
-                  type="number" 
-                  value={newLength} 
-                  onChange={(e) => setNewLength(e.target.value)} 
-                  placeholder="مثال: 100" 
-                  className="w-full h-10 px-3 rounded-lg text-sm bg-slate-800 border border-slate-700 text-white outline-none"
-                />
+                <label className="block text-xs text-black font-bold mb-1">الطول (سم)</label>
+                <input type="number" value={newLength} onChange={(e) => setNewLength(e.target.value)} placeholder="مثال: 100" className={innerInputStyle} style={borderConfig} />
               </div>
               <div>
-                <label className="block text-xs text-slate-500 mb-1">العرض (سم)</label>
-                <input 
-                  type="number" 
-                  value={newWidth} 
-                  onChange={(e) => setNewWidth(e.target.value)} 
-                  placeholder="مثال: 50" 
-                  className="w-full h-10 px-3 rounded-lg text-sm bg-slate-800 border border-slate-700 text-white outline-none"
-                />
+                <label className="block text-xs text-black font-bold mb-1">العرض (سم)</label>
+                <input type="number" value={newWidth} onChange={(e) => setNewWidth(e.target.value)} placeholder="مثال: 50" className={innerInputStyle} style={borderConfig} />
               </div>
               <div>
-                <label className="block text-xs text-slate-500 mb-1">السعر (جنيه)</label>
-                <input 
-                  type="number" 
-                  value={newSizePrice} 
-                  onChange={(e) => setNewSizePrice(e.target.value)} 
-                  placeholder="مثال: 250" 
-                  className="w-full h-10 px-3 rounded-lg text-sm bg-slate-800 border border-slate-700 text-white outline-none"
-                />
+                <label className="block text-xs text-black font-bold mb-1">السعر (جنيه)</label>
+                <input type="number" value={newSizePrice} onChange={(e) => setNewSizePrice(e.target.value)} placeholder="مثال: 250" className={innerInputStyle} style={borderConfig} />
               </div>
               <button 
                 type="button" 
@@ -394,7 +377,7 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
 
       <div className="md:col-span-2 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2 text-sm font-bold text-slate-300">
+          <div className="flex items-center gap-2 text-sm font-bold text-black">
             <Palette size={16} className="text-purple-400" />
             هل المنتج متعدد الألوان؟
           </div>
@@ -411,33 +394,33 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
                     <div className="w-12 h-12 rounded-full border-2 border-slate-600 overflow-hidden">
                       <img src={color.image} alt={color.name} className="w-full h-full object-cover" />
                     </div>
-                    <span className="text-[10px] text-slate-400">{color.name}</span>
+                    <span className="text-[10px] text-black font-bold">{color.name}</span>
                     <button type="button" onClick={() => handleRemoveColor(index)} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X size={10} /></button>
                   </div>
                 ))}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">اسم اللون</label>
-                  <input type="text" value={newColorName} onChange={(e) => setNewColorName(e.target.value)} placeholder="مثال: أحمر" className="w-full h-10 px-3 rounded-lg text-sm bg-slate-800 border border-slate-700 text-white outline-none" />
+                  <label className="block text-xs text-black font-bold mb-1">اسم اللون</label>
+                  <input type="text" value={newColorName} onChange={(e) => setNewColorName(e.target.value)} placeholder="مثال: أحمر" className={innerInputStyle} style={borderConfig} />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">كود اللون</label>
-                  <div className="flex items-center gap-2 h-10 px-2 rounded-lg bg-slate-800 border border-slate-700">
+                  <label className="block text-xs text-black font-bold mb-1">كود اللون</label>
+                  <div className="flex items-center gap-2 h-10 px-2 rounded-lg bg-white border" style={borderConfig}>
                     <input type="color" value={newColorHex} onChange={(e) => setNewColorHex(e.target.value)} className="w-6 h-6 bg-transparent cursor-pointer" />
-                    <span className="text-slate-400 text-xs">{newColorHex}</span>
+                    <span className="!text-black !font-bold text-xs">{newColorHex}</span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1">صورة اللون</label>
+                  <label className="block text-xs text-black font-bold mb-1">صورة اللون</label>
                   <div 
                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                     onDrop={handleColorImageDrop}
                     className="flex items-center gap-1"
                   >
-                    <label className="flex items-center gap-1 h-10 px-2 rounded-lg cursor-pointer bg-slate-800 border border-slate-700 hover:bg-slate-700 transition">
+                    <label className="flex items-center gap-1 h-10 px-2 rounded-lg cursor-pointer bg-white border hover:bg-slate-50 transition" style={borderConfig}>
                       <Upload size={14} className="text-purple-400" />
-                      <span className="text-xs text-slate-400">{newColorImage ? "تم الاختيار" : "اختر صورة"}</span>
+                      <span className="text-xs !text-black !font-bold">{newColorImage ? "تم الاختيار" : "اختر صورة"}</span>
                       <input type="file" accept="image/*" className="hidden" onChange={handleColorImageChange} ref={colorFileInputRef} />
                     </label>
                   </div>
@@ -450,17 +433,28 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
         )}
       </div>
 
+      {/* ✅ تعديل قائمة الفئات لتكون بيضاء وكتابة سوداء ومتناسقة */}
       <div ref={dropdownRef} className="relative">
-        <button type="button" onClick={() => setCategoryOpen(!categoryOpen)} className="w-full h-12 px-4 rounded-xl text-sm text-right flex items-center justify-between transition bg-transparent" style={{ border: categoryOpen ? "1px solid rgba(124,58,237,0.6)" : "1px solid rgba(124,58,237,0.3)", color: formData.category ? "#e2e8f0" : "#4b5563" }}>
-          <span>{formData.category || "اختر الفئة *"}</span>
-          <ChevronDown size={16} className="text-slate-400" style={{ transform: categoryOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+        <button 
+          type="button" 
+          onClick={() => setCategoryOpen(!categoryOpen)} 
+          className="w-full h-12 px-4 rounded-xl text-sm text-right flex items-center justify-between transition bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500" 
+          style={borderConfig}
+        >
+          <span className={formData.category ? "!text-black" : "text-slate-400"}>{formData.category || "اختر الفئة *"}</span>
+          <ChevronDown size={16} className="text-black" style={{ transform: categoryOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
         </button>
         {categoryOpen && (
-          <div className="absolute top-full right-0 left-0 mt-1 rounded-2xl overflow-auto z-50" style={{ background: "rgba(10,10,25,0.99)", border: "1px solid rgba(124,58,237,0.4)", maxHeight: "200px" }}>
+          <div className="absolute top-full right-0 left-0 mt-1 rounded-xl overflow-auto z-50 bg-white shadow-xl" style={{ border: "1px solid rgba(124,58,237,0.3)", maxHeight: "200px" }}>
             {categories.map((cat) => (
-              <button key={cat} type="button" onClick={() => { setFormData({ ...formData, category: cat }); setCategoryOpen(false); }} className="w-full px-4 py-2.5 text-right text-sm flex items-center justify-between transition" style={{ color: formData.category === cat ? "#a78bfa" : "#cbd5e1", background: formData.category === cat ? "rgba(124,58,237,0.15)" : "transparent" }}>
+              <button 
+                key={cat} 
+                type="button" 
+                onClick={() => { setFormData({ ...formData, category: cat }); setCategoryOpen(false); }} 
+                className={`w-full px-4 py-2.5 text-right text-sm flex items-center justify-between transition font-bold ${formData.category === cat ? 'bg-purple-50 text-purple-700' : 'text-black hover:bg-slate-50'}`}
+              >
                 <span>{cat}</span>
-                {formData.category === cat && <Check size={14} className="text-purple-400" />}
+                {formData.category === cat && <Check size={14} className="text-purple-700" />}
               </button>
             ))}
           </div>
@@ -469,9 +463,8 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
 
       <input type="text" name="barcode" value={formData.barcode} onChange={handleChange} placeholder="الباركود *" required className={inputStyle} style={borderConfig} />
       
-            <input type="number" name="stock" value={formData.stock} onChange={handleChange} placeholder="الكمية بالمخزن *" required className={inputStyle} style={borderConfig} />
+      <input type="number" name="stock" value={formData.stock} onChange={handleChange} placeholder="الكمية بالمخزن *" required className={inputStyle} style={borderConfig} />
 
-      {/* ✅ حقل الحد الأدنى للتنبيه - مطلوب ومُسمى واضح */}
       <div className="relative">
         <input 
           type="number" 

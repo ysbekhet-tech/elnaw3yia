@@ -25,10 +25,8 @@ export default function AdminLogin() {
 
     if (authenticateAdmin(code)) {
       setAuthToken();
-      // ✅ الحل هنا: بنستخدم window.location.replace عشان نعمل تحديث كامل للصفحة
-      // وبيضمن إن الـ Dashboard يقرأ الـ Token فوراً من غير ما يعمل لوب أو يحتاج Refresh
       window.location.replace('/admin');
-      return; // بنوقف هنا عشان ميكملش باقي الكود
+      return;
     } else {
       setError('الكود غير صحيح، حاول مرة أخرى');
     }
@@ -38,12 +36,8 @@ export default function AdminLogin() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4"
-      style={{
-        background: "radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.2) 0%, transparent 60%), #050510",
-      }}
+      className="min-h-screen flex items-center justify-center p-4 bg-slate-50"
     >
-      {/* Glow background blobs */}
       <div
         className="fixed top-1/4 left-1/4 w-96 h-96 rounded-full opacity-10 pointer-events-none"
         style={{ background: "radial-gradient(circle, #7c3aed, transparent)", filter: "blur(80px)" }}
@@ -54,30 +48,26 @@ export default function AdminLogin() {
       />
 
       <div
-        className="w-full max-w-md rounded-3xl p-8 relative"
+        className="w-full max-w-md rounded-3xl p-8 relative bg-white border border-purple-200 shadow-xl"
         style={{
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(124,58,237,0.3)",
-          boxShadow: "0 0 60px rgba(124,58,237,0.15), 0 25px 60px rgba(0,0,0,0.5)",
-          backdropFilter: "blur(20px)",
+          boxShadow: "0 0 60px rgba(124,58,237,0.1), 0 25px 60px rgba(0,0,0,0.1)",
         }}
       >
-        {/* Icon */}
         <div className="flex justify-center mb-6">
           <div
             className="w-20 h-20 rounded-2xl flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)", boxShadow: "0 0 40px rgba(124,58,237,0.4)" }}
+            style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)", boxShadow: "0 0 40px rgba(124,58,237,0.3)" }}
           >
             <Shield size={36} className="text-white" />
           </div>
         </div>
 
-        <h1 className="text-3xl font-black text-center text-white mb-1">لوحة التحكم</h1>
+        <h1 className="text-3xl font-black text-center text-slate-900 mb-1">لوحة التحكم</h1>
         <p className="text-center text-slate-500 mb-8 text-sm">أدخل كود الوصول للمتابعة</p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-bold text-slate-400 mb-2">
+            <label className="block text-sm font-bold text-slate-600 mb-2">
               <Lock size={13} className="inline ml-1" />
               كود الوصول
             </label>
@@ -88,10 +78,9 @@ export default function AdminLogin() {
                 onChange={(e) => setCode(e.target.value)}
                 placeholder="أدخل كود الوصول السري"
                 autoComplete="new-password"
-                className="w-full px-4 py-3.5 pr-12 rounded-2xl outline-none text-white placeholder-slate-600 text-sm transition"
+                className="w-full px-4 py-3.5 pr-12 rounded-2xl outline-none text-slate-900 placeholder-slate-400 text-sm transition bg-slate-50 border border-purple-200 focus:border-purple-400"
                 style={{
-                  background: "rgba(255,255,255,0.06)",
-                  border: error ? "1px solid rgba(239,68,68,0.5)" : "1px solid rgba(124,58,237,0.3)",
+                  border: error ? "1px solid rgba(239,68,68,0.5)" : undefined,
                 }}
                 disabled={loading}
                 autoFocus
@@ -99,7 +88,7 @@ export default function AdminLogin() {
               <button
                 type="button"
                 onClick={() => setShowCode(!showCode)}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
               >
                 {showCode ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -108,8 +97,7 @@ export default function AdminLogin() {
 
           {error && (
             <div
-              className="px-4 py-3 rounded-xl text-sm font-bold text-red-400 flex items-center gap-2"
-              style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}
+              className="px-4 py-3 rounded-xl text-sm font-bold text-red-600 flex items-center gap-2 bg-red-50 border border-red-200"
             >
               ❌ {error}
             </div>
@@ -121,14 +109,14 @@ export default function AdminLogin() {
             className="w-full text-white font-bold py-4 rounded-2xl text-base transition active:scale-95 disabled:opacity-40"
             style={{
               background: "linear-gradient(135deg, #7c3aed, #ec4899)",
-              boxShadow: code && !loading ? "0 0 30px rgba(124,58,237,0.4)" : "none",
+              boxShadow: code && !loading ? "0 0 30px rgba(124,58,237,0.3)" : "none",
             }}
           >
             {loading ? "جاري التحقق..." : "دخول للوحة التحكم"}
           </button>
         </form>
 
-        <p className="text-center text-xs text-slate-600 mt-8">
+        <p className="text-center text-xs text-slate-400 mt-8">
           🔒 هذه الصفحة محمية — فقط المسؤولون
         </p>
       </div>
