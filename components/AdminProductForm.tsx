@@ -99,14 +99,13 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
   const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     imgRef.current = e.currentTarget;
     setIsImageLoading(false);
-    // ضبط الـ crop الافتراضي بعد التأكد من تحميل الصورة
-    const { width, height } = e.currentTarget;
+    // ضبط الـ crop الافتراضي ليملأ الصورة كلها
     setCrop({
       unit: "%",
-      width: 80,
-      height: 80,
-      x: 10,
-      y: 10,
+      width: 100,
+      height: 100,
+      x: 0,
+      y: 0,
     });
   };
 

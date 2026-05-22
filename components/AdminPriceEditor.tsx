@@ -45,19 +45,19 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
   const [categorySearch, setCategorySearch] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // حالات الـ Crop
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const [cropTarget, setCropTarget] = useState<'main' | 'color'>('main');
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const [isImageLoading, setIsImageLoading] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     if (product) {
       setFormData({
         name: product.name || '', price: product.price || 0, originalPrice: product.originalPrice || 0,
-        stock: product.stock || 0, category: product.category || '', barcode: product.barcode || '', 
+        stock: product.stock || 0, category: product.category || '', barcode: product.barcode || '',
         description: product.description || '', minStock: product.minStock || 5, countryOfOrigin: (product as any).countryOfOrigin || ''
       });
 
@@ -94,56 +94,97 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
 
   if (!product) return null;
 
-  // === دوال الـ Crop ===
   const openCropModal = (imageUrl: string, target: "main" | "color") => {
+    imgRef.current = null;
     setImageToCrop(imageUrl);
     setCropTarget(target);
-    setCrop({ unit: "%", width: 50, height: 50, x: 25, y: 25 });
+    setCrop(undefined);
     setCompletedCrop(undefined);
+    setIsImageLoading(true);
     setCropModalOpen(true);
   };
 
   const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     imgRef.current = e.currentTarget;
+    setIsImageLoading(false);
+    // الـ crop يملأ الصورة كلها افتراضياً
+    setCrop({
+      unit: "%",
+      width: 100,
+      height: 100,
+      x: 0,
+      y: 0,
+    });
   };
 
   async function getCroppedImg() {
     const image = imgRef.current;
-    if (!image || !completedCrop) return null;
+    if (!image) {
+      console.warn("getCroppedImg: imgRef.current is null");
+      return null;
+    }
+    if (!completedCrop || completedCrop.width === 0 || completedCrop.height === 0) {
+      console.warn("getCroppedImg: completedCrop is invalid", completedCrop);
+      return null;
+    }
 
     const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d") as CanvasRenderingContext2D | null;
-    if (!ctx) return null;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      console.warn("getCroppedImg: canvas context is null");
+      return null;
+    }
 
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
 
-    canvas.width = completedCrop.width * scaleX;
-    canvas.height = completedCrop.height * scaleY;
+    canvas.width = Math.round(completedCrop.width * scaleX);
+    canvas.height = Math.round(completedCrop.height * scaleY);
 
-    ctx.drawImage(image, completedCrop.x * scaleX, completedCrop.y * scaleY, completedCrop.width * scaleX, completedCrop.height * scaleY, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(
+      image,
+      completedCrop.x * scaleX,
+      completedCrop.y * scaleY,
+      completedCrop.width * scaleX,
+      completedCrop.height * scaleY,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
 
-    return canvas.toDataURL("image/jpeg");
+    return canvas.toDataURL("image/jpeg", 0.95);
   }
 
   const handleSaveCrop = async () => {
+    if (isImageLoading) {
+      alert("الصورة لسه بتحمل، استنى شوية...");
+      return;
+    }
+
     try {
       const croppedImage = await getCroppedImg();
+
       if (croppedImage) {
         if (cropTarget === "main") {
           setImagePreviews((prev) => [...prev, croppedImage]);
         } else {
           setNewColorImage(croppedImage);
         }
+      } else {
+        alert("مقدرش أقص الصورة. جرب تاني.");
+        return;
       }
     } catch (e) {
-      console.error(e);
+      console.error("Error in handleSaveCrop:", e);
       alert("حصل خطأ أثناء القص، جرب تاني.");
+      return;
     }
+
     setCropModalOpen(false);
     setImageToCrop(null);
+    imgRef.current = null;
   };
-  // === نهاية دوال الـ Crop ===
 
   const handleImageFromUrl = useCallback(async (url: string) => {
     try {
@@ -237,7 +278,6 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     setImagePreviews(imagePreviews.filter((_, i) => i !== index));
   };
 
-  // التعديل 8: تحديد الصورة الرئيسية
   const handleSetPrimaryImage = (index: number) => {
     const newImages = [...imagePreviews];
     const primaryImg = newImages.splice(index, 1)[0];
@@ -254,12 +294,11 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     }
   };
 
-  // التعديل 7: سحب واسقاط صورة اللون
   const handleColorImageDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsColorDragging(false);
-    
+
     const files = e.dataTransfer.files;
     if (files.length > 0 && files[0].type.startsWith('image/')) {
       const reader = new FileReader();
@@ -305,12 +344,12 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
   const handleRemoveSize = (index: number) => setSizes(sizes.filter((_, i) => i !== index));
 
   const handleSubmit = async () => {
-    if (!formData.name || (!hasSizes && formData.price <= 0) || !formData.category || !formData.barcode) { 
-      alert('يرجى ملء جميع الحقول المطلوبة'); 
-      return; 
+    if (!formData.name || (!hasSizes && formData.price <= 0) || !formData.category || !formData.barcode) {
+      alert('يرجى ملء جميع الحقول المطلوبة');
+      return;
     }
     if (!product.id) { alert('المنتج لا يحتوي على معرف صالح'); return; }
-    
+
     let finalPrice = Number(formData.price);
     if (hasSizes && sizes.length > 0) {
       finalPrice = Number(sizes[0].price);
@@ -319,13 +358,13 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     setIsSubmitting(true);
     try {
       await onSubmit(product.id, {
-        ...formData, 
+        ...formData,
         price: finalPrice,
         minStock: Number(formData.minStock) || 5,
         countryOfOrigin: formData.countryOfOrigin,
         images: imagePreviews,
         originalPrice: Number(formData.originalPrice) || 0,
-        hasColors: hasColors, 
+        hasColors: hasColors,
         colors: hasColors ? colors : [],
         hasSizes: hasSizes,
         sizes: hasSizes ? sizes : [],
@@ -334,24 +373,50 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     } catch (error) { console.error('خطأ في التحديث:', error); } finally { setIsSubmitting(false); }
   };
 
-  // التعديل 5: تصفية الفئات بناء على البحث
   const filteredCategories = categories.filter(cat => cat.toLowerCase().includes(categorySearch.toLowerCase()));
 
   return (
     <>
-      {/* نافذة الـ Crop */}
       {cropModalOpen && imageToCrop && (
         <div className="fixed inset-0 z-[200] bg-black/80 flex flex-col items-center justify-center p-4">
           <div className="bg-white p-4 rounded-xl max-w-3xl max-h-[80vh] overflow-auto">
-            <ReactCrop crop={crop} onChange={(c) => setCrop(c)} onComplete={(c) => setCompletedCrop(c)}>
-              <img ref={imgRef} src={imageToCrop} alt="Crop" onLoad={onImageLoad} style={{ maxWidth: "100%", maxHeight: "60vh" }} />
+            {isImageLoading && (
+              <div className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                <span className="mr-3 text-black font-bold">جاري تحميل الصورة...</span>
+              </div>
+            )}
+            <ReactCrop
+              crop={crop}
+              onChange={(c) => setCrop(c)}
+              onComplete={(c) => setCompletedCrop(c)}
+              keepSelection
+            >
+              <img
+                ref={imgRef}
+                src={imageToCrop}
+                alt="Crop"
+                onLoad={onImageLoad}
+                style={{ maxWidth: "100%", maxHeight: "60vh", display: isImageLoading ? "none" : "block" }}
+              />
             </ReactCrop>
           </div>
           <div className="mt-4 flex items-center gap-4">
-            <button onClick={handleSaveCrop} className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center gap-2">
+            <button
+              onClick={handleSaveCrop}
+              disabled={isImageLoading}
+              className={`px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center gap-2 ${isImageLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
               <Check size={16} /> حفظ القص
             </button>
-            <button onClick={() => { setCropModalOpen(false); setImageToCrop(null); }} className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold flex items-center gap-2">
+            <button
+              onClick={() => {
+                setCropModalOpen(false);
+                setImageToCrop(null);
+                imgRef.current = null;
+              }}
+              className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold flex items-center gap-2"
+            >
               <X size={16} /> إلغاء
             </button>
           </div>
@@ -378,8 +443,8 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed transition cursor-pointer ${
-                    isDragging 
-                      ? 'border-purple-500 bg-purple-50' 
+                    isDragging
+                      ? 'border-purple-500 bg-purple-50'
                       : 'border-slate-300 hover:border-purple-400 bg-slate-50 hover:bg-purple-50/30'
                   }`}
                   onClick={() => fileInputRef.current?.click()}
@@ -395,13 +460,12 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                   </div>
                   <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} ref={fileInputRef} />
                 </div>
-                
+
                 {imagePreviews.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {imagePreviews.map((img, idx) => (
                       <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border-2 border-slate-200">
                         <img src={img} alt="preview" className="w-full h-full object-cover" />
-                        {/* التعديل 8: النجمة بتاعة الصورة الرئيسية */}
                         {idx === 0 && (
                           <div className="absolute top-1 left-1 bg-yellow-400 text-black p-0.5 rounded-full">
                             <Star size={10} fill="black" />
@@ -429,7 +493,6 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
               <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
             </div>
 
-            {/* التعديل 1: تكبير خانة الوصف */}
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1.5">وصف المنتج</label>
               <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition resize-y min-h-[200px]" rows={8} disabled={isSubmitting} />
@@ -447,7 +510,6 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
               <input type="number" value={formData.originalPrice} onChange={(e) => setFormData({ ...formData, originalPrice: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
             </div>
 
-            {/* التعديل 2: حقل بلد الصناعة */}
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1.5">بلد الصناعة</label>
               <input type="text" value={formData.countryOfOrigin} onChange={(e) => setFormData({ ...formData, countryOfOrigin: e.target.value })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
@@ -478,9 +540,9 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                           <div className="text-sm text-purple-600 font-bold">
                             {size.price} جنيه
                           </div>
-                          <button 
-                            type="button" 
-                            onClick={() => handleRemoveSize(index)} 
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSize(index)}
                             className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
                           >
                             <X size={10} />
@@ -489,7 +551,7 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                       ))}
                     </div>
                   )}
-                  
+
                   <div className="grid grid-cols-1 gap-3 items-end">
                     <div>
                       <label className="block text-xs text-slate-500 mb-1">الطول (سم)</label>
@@ -553,8 +615,7 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                     </div>
                     <div>
                       <label className="block text-xs text-slate-500 mb-1">صورة اللون</label>
-                      {/* التعديل 7: منطقة السحب والإفلات لصورة اللون */}
-                      <div 
+                      <div
                         onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsColorDragging(true); }}
                         onDragLeave={() => setIsColorDragging(false)}
                         onDrop={handleColorImageDrop}
@@ -581,23 +642,22 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                 <label className="block text-xs font-bold text-slate-600 mb-1.5">الكمية المتاحة</label>
                 <input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
               </div>
-              
+
               <div>
                 <label className="block text-xs font-bold text-slate-600 mb-1.5 flex items-center gap-1">
                   <AlertTriangle size={12} className="text-orange-500" />
                   الحد الأدنى للتنبيه
                 </label>
-                <input 
-                  type="number" 
-                  value={formData.minStock} 
-                  onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value) || 5 })} 
-                  className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" 
-                  disabled={isSubmitting} 
+                <input
+                  type="number"
+                  value={formData.minStock}
+                  onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value) || 5 })}
+                  className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition"
+                  disabled={isSubmitting}
                 />
               </div>
             </div>
 
-            {/* التعديل 5: الفئات مع مربع البحث */}
             <div ref={dropdownRef}>
               <label className="block text-xs font-bold text-slate-600 mb-1.5">الفئة *</label>
               <div className="relative">
@@ -610,11 +670,11 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                     <div className="p-2 border-b border-slate-100">
                       <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded-lg">
                         <Search size={14} className="text-slate-400" />
-                        <input 
-                          type="text" 
-                          value={categorySearch} 
+                        <input
+                          type="text"
+                          value={categorySearch}
                           onChange={(e) => setCategorySearch(e.target.value)}
-                          placeholder="ابحث عن فئة..." 
+                          placeholder="ابحث عن فئة..."
                           className="bg-transparent outline-none text-sm w-full text-slate-900 font-bold"
                           autoFocus
                         />
