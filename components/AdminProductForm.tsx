@@ -57,6 +57,7 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
   const [cropTarget, setCropTarget] = useState<"main" | "color">("main");
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
+  const [isImageLoading, setIsImageLoading] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
@@ -85,52 +86,106 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
 
   // === دوال الـ Crop ===
   const openCropModal = (imageUrl: string, target: "main" | "color") => {
+    // إعادة ضبط كامل قبل فتح المودال
+    imgRef.current = null;
     setImageToCrop(imageUrl);
     setCropTarget(target);
-    setCrop({ unit: "%", width: 50, height: 50, x: 25, y: 25 });
+    setCrop(undefined);
     setCompletedCrop(undefined);
+    setIsImageLoading(true);
     setCropModalOpen(true);
   };
 
   const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     imgRef.current = e.currentTarget;
+    setIsImageLoading(false);
+    // ضبط الـ crop الافتراضي بعد التأكد من تحميل الصورة
+    const { width, height } = e.currentTarget;
+    setCrop({
+      unit: "%",
+      width: 80,
+      height: 80,
+      x: 10,
+      y: 10,
+    });
   };
 
   async function getCroppedImg() {
     const image = imgRef.current;
-    if (!image || !completedCrop) return null;
+    if (!image) {
+      console.warn("getCroppedImg: imgRef.current is null");
+      return null;
+    }
+    if (!completedCrop || completedCrop.width === 0 || completedCrop.height === 0) {
+      console.warn("getCroppedImg: completedCrop is invalid", completedCrop);
+      return null;
+    }
 
     const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d") as CanvasRenderingContext2D | null;
-    if (!ctx) return null;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      console.warn("getCroppedImg: canvas context is null");
+      return null;
+    }
 
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
 
-    canvas.width = completedCrop.width * scaleX;
-    canvas.height = completedCrop.height * scaleY;
+    canvas.width = Math.round(completedCrop.width * scaleX);
+    canvas.height = Math.round(completedCrop.height * scaleY);
 
-    ctx.drawImage(image, completedCrop.x * scaleX, completedCrop.y * scaleY, completedCrop.width * scaleX, completedCrop.height * scaleY, 0, 0, canvas.width, canvas.height);
+    ctx.drawImage(
+      image,
+      completedCrop.x * scaleX,
+      completedCrop.y * scaleY,
+      completedCrop.width * scaleX,
+      completedCrop.height * scaleY,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
 
-    return canvas.toDataURL("image/jpeg");
+    return canvas.toDataURL("image/jpeg", 0.95);
   }
 
   const handleSaveCrop = async () => {
+    console.log("Saving crop...", { 
+      cropTarget, 
+      hasImage: !!imgRef.current, 
+      crop: completedCrop,
+      isLoading: isImageLoading 
+    });
+
+    if (isImageLoading) {
+      alert("الصورة لسه بتحمل، استنى شوية...");
+      return;
+    }
+
     try {
       const croppedImage = await getCroppedImg();
+      console.log("Cropped result:", croppedImage ? "success (" + croppedImage.length + " chars)" : "null");
+
       if (croppedImage) {
         if (cropTarget === "main") {
           setImagePreviews((prev) => [...prev, croppedImage]);
         } else {
           setNewColorImage(croppedImage);
         }
+      } else {
+        alert("مقدرش أقص الصورة. جرب تاني.");
+        return; // ما تسكرش المودال لو فشل
       }
     } catch (e) {
-      console.error(e);
+      console.error("Error in handleSaveCrop:", e);
       alert("حصل خطأ أثناء القص، جرب تاني.");
+      return; // ما تسكرش المودال لو فشل
     }
+
+    // سكر المودال بس لو نجح
     setCropModalOpen(false);
     setImageToCrop(null);
+    imgRef.current = null;
   };
   // === نهاية دوال الـ Crop ===
 
@@ -372,18 +427,40 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
       {cropModalOpen && imageToCrop && (
         <div className="fixed inset-0 z-[100] bg-black/80 flex flex-col items-center justify-center p-4">
           <div className="bg-white p-4 rounded-xl max-w-3xl max-h-[80vh] overflow-auto">
-            <ReactCrop crop={crop} onChange={(c) => setCrop(c)} onComplete={(c) => setCompletedCrop(c)}>
-              <img ref={imgRef} src={imageToCrop} alt="Crop" onLoad={onImageLoad} style={{ maxWidth: "100%", maxHeight: "60vh" }} />
+            {isImageLoading && (
+              <div className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                <span className="mr-3 text-black font-bold">جاري تحميل الصورة...</span>
+              </div>
+            )}
+            <ReactCrop 
+              crop={crop} 
+              onChange={(c) => setCrop(c)} 
+              onComplete={(c) => setCompletedCrop(c)}
+              keepSelection
+            >
+              <img 
+                ref={imgRef} 
+                src={imageToCrop} 
+                alt="Crop" 
+                onLoad={onImageLoad} 
+                style={{ maxWidth: "100%", maxHeight: "60vh", display: isImageLoading ? "none" : "block" }} 
+              />
             </ReactCrop>
           </div>
           <div className="mt-4 flex items-center gap-4">
-            <button onClick={handleSaveCrop} className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center gap-2">
+            <button 
+              onClick={handleSaveCrop} 
+              disabled={isImageLoading}
+              className={`px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center gap-2 ${isImageLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
               <Check size={16} /> حفظ القص
             </button>
             <button
               onClick={() => {
                 setCropModalOpen(false);
                 setImageToCrop(null);
+                imgRef.current = null;
               }}
               className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold flex items-center gap-2"
             >
