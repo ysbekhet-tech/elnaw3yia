@@ -5,6 +5,8 @@ import ProductCard from "./ProductCard";
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { Product } from "@/types";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 export default function FeaturedProducts() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -46,6 +48,10 @@ export default function FeaturedProducts() {
     );
   }
 
+  // عرض أول 12 منتج بس (3 صفوف في الشاشات الكبيرة)
+  const displayedProducts = products.slice(0, 12);
+  const hasMore = products.length > 12;
+
   return (
     <section className="max-w-7xl mx-auto px-5 py-16">
 
@@ -61,8 +67,8 @@ export default function FeaturedProducts() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {products.length > 0 ? (
-          products.map((product) => (
+        {displayedProducts.length > 0 ? (
+          displayedProducts.map((product) => (
             <ProductCard
               key={product.id}
               product={product}
@@ -75,6 +81,20 @@ export default function FeaturedProducts() {
           </div>
         )}
       </div>
+
+      {/* زرار عرض باقي المنتجات */}
+      {hasMore && (
+        <div className="mt-12 text-center">
+          <Link 
+            href="/products"
+            className="inline-flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-white transition hover:opacity-90"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}
+          >
+            عرض جميع المنتجات
+            <ArrowLeft size={18} />
+          </Link>
+        </div>
+      )}
 
     </section>
   );

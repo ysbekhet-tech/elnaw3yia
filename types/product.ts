@@ -18,6 +18,7 @@ export interface Product {
   description?: string;
   stock: number;
   minStock?: number; // ✅ الحد الأدنى للتنبيه
+  countryOfOrigin?: string; // ✅ بلد الصناعة
   reserved?: number;
   purchased?: number;
   category: string;
@@ -32,6 +33,7 @@ export interface Product {
   isOffer?: boolean;
   isNew?: boolean;
   isActive?: boolean;
+  createdAt?: any; // ✅ تاريخ الإضافة (للترتيب حسب الأحدث)
 }
 
 export interface CartItem extends Product {
