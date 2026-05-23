@@ -5,13 +5,13 @@ import { Heart, Eye, ShoppingCart, Star, Plus, Minus, ChevronRight, ChevronLeft 
 import { motion, AnimatePresence } from "framer-motion";
 import { Product } from "@/types";
 import { useCart } from "@/app/context/CartContext";
-import { useProductStock } from "../hooks/useProductStock";
 import { useState, useEffect } from "react";
 import ColorPickerModal from "./ColorPickerModal";
 
-export default function ProductCard({ product }: { product: Product }) {
+type ViewMode = "grid" | "compact" | "list";
+
+export default function ProductCard({ product, viewMode = "grid" }: { product: Product; viewMode?: ViewMode }) {
   const { addToCart } = useCart();
-  const { stock, reserved } = useProductStock(product.id);
   
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
@@ -28,9 +28,10 @@ export default function ProductCard({ product }: { product: Product }) {
     ? product.images
     : (product.image ? [product.image] : ["https://via.placeholder.com/400"]);
 
-  // ✅ المتاح = stock - reserved (محدث لحظياً من Firebase)
+  // ✅ الاعتماد على البيانات الأساسية بدون Real-time
+  const stock = product.stock || 0;
+  const reserved = product.reserved || 0;
   const stockAvailable = Math.max(0, stock - reserved);
-  const totalStock = stock;
 
   const nextImage = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -73,12 +74,90 @@ export default function ProductCard({ product }: { product: Product }) {
     }
   };
 
+  // ✅ عرض القايمة (List) - مقاس ثابت وتصغير الحجم
+  if (viewMode === "list") {
+    return (
+      <>
+        <motion.div
+          whileHover={{ scale: 1.01 }}
+          transition={{ duration: 0.2 }}
+          // ✅ إضافة h-40 (160px) كمقاس ثابت للكارت كله عشان كلهم يبقوا زي بعض
+          className="rounded-2xl overflow-hidden flex flex-row h-40 relative"
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(124,58,237,0.2)",
+            boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
+          }}
+        >
+          <Link href={`/products/${product.id}`} className="block relative w-32 h-full flex-shrink-0 overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+            <img src={allImages[0]} alt={product.name} className="w-full h-full object-cover" />
+            {discount > 0 && (
+              <span className="absolute top-2 right-2 gradient-bg text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full z-10">
+                -{discount}%
+              </span>
+            )}
+          </Link>
+
+          <div className="p-3 flex flex-col flex-1 overflow-hidden">
+            <Link href={`/category/${encodeURIComponent(product.category)}`} className="text-[10px] font-bold gradient-text mb-0.5 hover:opacity-80 inline-block transition">
+              {product.category}
+            </Link>
+            <Link href={`/products/${product.id}`}>
+              <h3 className="font-bold text-sm text-slate-200 hover:text-purple-400 transition line-clamp-1">{product.name}</h3>
+            </Link>
+            
+            <div className="flex items-center gap-1 mt-1">
+              <Star size={11} className="fill-yellow-400 text-yellow-400" />
+              <span className="text-[10px] text-slate-500">{product.rating || 4.5}</span>
+              <span className="text-slate-600 mx-1">|</span>
+              <span className={`text-[10px] font-bold ${stockAvailable > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                متاح: {stockAvailable}
+              </span>
+            </div>
+
+            <div className="flex items-end justify-between mt-auto pt-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base font-black text-white">{product.price} ج</span>
+                {product.originalPrice && <span className="text-slate-500 line-through text-[10px]">{product.originalPrice} ج</span>}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {!isMultiColor && (
+                  <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5 border border-purple-500/20">
+                    <button onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.max(1, q - 1)); }} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-purple-500/20"><Minus size={11} className="text-slate-300" /></button>
+                    <span className="text-xs font-black text-white min-w-[16px] text-center">{quantity}</span>
+                    <button onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.min(q + 1, stockAvailable)); }} disabled={quantity >= stockAvailable} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-purple-500/20"><Plus size={11} className="text-slate-300" /></button>
+                  </div>
+                )}
+
+                <button
+                  onClick={handleAddToCart}
+                  disabled={stockAvailable === 0}
+                  className={`h-8 px-4 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
+                    stockAvailable === 0 ? "bg-gray-600 cursor-not-allowed opacity-50" : added ? "bg-green-500 text-white" : "gradient-bg text-white glow-purple"
+                  }`}
+                >
+                  <ShoppingCart size={13} />
+                  {stockAvailable === 0 ? "غير متاح" : added ? "✓ تمت" : "أضف"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+        <ColorPickerModal product={product} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      </>
+    );
+  }
+
+  // ✅ عرض الكروت (Grid / Compact) - تصغير الحجم
+  const isCompact = viewMode === "compact";
+
   return (
     <>
       <motion.div
-        whileHover={{ y: -8 }}
+        whileHover={{ y: isCompact ? -3 : -5 }}
         transition={{ duration: 0.3 }}
-        className="rounded-[28px] overflow-hidden flex flex-col h-full relative"
+        className="rounded-2xl overflow-hidden flex flex-col h-full relative"
         style={{
           background: "rgba(255,255,255,0.04)",
           border: "1px solid rgba(124,58,237,0.2)",
@@ -94,7 +173,7 @@ export default function ProductCard({ product }: { product: Product }) {
           (e.currentTarget as HTMLElement).style.border = "1px solid rgba(124,58,237,0.2)";
         }}
       >
-        <Link href={`/products/${product.id}`} className="block relative h-56 overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+        <Link href={`/products/${product.id}`} className="block relative overflow-hidden" style={{ background: "rgba(255,255,255,0.06)", height: isCompact ? "120px" : "160px" }}>
           
           <AnimatePresence mode='wait'>
             <motion.img
@@ -111,132 +190,86 @@ export default function ProductCard({ product }: { product: Product }) {
 
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
 
-          {allImages.length > 1 && (
+          {allImages.length > 1 && !isCompact && (
             <>
-              <button
-                onClick={prevImage}
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition z-10 border border-white/10"
-              >
-                <ChevronRight size={18} className="rtl:rotate-180" />
+              <button onClick={prevImage} className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition z-10 border border-white/10">
+                <ChevronRight size={14} className="rtl:rotate-180" />
               </button>
-              <button
-                onClick={nextImage}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition z-10 border border-white/10"
-              >
-                <ChevronLeft size={18} className="rtl:rotate-180" />
+              <button onClick={nextImage} className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition z-10 border border-white/10">
+                <ChevronLeft size={14} className="rtl:rotate-180" />
               </button>
-              
-              <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
+              <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1 z-10">
                 {allImages.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentImageIndex(idx); }}
-                    className={`h-1 rounded-full transition-all duration-300 ${
-                      currentImageIndex === idx ? 'w-4 bg-white' : 'w-1 bg-white/50'
-                    }`}
-                  />
+                  <button key={idx} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentImageIndex(idx); }} className={`h-1 rounded-full transition-all duration-300 ${currentImageIndex === idx ? 'w-3 bg-white' : 'w-1 bg-white/50'}`} />
                 ))}
               </div>
             </>
           )}
 
           {discount > 0 && (
-            <span className="absolute top-4 right-4 gradient-bg text-white text-xs font-bold px-3 py-1 rounded-full z-10">
-              -{discount}%
-            </span>
+            <span className="absolute top-2 right-2 gradient-bg text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full z-10">-{discount}%</span>
           )}
 
-          <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
-            <button
-              className="w-9 h-9 rounded-xl flex items-center justify-center hover:scale-110 transition"
-              style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.2)" }}
-            >
-              <Heart size={16} className="text-white" />
+          <div className="absolute top-2 left-2 flex flex-col gap-1.5 z-10">
+            <button className="w-7 h-7 rounded-lg flex items-center justify-center hover:scale-110 transition" style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.2)" }}>
+              <Heart size={13} className="text-white" />
             </button>
-            <button
-              className="w-9 h-9 rounded-xl flex items-center justify-center hover:scale-110 transition"
-              style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.2)" }}
-            >
-              <Eye size={16} className="text-white" />
-            </button>
+            {!isCompact && (
+              <button className="w-7 h-7 rounded-lg flex items-center justify-center hover:scale-110 transition" style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                <Eye size={13} className="text-white" />
+              </button>
+            )}
           </div>
         </Link>
 
-        <div className="p-5 flex flex-col flex-1">
-          <Link
-            href={`/category/${encodeURIComponent(product.category)}`}
-            className="text-xs font-bold gradient-text mb-2 hover:opacity-80 inline-block transition"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className={`flex flex-col flex-1 ${isCompact ? "p-2.5" : "p-3.5"}`}>
+          <Link href={`/category/${encodeURIComponent(product.category)}`} className="text-[10px] font-bold gradient-text mb-0.5 hover:opacity-80 inline-block transition">
             {product.category}
           </Link>
 
           <Link href={`/products/${product.id}`}>
-            <h3 className="font-bold text-base text-slate-200 leading-relaxed line-clamp-2 hover:text-purple-400 transition">
+            <h3 className={`font-bold text-slate-200 leading-relaxed line-clamp-2 hover:text-purple-400 transition ${isCompact ? "text-xs" : "text-sm"}`}>
               {product.name}
             </h3>
           </Link>
 
-          <div className="flex items-center gap-1 mt-2">
-            <Star size={13} className="fill-yellow-400 text-yellow-400" />
-            <span className="text-xs text-slate-500">{product.rating || 4.5}</span>
+          {!isCompact && (
+            <div className="flex items-center gap-1 mt-1">
+              <Star size={11} className="fill-yellow-400 text-yellow-400" />
+              <span className="text-[10px] text-slate-500">{product.rating || 4.5}</span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className={`${isCompact ? "text-sm" : "text-base"} font-black text-white`}>{product.price} ج</span>
+            {product.originalPrice && <span className="text-slate-500 line-through text-[10px]">{product.originalPrice} ج</span>}
           </div>
 
-          <div className="flex items-center gap-3 mt-3">
-            <span className="text-xl font-black text-white">{product.price} ج</span>
-            {product.originalPrice && (
-              <span className="text-slate-500 line-through text-sm">{product.originalPrice} ج</span>
-            )}
-          </div>
+          {!isCompact && (
+            <div className="text-[10px] text-slate-400 mt-0.5">
+              المتاح: <span className={`font-bold ${stockAvailable > 0 ? 'text-emerald-400' : 'text-red-400'}`}>{stockAvailable}</span>
+              {stock !== stockAvailable && stock > 0 && <span className="text-slate-500 text-[8px] mr-0.5">(من أصل {stock})</span>}
+            </div>
+          )}
 
-          <div className="text-xs text-slate-400 mt-1">
-            المتاح: 
-            <span className={`font-bold ${stockAvailable > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-              {stockAvailable}
-            </span>
-            {totalStock !== stockAvailable && totalStock > 0 && (
-              <span className="text-slate-500 text-[10px] mr-1">
-                (من أصل {totalStock})
-              </span>
-            )}
-          </div>
-
-          <div className="mt-auto pt-3">
-            {!isMultiColor ? (
-              <div className="flex items-center gap-3 mb-3">
-                <button
-                  onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.max(1, q - 1)); }}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-purple-500/20 transition"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(124,58,237,0.25)" }}
-                >
-                  <Minus size={13} className="text-slate-300" />
+          <div className="mt-auto pt-2">
+            {!isMultiColor && !isCompact ? (
+              <div className="flex items-center gap-2 mb-2">
+                <button onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.max(1, q - 1)); }} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-purple-500/20 transition" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(124,58,237,0.25)" }}>
+                  <Minus size={11} className="text-slate-300" />
                 </button>
-                <span className="text-base font-black text-white min-w-[24px] text-center">
-                  {quantity}
-                </span>
-                <button
-                  onClick={(e) => { 
-                    e.preventDefault();
-                    setQuantity((q) => Math.min(q + 1, stockAvailable));
-                  }}
-                  disabled={quantity >= stockAvailable}
-                  className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-purple-500/20 transition disabled:opacity-50"
-                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(124,58,237,0.25)" }}
-                >
-                  <Plus size={13} className="text-slate-300" />
+                <span className="text-sm font-black text-white min-w-[20px] text-center">{quantity}</span>
+                <button onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.min(q + 1, stockAvailable)); }} disabled={quantity >= stockAvailable} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-purple-500/20 transition disabled:opacity-50" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(124,58,237,0.25)" }}>
+                  <Plus size={11} className="text-slate-300" />
                 </button>
-                <span className="text-xs text-slate-500">
-                  = <span className="font-bold gradient-text">{product.price * quantity} ج</span>
-                </span>
+                <span className="text-[10px] text-slate-500">= <span className="font-bold gradient-text">{product.price * quantity} ج</span></span>
               </div>
-            ) : (
-              <div className="h-[35px] mb-3"></div>
-            )}
+            ) : !isCompact && <div className="h-[28px] mb-2"></div>}
 
             <button
               onClick={handleAddToCart}
               disabled={stockAvailable === 0}
-              className={`w-full h-11 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 ${
+              className={`w-full ${isCompact ? "h-8 rounded-lg text-xs" : "h-9 rounded-xl text-sm"} font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
                 stockAvailable === 0
                   ? "bg-gray-600 text-white cursor-not-allowed opacity-50"
                   : added && !isMultiColor
@@ -244,22 +277,14 @@ export default function ProductCard({ product }: { product: Product }) {
                   : "gradient-bg text-white hover:opacity-90 glow-purple"
               }`}
             >
-              <ShoppingCart size={17} />
-              {stockAvailable === 0 
-                ? "المنتج غير متاح" 
-                : added && !isMultiColor 
-                ? "✓ تمت الإضافة!" 
-                : "أضف للسلة"}
+              <ShoppingCart size={14} />
+              {stockAvailable === 0 ? "غير متاح" : added && !isMultiColor ? "✓ تمت" : isCompact ? "أضف" : "أضف للسلة"}
             </button>
           </div>
         </div>
       </motion.div>
 
-      <ColorPickerModal 
-        product={product}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
+      <ColorPickerModal product={product} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </>
   );
 }

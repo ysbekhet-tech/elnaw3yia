@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { Product } from '@/types';
-import { Tag, Loader2, Package } from 'lucide-react';
+import { Tag, Loader2, LayoutGrid, Grid2x2, List } from 'lucide-react'; // ✅ استيراد الأيقونات
 import ProductCard from '@/components/ProductCard'; 
 
 export default function OffersPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"grid" | "compact" | "list">("grid"); // ✅ حالة العرض
 
   useEffect(() => {
     const fetchOffers = async () => {
@@ -18,7 +19,6 @@ export default function OffersPage() {
         const q = query(collection(db, 'products'), where('isOffer', '==', true));
         const snapshot = await getDocs(q);
         
-        // ✅ تعديل إخفاء المنتج: بنفلتر النتيجة عشان نشيل اللي الـ active بتاعها false
         const offersList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product))
                                        .filter(p => p.isActive !== false);
                                        
@@ -44,9 +44,38 @@ export default function OffersPage() {
   return (
     <div className="min-h-screen py-12 px-4" style={{ background: "#050510" }}>
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center gap-3 mb-8">
-          <Tag size={30} className="text-yellow-400" />
-          <h1 className="text-3xl font-black text-white">العروض والتخفيضات</h1>
+        
+        {/* ✅ تعديل الهيدر عشان نضيف الزرارات جنب العنوان */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div className="flex items-center gap-3">
+            <Tag size={30} className="text-yellow-400" />
+            <h1 className="text-3xl font-black text-white">العروض والتخفيضات</h1>
+          </div>
+
+          {/* ✅ زرارات التبديل (ألوان داكنة تناسب التصميم) */}
+          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl p-1.5 self-start">
+            <button 
+              onClick={() => setViewMode("grid")} 
+              className={`p-2.5 rounded-xl transition ${viewMode === "grid" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+              title="عرض كروت كبيرة"
+            >
+              <LayoutGrid size={16} />
+            </button>
+            <button 
+              onClick={() => setViewMode("compact")} 
+              className={`p-2.5 rounded-xl transition ${viewMode === "compact" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+              title="عرض كروت صغيرة"
+            >
+              <Grid2x2 size={16} />
+            </button>
+            <button 
+              onClick={() => setViewMode("list")} 
+              className={`p-2.5 rounded-xl transition ${viewMode === "list" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+              title="عرض قايمة"
+            >
+              <List size={16} />
+            </button>
+          </div>
         </div>
 
         {products.length === 0 ? (
@@ -54,9 +83,14 @@ export default function OffersPage() {
             <p className="text-slate-400 text-lg">لا توجد عروض متاحة حالياً</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          // ✅ تعديل الـ Grid بناءً على نوع العرض
+          <div className={`grid gap-6 ${
+            viewMode === "list" ? "grid-cols-1" : 
+            viewMode === "compact" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6" : 
+            "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+          }`}>
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} viewMode={viewMode} />
             ))}
           </div>
         )}

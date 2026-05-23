@@ -4,12 +4,13 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { Product } from '@/types';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, LayoutGrid, Grid2x2, List } from 'lucide-react'; // ✅ استيراد الأيقونات
 import ProductCard from '@/components/ProductCard'; 
 
 export default function NewArrivalsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"grid" | "compact" | "list">("grid"); // ✅ حالة العرض
 
   useEffect(() => {
     const fetchNew = async () => {
@@ -44,9 +45,38 @@ export default function NewArrivalsPage() {
   return (
     <div className="min-h-screen py-12 px-4" style={{ background: "#050510" }}>
       <div className="max-w-7xl mx-auto">
-        <div className="flex items-center gap-3 mb-8">
-          <Sparkles size={30} className="text-cyan-400" />
-          <h1 className="text-3xl font-black text-white">وصل حديثاً</h1>
+        
+        {/* ✅ تعديل الهيدر عشان نضيف الزرارات جنب العنوان */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div className="flex items-center gap-3">
+            <Sparkles size={30} className="text-cyan-400" />
+            <h1 className="text-3xl font-black text-white">وصل حديثاً</h1>
+          </div>
+
+          {/* ✅ زرارات التبديل (ألوان داكنة تناسب التصميم) */}
+          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl p-1.5 self-start">
+            <button 
+              onClick={() => setViewMode("grid")} 
+              className={`p-2.5 rounded-xl transition ${viewMode === "grid" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+              title="عرض كروت كبيرة"
+            >
+              <LayoutGrid size={16} />
+            </button>
+            <button 
+              onClick={() => setViewMode("compact")} 
+              className={`p-2.5 rounded-xl transition ${viewMode === "compact" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+              title="عرض كروت صغيرة"
+            >
+              <Grid2x2 size={16} />
+            </button>
+            <button 
+              onClick={() => setViewMode("list")} 
+              className={`p-2.5 rounded-xl transition ${viewMode === "list" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+              title="عرض قايمة"
+            >
+              <List size={16} />
+            </button>
+          </div>
         </div>
 
         {products.length === 0 ? (
@@ -54,9 +84,14 @@ export default function NewArrivalsPage() {
             <p className="text-slate-400 text-lg">لا توجد منتجات جديدة حالياً</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          // ✅ تعديل الـ Grid بناءً على نوع العرض
+          <div className={`grid gap-6 ${
+            viewMode === "list" ? "grid-cols-1" : 
+            viewMode === "compact" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6" : 
+            "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+          }`}>
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} viewMode={viewMode} />
             ))}
           </div>
         )}

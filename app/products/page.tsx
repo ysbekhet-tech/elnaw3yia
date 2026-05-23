@@ -6,6 +6,7 @@ import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Product } from "@/types";
 import ProductCard from "@/components/ProductCard";
+import { LayoutGrid, Grid2x2, List } from "lucide-react";
 
 interface Category {
   id: string;
@@ -25,6 +26,7 @@ function ProductsContent() {
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("الكل");
   const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "compact" | "list">("grid");
 
   useEffect(() => {
     if (categoryFromUrl) {
@@ -65,7 +67,6 @@ function ProductsContent() {
   }, []);
 
   useEffect(() => {
-    // ✅ تعديل إخفاء المنتج: بنفلتر المنتجات عشان نشيل اللي الـ active بتاعها false
     let result = products.filter((p) => p.isActive !== false);
 
     if (activeCategory !== "الكل") {
@@ -90,25 +91,49 @@ function ProductsContent() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-10">
-      <div className="flex items-center gap-3 mb-8">
+      
+      <div className="flex items-center gap-3 mb-6">
         <div className="w-1 h-8 bg-purple-500 rounded"></div>
-        <h1 className="text-3xl font-black text-slate-800">
-          كل المنتجات
-        </h1>
-        <span className="text-slate-400 text-sm">
-          ({filtered.length} منتج)
-        </span>
+        <h1 className="text-3xl font-black text-slate-800">كل المنتجات</h1>
+        <span className="text-slate-400 text-sm">({filtered.length} منتج)</span>
       </div>
 
-      <div className="flex items-center bg-slate-100 border border-slate-200 rounded-2xl px-4 py-3 mb-6 max-w-lg">
-        <span className="text-slate-400 ml-2">🔍</span>
-        <input
-          type="text"
-          placeholder="ابحث عن منتج..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1 bg-transparent outline-none text-sm text-slate-700"
-        />
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
+        
+        <div className="flex items-center flex-1 max-w-lg bg-slate-900 border border-slate-700 rounded-2xl px-4 py-3">
+          <span className="text-slate-400 ml-2">🔍</span>
+          <input
+            type="text"
+            placeholder="ابحث عن منتج..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 bg-transparent outline-none text-sm text-white placeholder-slate-500"
+          />
+        </div>
+
+        <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-2xl p-1.5 self-start sm:self-auto">
+          <button 
+            onClick={() => setViewMode("grid")} 
+            className={`p-2.5 rounded-xl transition ${viewMode === "grid" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+            title="عرض كروت كبيرة"
+          >
+            <LayoutGrid size={18} />
+          </button>
+          <button 
+            onClick={() => setViewMode("compact")} 
+            className={`p-2.5 rounded-xl transition ${viewMode === "compact" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+            title="عرض كروت صغيرة"
+          >
+            <Grid2x2 size={18} />
+          </button>
+          <button 
+            onClick={() => setViewMode("list")} 
+            className={`p-2.5 rounded-xl transition ${viewMode === "list" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+            title="عرض قايمة"
+          >
+            <List size={18} />
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-2 flex-wrap mb-8">
@@ -134,11 +159,7 @@ function ProductsContent() {
             }`}
           >
             {cat.imageUrl ? (
-              <img
-                src={cat.imageUrl}
-                alt={cat.name}
-                className="w-5 h-5 rounded-full object-cover flex-shrink-0"
-              />
+              <img src={cat.imageUrl} alt={cat.name} className="w-5 h-5 rounded-full object-cover flex-shrink-0" />
             ) : (
               <span>{cat.icon}</span>
             )}
@@ -149,42 +170,35 @@ function ProductsContent() {
 
       {loading ? (
         <div className="text-center py-20">
-          <p className="text-xl text-slate-500 font-bold">
-            جاري تحميل المنتجات...
-          </p>
+          <p className="text-xl text-slate-500 font-bold">جاري تحميل المنتجات...</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20">
           <p className="text-6xl mb-4">📦</p>
-          <p className="text-xl font-bold text-slate-500">
-            لا توجد منتجات
-          </p>
+          <p className="text-xl font-bold text-slate-500">لا توجد منتجات</p>
           <button
-            onClick={() => {
-              handleCategoryClick("الكل");
-              setSearch("");
-            }}
+            onClick={() => { handleCategoryClick("الكل"); setSearch(""); }}
             className="mt-4 text-purple-600 font-bold hover:underline"
           >
             عرض كل المنتجات
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className={`grid gap-4 ${
+          viewMode === "list" ? "grid-cols-1" : 
+          viewMode === "compact" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6" : 
+          "grid-cols-2 sm:grid-cols-3 lg:grid-cols-4"
+        }`}>
           {filtered.map((product) => {
-            const available =
-              (product.stock || 0) -
-              ((product as any).reserved || 0);
+            const available = (product.stock || 0) - ((product as any).reserved || 0);
             return (
               <div key={product.id} className="relative">
                 {available <= 0 && (
                   <div className="absolute inset-0 z-10 bg-black/60 rounded-xl flex items-center justify-center pointer-events-none">
-                    <span className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-bold">
-                      نفذت الكمية
-                    </span>
+                    <span className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-bold">نفذت الكمية</span>
                   </div>
                 )}
-                <ProductCard product={product} />
+                <ProductCard product={product} viewMode={viewMode} />
               </div>
             );
           })}

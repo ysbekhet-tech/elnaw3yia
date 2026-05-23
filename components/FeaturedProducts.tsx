@@ -6,11 +6,12 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
 import { Product } from "@/types";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LayoutGrid, Grid2x2, List } from "lucide-react"; // ✅ استيراد أيقونات العرض
 
 export default function FeaturedProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewMode, setViewMode] = useState<"grid" | "compact" | "list">("grid"); // ✅ حالة عرض المنتجات
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -55,7 +56,7 @@ export default function FeaturedProducts() {
   return (
     <section className="max-w-7xl mx-auto px-5 py-16">
 
-      {/* Section Header */}
+      {/* Section Header مع زرارات التبديل */}
       <div className="flex items-center justify-between mb-12">
         <div>
           <p className="gradient-text font-bold mb-2 text-sm">منتجات مختارة</p>
@@ -64,14 +65,45 @@ export default function FeaturedProducts() {
           </h2>
           <div className="w-16 h-1 rounded-full gradient-bg mt-3" />
         </div>
+
+        {/* ✅ زرارات تغيير العرض */}
+        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl p-1.5">
+          <button 
+            onClick={() => setViewMode("grid")} 
+            className={`p-2.5 rounded-xl transition ${viewMode === "grid" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+            title="عرض كروت كبيرة"
+          >
+            <LayoutGrid size={18} />
+          </button>
+          <button 
+            onClick={() => setViewMode("compact")} 
+            className={`p-2.5 rounded-xl transition ${viewMode === "compact" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+            title="عرض كروت صغيرة"
+          >
+            <Grid2x2 size={18} />
+          </button>
+          <button 
+            onClick={() => setViewMode("list")} 
+            className={`p-2.5 rounded-xl transition ${viewMode === "list" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+            title="عرض قايمة"
+          >
+            <List size={18} />
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* ✅ تعديل الـ Grid بناءً على نوع العرض */}
+      <div className={`grid gap-6 ${
+        viewMode === "list" ? "grid-cols-1" : 
+        viewMode === "compact" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6" : 
+        "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+      }`}>
         {displayedProducts.length > 0 ? (
           displayedProducts.map((product) => (
             <ProductCard
               key={product.id}
               product={product}
+              viewMode={viewMode} // ✅ تمرير نوع العرض للكارت
             />
           ))
         ) : (
