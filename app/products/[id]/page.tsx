@@ -96,7 +96,9 @@ export default function ProductDetails() {
   const cartQuantity = useMemo(() => {
     if (!product) return 0;
     return cart.reduce((sum, item) => {
-      if (item.id === product.id && item.selectedColor === selectedColorName && item.selectedSize === selectedSize) {
+      if (item.id === product.id && item.selectedColor === selectedColorName && 
+          item.selectedSize?.length === selectedSize?.length && 
+          item.selectedSize?.width === selectedSize?.width) {
         return sum + item.quantity;
       }
       return sum;
@@ -115,6 +117,12 @@ export default function ProductDetails() {
       setQuantity(1);
     }
   }, [canAddMore, quantity]);
+
+  // ✅ حساب السعر النهائي (سعر المنتج + سعر المقاس لو موجود)
+  const finalItemPrice = useMemo(() => {
+    const sizeExtraPrice = selectedSize?.price ? parseFloat(selectedSize.price) || 0 : 0;
+    return product!.price + sizeExtraPrice;
+  }, [product, selectedSize]);
 
   const nextImage = (e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -272,7 +280,7 @@ export default function ProductDetails() {
               </div>
             )}
 
-            {/* المقاسات */}
+            {/* المقاسات - ✅ تم تعديل العرض ليظهر الأبعاد والسعر */}
             {product.sizes && product.sizes.length > 0 && (
               <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
                 <h3 className="text-sm font-bold text-purple-400 mb-3">المقاسات:</h3>
@@ -281,22 +289,25 @@ export default function ProductDetails() {
                     <button
                       key={index}
                       onClick={() => setSelectedSizeIndex(index)}
-                      className={`w-20 h-20 flex items-center justify-center rounded-lg border-2 transition-all duration-200 ${
+                      className={`px-4 py-3 flex flex-col items-center justify-center rounded-lg border-2 transition-all duration-200 ${
                         selectedSizeIndex === index
                           ? "border-purple-500 bg-purple-600 text-white font-bold"
-                          : "border-slate-600 hover:border-slate-400"
+                          : "border-slate-600 hover:border-slate-400 bg-slate-700 text-slate-300"
                       }`}
                     >
-                      {size}
+                      <span className="text-sm">{size.length} × {size.width}</span>
+                      {size.price && parseFloat(size.price) > 0 && (
+                        <span className="text-[10px] mt-1 opacity-80">+{size.price} جنيه</span>
+                      )}
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* السعر والخصم */}
+            {/* السعر والخصم - ✅ تم تعديل السعر ليظهر السعر النهائي مع المقاس */}
             <div className="flex items-center gap-3">
-              <span className="text-2xl font-black text-purple-400">{product.price} جنيه</span>
+              <span className="text-2xl font-black text-purple-400">{finalItemPrice} جنيه</span>
               {product.originalPrice && (
                 <span className="text-base text-slate-500 line-through">{product.originalPrice} جنيه</span>
               )}
@@ -336,7 +347,7 @@ export default function ProductDetails() {
               </div>
             </div>
 
-            {/* اختيار الكمية */}
+            {/* اختيار الكمية - ✅ تم تعديل الإجمالي بالسعر النهائي */}
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -354,7 +365,7 @@ export default function ProductDetails() {
               </button>
               <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 ms-auto">
                 <span className="text-slate-400 text-xs">الإجمالي: </span>
-                <span className="font-black text-purple-400 text-sm ms-1">{product.price * quantity} جنيه</span>
+                <span className="font-black text-purple-400 text-sm ms-1">{finalItemPrice * quantity} جنيه</span>
               </div>
             </div>
 

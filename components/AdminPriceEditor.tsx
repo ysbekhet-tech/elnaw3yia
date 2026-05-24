@@ -68,10 +68,13 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
   // ✅✅✅ جلب الداتا الكاملة من Firestore مباشرة
   useEffect(() => {
     if (!product?.id) return;
+    
+    // ✅ الحل: تعريف الـ id كمتغير string هنا عشان TypeScript ما يغلبش
+    const productId = product.id;
 
     const fetchFullProduct = async () => {
       try {
-        const productDoc = await getDoc(doc(db, "products", product.id));
+        const productDoc = await getDoc(doc(db, "products", productId));
         if (productDoc.exists()) {
           const data = productDoc.data();
 

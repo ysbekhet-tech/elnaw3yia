@@ -8,7 +8,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { Product, CartItem } from "@/types";
+import { Product, CartItem, ProductSize } from "@/types"; // ← أضفنا ProductSize هنا
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
 
@@ -18,10 +18,11 @@ type CartContextType = {
     product: Product,
     openSidebar?: boolean,
     selectedColor?: string,
-    qty?: number
+    qty?: number,
+    selectedSize?: ProductSize // ← عدلنا النوع هنا
   ) => Promise<boolean>;
-  removeFromCart: (id: string, selectedColor?: string) => void;
-  deleteFromCart: (id: string, selectedColor?: string) => void;
+  removeFromCart: (id: string, selectedColor?: string, selectedSize?: ProductSize) => void; // ← عدلنا النوع هنا
+  deleteFromCart: (id: string, selectedColor?: string, selectedSize?: ProductSize) => void; // ← عدلنا النوع هنا
   clearLocalCart: () => void;
   cartTotal: number;
   cartCount: number;
@@ -104,7 +105,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // ✅ النسخة القديمة - للـ checkout بس (بتعتمد على productsData من onSnapshot)
   const availableStock = useCallback(
     (productId: string): number => {
       const data = productsData[productId];
@@ -167,19 +167,26 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // دالة مساعدة لتحويل المقاس لمفتاح فريد للمقارنة
+  const getSizeKey = (size?: ProductSize) => {
+    return size ? `${size.length}x${size.width}` : "";
+  };
+
   const addToCart = useCallback(
     async (
       product: Product,
       openSidebar: boolean = true,
       selectedColor?: string,
-      qty: number = 1
+      qty: number = 1,
+      selectedSize?: ProductSize
     ): Promise<boolean> => {
       if (!product.id) return false;
       const colorKey = selectedColor || "";
+      const sizeKey = getSizeKey(selectedSize);
       const now = Date.now();
 
       const existingItem = cart.find(
-        (i) => i.id === product.id && (i.selectedColor || "") === colorKey
+        (i) => i.id === product.id && (i.selectedColor || "") === colorKey && getSizeKey(i.selectedSize) === sizeKey
       );
 
       if (existingItem) {
@@ -193,7 +200,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
         setCart((prev) =>
           prev.map((i) =>
-            i.id === product.id && (i.selectedColor || "") === colorKey
+            i.id === product.id && (i.selectedColor || "") === colorKey && getSizeKey(i.selectedSize) === sizeKey
               ? { ...i, quantity: i.quantity + qty, addedAt: now }
               : i
           )
@@ -207,7 +214,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
         setCart((prev) => [
           ...prev,
-          { ...product, quantity: qty, selectedColor: colorKey, addedAt: now },
+          { ...product, quantity: qty, selectedColor: colorKey, selectedSize: selectedSize, addedAt: now },
         ]);
       }
 
@@ -217,18 +224,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     [cart]
   );
 
-  const removeFromCart = useCallback((id: string, selectedColor?: string) => {
+  const removeFromCart = useCallback((id: string, selectedColor?: string, selectedSize?: ProductSize) => {
     const colorKey = selectedColor || "";
+    const sizeKey = getSizeKey(selectedSize);
     
     setCart((prev) => {
-      const item = prev.find((i) => i.id === id && (i.selectedColor || "") === colorKey);
+      const item = prev.find((i) => i.id === id && (i.selectedColor || "") === colorKey && getSizeKey(i.selectedSize) === sizeKey);
       if (item) {
         releaseReservation(id, 1);
       }
 
       return prev
         .map((i) =>
-          i.id === id && (i.selectedColor || "") === colorKey
+          i.id === id && (i.selectedColor || "") === colorKey && getSizeKey(i.selectedSize) === sizeKey
             ? { ...i, quantity: i.quantity - 1, addedAt: Date.now() }
             : i
         )
@@ -236,15 +244,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const deleteFromCart = useCallback((id: string, selectedColor?: string) => {
+  const deleteFromCart = useCallback((id: string, selectedColor?: string, selectedSize?: ProductSize) => {
     const colorKey = selectedColor || "";
+    const sizeKey = getSizeKey(selectedSize);
     
     setCart((prev) => {
-      const item = prev.find((i) => i.id === id && (i.selectedColor || "") === colorKey);
+      const item = prev.find((i) => i.id === id && (i.selectedColor || "") === colorKey && getSizeKey(i.selectedSize) === sizeKey);
       if (item) {
         releaseReservation(id, item.quantity);
       }
-      return prev.filter((i) => !(i.id === id && (i.selectedColor || "") === colorKey));
+      return prev.filter((i) => !(i.id === id && (i.selectedColor || "") === colorKey && getSizeKey(i.selectedSize) === sizeKey));
     });
   }, []);
 
