@@ -43,32 +43,32 @@ export default function CategoriesSection() {
       
       <div className="relative group">
         
-        {/* تأثير التلاشي (Fade) على الجوانب */}
-        <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-black to-transparent z-10 pointer-events-none rounded-l-xl"></div>
-        <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-black to-transparent z-10 pointer-events-none rounded-r-xl"></div>
+        {/* تأثير التلاشي - تم تغيير from-black إلى from-slate-900 */}
+        {/* ⚠️ لو خلفية الموقع مش slate-900، غير اللون ده عشان يطابق الخلفية */}
+        <div className="absolute start-0 top-0 bottom-0 w-12 bg-gradient-to-e from-slate-900 to-transparent z-10 pointer-events-none rounded-s-xl"></div>
+        <div className="absolute end-0 top-0 bottom-0 w-12 bg-gradient-to-s from-slate-900 to-transparent z-10 pointer-events-none rounded-e-xl"></div>
         
-        {/* زرار السحب لشمال - يأشر شمال */}
+        {/* زرار السحب - تم استخدام start و end بدل left و right لدعم RTL */}
         <button 
           onClick={() => scroll("left")}
-          className="absolute left-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/10 backdrop-blur-md text-white/70 flex items-center justify-center hover:bg-purple-500 hover:text-white hover:scale-110 transition-all duration-300 shadow-lg border border-white/5"
+          className="absolute start-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/10 backdrop-blur-md text-white/70 flex items-center justify-center hover:bg-purple-500 hover:text-white hover:scale-110 transition-all duration-300 shadow-lg border border-white/5"
           aria-label="Scroll Left"
         >
           <ChevronLeft size={18} strokeWidth={2.5} />
         </button>
 
-        {/* زرار السحب ليمين - يأشر يمين */}
         <button 
           onClick={() => scroll("right")}
-          className="absolute right-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/10 backdrop-blur-md text-white/70 flex items-center justify-center hover:bg-purple-500 hover:text-white hover:scale-110 transition-all duration-300 shadow-lg border border-white/5"
+          className="absolute end-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/10 backdrop-blur-md text-white/70 flex items-center justify-center hover:bg-purple-500 hover:text-white hover:scale-110 transition-all duration-300 shadow-lg border border-white/5"
           aria-label="Scroll Right"
         >
           <ChevronRight size={18} strokeWidth={2.5} />
         </button>
 
-        {/* صف الأقسام */}
+        {/* صف الأقسام - إضافة justify-center لو الأقسام قليلة */}
         <div 
           ref={scrollContainerRef}
-          className="flex items-center gap-4 overflow-x-auto scroll-smooth py-2 px-1"
+          className={`flex items-center gap-4 overflow-x-auto scroll-smooth py-2 px-1 ${categories.length <= 5 ? 'justify-center' : ''}`}
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           <style>{`div::-webkit-scrollbar { display: none; }`}</style>
