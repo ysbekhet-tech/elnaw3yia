@@ -2,14 +2,15 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot } from "firebase/firestore";
+import { uploadBase64Image } from "@/lib/uploadImage";
 import { Upload, ChevronDown, Check, X, Save, Palette, Plus, ImagePlus, Ruler, AlertTriangle, Star, Edit2, Search } from "lucide-react";
 import ReactCrop, { Crop, PixelCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import { Product, ProductColor, ProductSize } from "@/types";
 
 interface AdminProductFormProps {
-  onSubmit: (formData: Partial<Product>) => void;
+  onSubmit: (formData: Partial<Product>) => void | Promise<void>;
 }
 
 export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
@@ -27,6 +28,7 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
 
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
 
@@ -60,6 +62,17 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
   const [isImageLoading, setIsImageLoading] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
+  // ✅ حالة الإشعارات
+  const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // ✅ إخفاء الإشعار تلقائياً
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "categories"), (snapshot) => {
       const catsList = snapshot.docs.map((doc) => ({ id: doc.id, name: doc.data().name as string }));
@@ -86,7 +99,6 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
 
   // === دوال الـ Crop ===
   const openCropModal = (imageUrl: string, target: "main" | "color") => {
-    // إعادة ضبط كامل قبل فتح المودال
     imgRef.current = null;
     setImageToCrop(imageUrl);
     setCropTarget(target);
@@ -99,7 +111,6 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
   const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     imgRef.current = e.currentTarget;
     setIsImageLoading(false);
-    // ضبط الـ crop الافتراضي ليملأ الصورة كلها
     setCrop({
       unit: "%",
       width: 100,
@@ -149,13 +160,6 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
   }
 
   const handleSaveCrop = async () => {
-    console.log("Saving crop...", { 
-      cropTarget, 
-      hasImage: !!imgRef.current, 
-      crop: completedCrop,
-      isLoading: isImageLoading 
-    });
-
     if (isImageLoading) {
       alert("الصورة لسه بتحمل، استنى شوية...");
       return;
@@ -163,7 +167,6 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
 
     try {
       const croppedImage = await getCroppedImg();
-      console.log("Cropped result:", croppedImage ? "success (" + croppedImage.length + " chars)" : "null");
 
       if (croppedImage) {
         if (cropTarget === "main") {
@@ -173,15 +176,14 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
         }
       } else {
         alert("مقدرش أقص الصورة. جرب تاني.");
-        return; // ما تسكرش المودال لو فشل
+        return;
       }
     } catch (e) {
       console.error("Error in handleSaveCrop:", e);
       alert("حصل خطأ أثناء القص، جرب تاني.");
-      return; // ما تسكرش المودال لو فشل
+      return;
     }
 
-    // سكر المودال بس لو نجح
     setCropModalOpen(false);
     setImageToCrop(null);
     imgRef.current = null;
@@ -330,12 +332,13 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
     }
   };
 
+  // ✅ الصورة اختيارية - يكفي اسم اللون
   const handleAddColor = () => {
-    if (!newColorName || !newColorImage) {
-      alert("يجب إدخال اسم اللون وصورته!");
+    if (!newColorName) {
+      alert("يجب إدخال اسم اللون!");
       return;
     }
-    setColors([...colors, { name: newColorName, hex: newColorHex, image: newColorImage }]);
+    setColors([...colors, { name: newColorName, hex: newColorHex, image: newColorImage || "" }]);
     setNewColorName("");
     setNewColorHex("#000000");
     setNewColorImage(null);
@@ -364,6 +367,7 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
   const handleUpdateCategory = async (catId: string) => {
     if (!editingCatName.trim()) return;
     try {
+      const { updateDoc, doc } = await import("firebase/firestore");
       await updateDoc(doc(db, "categories", catId), { name: editingCatName });
       setEditingCatId(null);
       setEditingCatName("");
@@ -372,45 +376,110 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // ✅ دالة مساعدة لرفع الصور على Storage
+  const uploadImagesToStorage = async (productId: string): Promise<string[]> => {
+    const imageUrls: string[] = [];
 
-    let finalPrice = Number(formData.price);
-    if (hasSizes && sizes.length > 0) {
-      finalPrice = Number(sizes[0].price);
+    for (let i = 0; i < imagePreviews.length; i++) {
+      if (imagePreviews[i].startsWith("data:")) {
+        const path = `products/${productId}/image_${i}_${Date.now()}.jpg`;
+        const url = await uploadBase64Image(imagePreviews[i], path);
+        imageUrls.push(url);
+      } else {
+        imageUrls.push(imagePreviews[i]);
+      }
     }
 
-    onSubmit({
-      ...formData,
-      price: finalPrice,
-      originalPrice: Number(formData.originalPrice),
-      stock: Number(formData.stock),
-      minStock: Number(formData.minStock) || 5,
-      countryOfOrigin: formData.countryOfOrigin,
-      images: imagePreviews,
-      hasColors: hasColors,
-      colors: hasColors ? colors : [],
-      hasSizes: hasSizes,
-      sizes: hasSizes ? sizes : [],
-    });
+    return imageUrls;
+  };
 
-    setFormData({
-      name: "",
-      price: "",
-      originalPrice: "",
-      category: "",
-      barcode: "",
-      stock: "",
-      description: "",
-      minStock: "5",
-      countryOfOrigin: "",
-    });
-    setImagePreviews([]);
-    setHasColors(false);
-    setColors([]);
-    setHasSizes(false);
-    setSizes([]);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  // ✅ دالة مساعدة لرفع صور الألوان
+  const uploadColorImages = async (productId: string): Promise<ProductColor[]> => {
+    if (!hasColors || colors.length === 0) return [];
+
+    const updatedColors: ProductColor[] = [];
+
+    for (let i = 0; i < colors.length; i++) {
+      const color = colors[i];
+      if (color.image && color.image.startsWith("data:")) {
+        const path = `products/${productId}/colors/color_${i}_${Date.now()}.jpg`;
+        const url = await uploadBase64Image(color.image, path);
+        updatedColors.push({ ...color, image: url });
+      } else {
+        updatedColors.push(color);
+      }
+    }
+
+    return updatedColors;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (isUploading) return;
+
+    setIsUploading(true);
+
+    try {
+      // ✅ توليد ID للمنتج
+      const productId = crypto.randomUUID();
+
+      // ✅ رفع الصور على Storage
+      const imageUrls = await uploadImagesToStorage(productId);
+
+      // ✅ رفع صور الألوان
+      const finalColors = await uploadColorImages(productId);
+
+      let finalPrice = Number(formData.price);
+      if (hasSizes && sizes.length > 0) {
+        finalPrice = Number(sizes[0].price);
+      }
+
+      // ✅ نبعت URLs مش Base64
+      await onSubmit({
+        id: productId,
+        ...formData,
+        description: formData.description,
+        price: finalPrice,
+        originalPrice: Number(formData.originalPrice),
+        stock: Number(formData.stock),
+        minStock: Number(formData.minStock) || 5,
+        countryOfOrigin: formData.countryOfOrigin,
+        images: imageUrls,
+        hasColors: hasColors,
+        colors: hasColors ? finalColors : [],
+        hasSizes: hasSizes,
+        sizes: hasSizes ? sizes : [],
+      });
+
+      // ✅ رسالة نجاح
+      setNotification({ type: "success", message: "تم إضافة المنتج بنجاح! ✅" });
+
+      // ✅ تنظيف الفورم
+      setFormData({
+        name: "",
+        price: "",
+        originalPrice: "",
+        category: "",
+        barcode: "",
+        stock: "",
+        description: "",
+        minStock: "5",
+        countryOfOrigin: "",
+      });
+      setImagePreviews([]);
+      setHasColors(false);
+      setColors([]);
+      setHasSizes(false);
+      setSizes([]);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (error) {
+      console.error("Error uploading images:", error);
+      // ✅ رسالة خطأ
+      setNotification({ type: "error", message: "حدث خطأ أثناء إضافة المنتج! حاول مرة أخرى ❌" });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const inputStyle =
@@ -432,24 +501,24 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
                 <span className="mr-3 text-black font-bold">جاري تحميل الصورة...</span>
               </div>
             )}
-            <ReactCrop 
-              crop={crop} 
-              onChange={(c) => setCrop(c)} 
+            <ReactCrop
+              crop={crop}
+              onChange={(c) => setCrop(c)}
               onComplete={(c) => setCompletedCrop(c)}
               keepSelection
             >
-              <img 
-                ref={imgRef} 
-                src={imageToCrop} 
-                alt="Crop" 
-                onLoad={onImageLoad} 
-                style={{ maxWidth: "100%", maxHeight: "60vh", display: isImageLoading ? "none" : "block" }} 
+              <img
+                ref={imgRef}
+                src={imageToCrop}
+                alt="Crop"
+                onLoad={onImageLoad}
+                style={{ maxWidth: "100%", maxHeight: "60vh", display: isImageLoading ? "none" : "block" }}
               />
             </ReactCrop>
           </div>
           <div className="mt-4 flex items-center gap-4">
-            <button 
-              onClick={handleSaveCrop} 
+            <button
+              onClick={handleSaveCrop}
               disabled={isImageLoading}
               className={`px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center gap-2 ${isImageLoading ? "opacity-50 cursor-not-allowed" : ""}`}
             >
@@ -470,6 +539,25 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
       )}
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* ✅ إشعار النجاح أو الخطأ */}
+        {notification && (
+          <div
+            className={`md:col-span-2 mb-2 p-4 rounded-xl flex items-center justify-between ${
+              notification.type === "success"
+                ? "bg-green-50 border border-green-300 text-green-800"
+                : "bg-red-50 border border-red-300 text-red-800"
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {notification.type === "success" ? <Check size={18} /> : <AlertTriangle size={18} />}
+              <span className="font-bold text-sm">{notification.message}</span>
+            </div>
+            <button onClick={() => setNotification(null)} className="hover:opacity-70">
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
         <div className="md:col-span-2 mb-2">
           <h2 className="text-lg font-bold text-black">إدارة المنتجات</h2>
         </div>
@@ -616,19 +704,25 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
           </div>
           {hasColors && (
             <div className="mt-4 border-t border-slate-700 pt-4">
-              <div className="flex flex-wrap gap-3 mb-4">
-                {colors.map((color, index) => (
-                  <div key={index} className="relative group flex flex-col items-center gap-1">
-                    <div className="w-12 h-12 rounded-full border-2 border-slate-600 overflow-hidden">
-                      <img src={color.image} alt={color.name} className="w-full h-full object-cover" />
+              {colors.length > 0 && (
+                <div className="flex flex-wrap gap-3 mb-4">
+                  {colors.map((color, index) => (
+                    <div key={index} className="relative group flex flex-col items-center gap-1">
+                      <div className="w-12 h-12 rounded-full border-2 border-slate-600 overflow-hidden">
+                        {color.image ? (
+                          <img src={color.image} alt={color.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full" style={{ backgroundColor: color.hex }} />
+                        )}
+                      </div>
+                      <span className="text-[10px] text-black font-bold">{color.name}</span>
+                      <button type="button" onClick={() => handleRemoveColor(index)} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                        <X size={10} />
+                      </button>
                     </div>
-                    <span className="text-[10px] text-black font-bold">{color.name}</span>
-                    <button type="button" onClick={() => handleRemoveColor(index)} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                      <X size={10} />
-                    </button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
                 <div>
                   <label className="block text-xs text-black font-bold mb-1">اسم اللون</label>
@@ -642,7 +736,7 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-black font-bold mb-1">صورة اللون</label>
+                  <label className="block text-xs text-black font-bold mb-1">صورة اللون (اختياري)</label>
                   <div
                     onDragOver={(e) => {
                       e.preventDefault();
@@ -656,7 +750,7 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
                     onClick={() => colorFileInputRef.current?.click()}
                   >
                     <Upload size={14} className="text-purple-400" />
-                    <span className="text-xs !text-black !font-bold truncate">{isColorDragging ? "أفلت هنا" : newColorImage ? "تم الاختيار ✂️" : "اسحب أو اختر"}</span>
+                    <span className="text-xs !text-black !font-bold truncate">{isColorDragging ? "أفلت هنا" : newColorImage ? "تم الاختيار ✂️" : "اختياري"}</span>
                     <input type="file" accept="image/*" className="hidden" onChange={handleColorImageChange} ref={colorFileInputRef} />
                   </div>
                 </div>
@@ -709,11 +803,14 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
                       </div>
                     ) : (
                       <>
-                        <span className={`flex-1 cursor-pointer ${formData.category === cat.name ? "text-purple-700" : ""}`} onClick={() => {
-                           setFormData({ ...formData, category: cat.name }); 
-                           setCategoryOpen(false); 
-                           setCategorySearch("");
-                        }}>
+                        <span
+                          className={`flex-1 cursor-pointer ${formData.category === cat.name ? "text-purple-700" : ""}`}
+                          onClick={() => {
+                            setFormData({ ...formData, category: cat.name });
+                            setCategoryOpen(false);
+                            setCategorySearch("");
+                          }}
+                        >
                           {cat.name}
                         </span>
                         <div className="flex items-center gap-2">
@@ -751,9 +848,14 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
         </div>
 
         <div className="md:col-span-2 mt-2">
-          <button type="submit" className="w-full h-14 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition hover:opacity-90" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}>
+          <button
+            type="submit"
+            disabled={isUploading}
+            className={`w-full h-14 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition hover:opacity-90 ${isUploading ? "opacity-70 cursor-not-allowed" : ""}`}
+            style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}
+          >
             <Save size={18} />
-            حفظ المنتج في الداتابيز
+            {isUploading ? "جاري رفع الصور..." : "حفظ المنتج في الداتابيز"}
           </button>
         </div>
       </form>

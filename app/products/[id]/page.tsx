@@ -1,7 +1,10 @@
+// ملف: ProductDetails.tsx
+
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Image from "next/image";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { Product, ProductColor } from "@/types";
@@ -17,7 +20,6 @@ import {
   ChevronRight,
   Circle,
   CircleDot,
-  Clock,
 } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
 import { useProductStock } from "../../../hooks/useProductStock";
@@ -37,7 +39,6 @@ export default function ProductDetails() {
   const router = useRouter();
   const { addToCart, cart } = useCart();
   
-  // ✅ نستخدم الـ hook عشان نجيب المخزون المحدث لحظياً
   const { stock, reserved } = useProductStock(id as string);
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -46,6 +47,7 @@ export default function ProductDetails() {
   const [added, setAdded] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
   const [selectedColorIndex, setSelectedColorIndex] = useState<number>(0);
+  const [selectedSizeIndex, setSelectedSizeIndex] = useState<number>(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
@@ -59,7 +61,7 @@ export default function ProductDetails() {
         setLoading(false);
       },
       (error) => {
-        console.error("خطأ في جلب المنتج:", error);
+        console.error("Error fetching product:", error);
         setLoading(false);
       }
     );
@@ -70,6 +72,7 @@ export default function ProductDetails() {
     setCurrentImageIndex(0);
     setQuantity(1);
     setSelectedColorIndex(0);
+    setSelectedSizeIndex(0);
   }, [id]);
 
   const allImages = (product?.images && product.images.length > 0)
@@ -84,24 +87,23 @@ export default function ProductDetails() {
       : undefined;
   }, [product, selectedColorIndex]);
 
-  // ✅ كمية هذا المنتج (بنفس اللون) الموجودة في السلة
+  const selectedSize = useMemo(() => {
+    return product?.sizes && product.sizes.length > 0
+      ? product.sizes[selectedSizeIndex]
+      : undefined;
+  }, [product, selectedSizeIndex]);
+
   const cartQuantity = useMemo(() => {
     if (!product) return 0;
     return cart.reduce((sum, item) => {
-      if (
-        item.id === product.id &&
-        item.selectedColor === selectedColorName
-      ) {
+      if (item.id === product.id && item.selectedColor === selectedColorName && item.selectedSize === selectedSize) {
         return sum + item.quantity;
       }
       return sum;
     }, 0);
-  }, [cart, product, selectedColorName]);
+  }, [cart, product, selectedColorName, selectedSize]);
 
-  // ✅ المتاح = stock - reserved (محدث لحظياً من Firebase)
   const availableStock = Math.max(0, stock - reserved);
-
-  // ✅ الكمية اللي العميل يقدر يضيفها كمان
   const canAddMore = useMemo(() => {
     return Math.max(0, availableStock - cartQuantity);
   }, [availableStock, cartQuantity]);
@@ -121,31 +123,25 @@ export default function ProductDetails() {
 
   const prevImage = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setCurrentImageIndex(
-      (prev) => (prev - 1 + allImages.length) % allImages.length
-    );
+    setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
   };
 
   const handleAddToCart = async () => {
     if (!product || canAddMore <= 0) return;
-
-    const success = await addToCart(product, true, selectedColorName, quantity);
-
+    const success = await addToCart(product, true, selectedColorName, quantity, selectedSize);
     if (success) {
       setAdded(true);
       setTimeout(() => setAdded(false), 2000);
       setQuantity(1);
     } else {
-      alert("الكمية المطلوبة غير متوفرة حالياً. يرجى تحديث الصفحة.");
+      alert("لم يتم إضافة المنتج إلى السلة، يرجى المحاولة مرة أخرى.");
     }
   };
 
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-5 py-24 text-center">
-        <p className="text-xl text-slate-400 font-bold">
-          جاري تحميل بيانات المنتج...
-        </p>
+        <p className="text-xl text-slate-400 font-bold">جاري تحميل تفاصيل المنتج...</p>
       </div>
     );
   }
@@ -153,13 +149,8 @@ export default function ProductDetails() {
   if (!product) {
     return (
       <div className="max-w-7xl mx-auto px-5 py-24 text-center">
-        <p className="text-xl text-red-400 font-bold">
-          عذراً، هذا المنتج غير موجود!
-        </p>
-        <button
-          onClick={() => router.push("/")}
-          className="mt-5 text-purple-400 font-bold"
-        >
+        <p className="text-xl text-red-400 font-bold">المنتج غير موجود!</p>
+        <button onClick={() => router.push("/")} className="mt-5 text-purple-400 font-bold">
           العودة للرئيسية
         </button>
       </div>
@@ -167,9 +158,7 @@ export default function ProductDetails() {
   }
 
   const discount = product.originalPrice
-    ? Math.round(
-        ((product.originalPrice - product.price) / product.originalPrice) * 100
-      )
+    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : 0;
 
   return (
@@ -179,46 +168,47 @@ export default function ProductDetails() {
           onClick={() => router.back()}
           className="flex items-center gap-2 text-slate-400 hover:text-purple-400 transition mb-6 font-bold text-sm"
         >
-          <ArrowRight size={18} /> العودة للمنتجات
+          <ArrowRight size={18} /> العودة
         </button>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+          {/* قسم الصور */}
           <div className="bg-slate-800 rounded-2xl overflow-hidden border border-slate-700 relative group">
             <div
-              className="relative h-[320px] cursor-pointer overflow-hidden"
+              className="relative h-[320px] md:h-[400px] cursor-pointer overflow-hidden"
               onClick={() => setShowFullImage(true)}
             >
-              <img
-                src={
-                  allImages[currentImageIndex] ||
-                  "https://via.placeholder.com/600"
-                }
-                alt={product.name}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
+              {allImages.length > 0 ? (
+                <Image
+                  src={allImages[currentImageIndex]}
+                  alt={product.name}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  priority
+                />
+              ) : (
+                <div className="w-full h-full bg-slate-700 flex items-center justify-center">
+                  <span className="text-slate-500">لا توجد صورة</span>
+                </div>
+              )}
 
               <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                 <span className="bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-lg text-sm font-bold">
-                  اضغط لتكبير الصورة
+                  اضغط لعرض الصورة
                 </span>
               </div>
 
               {allImages.length > 1 && (
                 <>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      prevImage();
-                    }}
+                    onClick={(e) => { e.stopPropagation(); prevImage(); }}
                     className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-sm transition z-10"
                   >
                     <ChevronRight size={20} className="rtl:rotate-180" />
                   </button>
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      nextImage();
-                    }}
+                    onClick={(e) => { e.stopPropagation(); nextImage(); }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-sm transition z-10"
                   >
                     <ChevronLeft size={20} className="rtl:rotate-180" />
@@ -232,22 +222,13 @@ export default function ProductDetails() {
                 {allImages.map((_, idx) => (
                   <button
                     key={idx}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentImageIndex(idx);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(idx); }}
                     className="transition-all"
                   >
                     {currentImageIndex === idx ? (
-                      <CircleDot
-                        size={14}
-                        className="text-white fill-white"
-                      />
+                      <CircleDot size={14} className="text-white fill-white" />
                     ) : (
-                      <Circle
-                        size={10}
-                        className="text-white/60 hover:text-white"
-                      />
+                      <Circle size={10} className="text-white/60 hover:text-white" />
                     )}
                   </button>
                 ))}
@@ -255,64 +236,69 @@ export default function ProductDetails() {
             )}
           </div>
 
+          {/* قسم تفاصيل المنتج */}
           <div className="flex flex-col gap-4">
             <div>
-              <p className="text-purple-400 font-bold text-sm mb-1">
-                {product.category}
-              </p>
-              <h1 className="text-2xl font-black text-white">
-                {product.name}
-              </h1>
+              <p className="text-purple-400 font-bold text-sm mb-1">{product.category}</p>
+              <h1 className="text-2xl font-black text-white">{product.name}</h1>
             </div>
 
+            {/* الألوان */}
             {product.colors && product.colors.length > 0 && (
               <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
                 <h3 className="text-sm font-bold text-purple-400 mb-3">
-                  اللون المختار:
-                  <span className="text-white mr-1">
-                    {product.colors[selectedColorIndex].name}
-                  </span>
+                  الألوان:
+                  <span className="text-white ms-1">{product.colors[selectedColorIndex].name}</span>
                 </h3>
-                <div className="flex items-center gap-3">
-                  {product.colors.map(
-                    (color: ProductColor, index: number) => (
-                      <button
-                        key={index}
-                        onClick={() => setSelectedColorIndex(index)}
-                        title={color.name}
-                        className={`relative w-10 h-10 rounded-full transition-all duration-200 border-2 flex items-center justify-center ${
-                          selectedColorIndex === index
-                            ? "border-purple-500 scale-110 shadow-lg shadow-purple-500/30"
-                            : "border-slate-600 hover:border-slate-400"
-                        }`}
-                        style={{ backgroundColor: color.hex }}
-                      >
-                        {selectedColorIndex === index && (
-                          <Check
-                            size={18}
-                            className={
-                              isLightColor(color.hex)
-                                ? "text-black"
-                                : "text-white"
-                            }
-                            strokeWidth={3}
-                          />
-                        )}
-                      </button>
-                    )
-                  )}
+                <div className="flex flex-wrap gap-3">
+                  {product.colors.map((color: ProductColor, index: number) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedColorIndex(index)}
+                      title={color.name}
+                      className={`w-12 h-12 rounded-full transition-all duration-200 border-2 flex items-center justify-center ${
+                        selectedColorIndex === index
+                          ? "border-purple-500 scale-110 shadow-lg shadow-purple-500/30"
+                          : "border-slate-600 hover:border-slate-400"
+                      }`}
+                      style={{ backgroundColor: color.hex }}
+                    >
+                      {selectedColorIndex === index && (
+                        <Check size={18} className={isLightColor(color.hex) ? "text-black" : "text-white"} strokeWidth={3} />
+                      )}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
 
+            {/* المقاسات */}
+            {product.sizes && product.sizes.length > 0 && (
+              <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+                <h3 className="text-sm font-bold text-purple-400 mb-3">المقاسات:</h3>
+                <div className="flex flex-wrap gap-3">
+                  {product.sizes.map((size, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedSizeIndex(index)}
+                      className={`w-20 h-20 flex items-center justify-center rounded-lg border-2 transition-all duration-200 ${
+                        selectedSizeIndex === index
+                          ? "border-purple-500 bg-purple-600 text-white font-bold"
+                          : "border-slate-600 hover:border-slate-400"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* السعر والخصم */}
             <div className="flex items-center gap-3">
-              <span className="text-2xl font-black text-purple-400">
-                {product.price} ج
-              </span>
+              <span className="text-2xl font-black text-purple-400">{product.price} جنيه</span>
               {product.originalPrice && (
-                <span className="text-base text-slate-500 line-through">
-                  {product.originalPrice} ج
-                </span>
+                <span className="text-base text-slate-500 line-through">{product.originalPrice} جنيه</span>
               )}
               {discount > 0 && (
                 <span className="bg-pink-500/20 text-pink-400 text-xs font-bold px-2 py-1 rounded-full border border-pink-500/30">
@@ -321,84 +307,58 @@ export default function ProductDetails() {
               )}
             </div>
 
+            {/* الوصف */}
             {product.description && (
               <div className="bg-slate-800 border border-slate-700 rounded-xl p-3">
-                <h3 className="text-sm font-bold text-purple-400 mb-1">
-                  وصف المنتج
-                </h3>
-                <p className="text-slate-300 text-sm leading-relaxed">
-                  {product.description}
-                </p>
+                <h3 className="text-sm font-bold text-purple-400 mb-1">الوصف</h3>
+                <p className="text-slate-300 text-sm leading-relaxed">{product.description}</p>
               </div>
             )}
 
+            {/* معلومات المخزون */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <Package size={16} className="text-purple-400" />
                 <span className="text-slate-300 text-sm font-bold">
-                  المخزون:{" "}
-                  <span className="text-white mr-2">
-                    {stock}
-                  </span>
+                  المتوفر: <span className="text-white ms-2">{stock}</span>
                 </span>
               </div>
               {cartQuantity > 0 && (
                 <div className="flex items-center gap-2 text-sm text-amber-400">
                   <ShoppingCart size={16} />
-                  <span>
-                    في السلة:{" "}
-                    <span className="font-bold">{cartQuantity}</span>
-                  </span>
+                  <span>في السلة: <span className="font-bold">{cartQuantity}</span></span>
                 </div>
               )}
               <div className="flex items-center gap-2 text-sm">
-                <span
-                  className={`font-bold ${
-                    canAddMore > 0 ? "text-green-400" : "text-red-400"
-                  }`}
-                >
-                  {canAddMore > 0
-                    ? `متاح للإضافة: ${canAddMore}`
-                    : "⚠️ نفذت الكمية المتاحة"}
+                <span className={`font-bold ${canAddMore > 0 ? "text-green-400" : "text-red-400"}`}>
+                  {canAddMore > 0 ? `متاح للطلب: ${canAddMore}` : "نفذت الكمية"}
                 </span>
               </div>
-              {cartQuantity > 0 && (
-                <div className="flex items-center gap-1 text-xs text-slate-500">
-                  <Clock size={12} />
-                  <span>محجوز لك لمدة 10 دقايق</span>
-                </div>
-              )}
             </div>
 
+            {/* اختيار الكمية */}
             <div className="flex items-center gap-3">
               <button
-                onClick={() =>
-                  setQuantity((q) => Math.max(1, q - 1))
-                }
+                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                 className="w-10 h-10 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-purple-600 transition"
               >
                 <Minus size={16} />
               </button>
-              <span className="text-xl font-black min-w-[40px] text-center">
-                {quantity}
-              </span>
+              <span className="text-xl font-black min-w-[40px] text-center">{quantity}</span>
               <button
-                onClick={() =>
-                  setQuantity((q) => Math.min(canAddMore || 1, q + 1))
-                }
+                onClick={() => setQuantity((q) => Math.min(canAddMore || 1, q + 1))}
                 disabled={canAddMore <= 0}
                 className="w-10 h-10 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-purple-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Plus size={16} />
               </button>
-              <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 ml-auto">
-                <span className="text-slate-400 text-xs">الإجمالي:</span>
-                <span className="font-black text-purple-400 text-sm mr-1">
-                  {product.price * quantity} ج
-                </span>
+              <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 ms-auto">
+                <span className="text-slate-400 text-xs">الإجمالي: </span>
+                <span className="font-black text-purple-400 text-sm ms-1">{product.price * quantity} جنيه</span>
               </div>
             </div>
 
+            {/* زر إضافة إلى السلة */}
             <button
               onClick={handleAddToCart}
               disabled={canAddMore <= 0}
@@ -411,16 +371,13 @@ export default function ProductDetails() {
               }`}
             >
               <ShoppingCart size={18} />
-              {added
-                ? "تمت الإضافة"
-                : canAddMore <= 0
-                  ? "نفذت الكمية"
-                  : "أضف للسلة"}
+              {added ? "تمت الإضافة للسلة" : canAddMore <= 0 ? "غير متوفر" : "إضافة إلى السلة"}
             </button>
           </div>
         </div>
       </div>
 
+      {/* نافذة عرض الصورة بالكامل */}
       {showFullImage && (
         <div
           className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4 md:p-10 backdrop-blur-sm"
@@ -436,19 +393,13 @@ export default function ProductDetails() {
           {allImages.length > 1 && (
             <>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  prevImage();
-                }}
+                onClick={(e) => { e.stopPropagation(); prevImage(); }}
                 className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm transition z-50"
               >
                 <ChevronRight size={28} className="rtl:rotate-180" />
               </button>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  nextImage();
-                }}
+                onClick={(e) => { e.stopPropagation(); nextImage(); }}
                 className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center backdrop-blur-sm transition z-50"
               >
                 <ChevronLeft size={28} className="rtl:rotate-180" />
@@ -456,15 +407,17 @@ export default function ProductDetails() {
             </>
           )}
 
-          <img
-            src={
-              allImages[currentImageIndex] ||
-              "https://via.placeholder.com/600"
-            }
-            alt={product.name}
-            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          />
+          {allImages.length > 0 && (
+            <Image
+              src={allImages[currentImageIndex]}
+              alt={product.name}
+              width={1200}
+              height={800}
+              className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+              priority
+            />
+          )}
 
           {allImages.length > 1 && (
             <div className="absolute bottom-5 text-white/50 text-sm font-bold">

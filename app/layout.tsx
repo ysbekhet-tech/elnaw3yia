@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import Providers from "./Providers";
-import LayoutShell from "@/components/LayoutShell"; // ✅ استدعاء الكومبوننت الجديد
+import LayoutShell from "@/components/LayoutShell";
 import { Toaster } from "react-hot-toast";
 
 export const metadata: Metadata = {
@@ -18,13 +19,9 @@ export default function RootLayout({
     <html lang="ar" dir="rtl" data-scroll-behavior="smooth">
       <body>
         <Providers>
-          
-          {/* ✅ الكومبوننت ده هو اللي يتحكم في إظهار وإخفاء الـ Navbar والـ Footer */}
           <LayoutShell>
             {children}
           </LayoutShell>
-
-          {/* 🔔 Toast Notifications */}
           <Toaster
             position="top-right"
             toastOptions={{
@@ -52,7 +49,7 @@ export default function RootLayout({
               },
             }}
           />
-
+          <SpeedInsights />
         </Providers>
       </body>
     </html>

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { v2 as cloudinary } from 'cloudinary';
 
+// التحقق من إن الأدمن هو اللي بيرفع الصور (نفس نظامك)
 const verifyAuth = (request: NextRequest) => {
   const token = request.cookies.get('admin_token')?.value;
   if (!token) {
@@ -15,71 +15,52 @@ const verifyAuth = (request: NextRequest) => {
   }
 };
 
-export async function GET(request: NextRequest) {
-  try {
-    const productsCollection = collection(db, 'products');
-    const snapshot = await getDocs(productsCollection);
-
-    const products = snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    return NextResponse.json(products);
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'خطأ في جلب المنتجات' },
-      { status: 500 }
-    );
-  }
-}
+// إعداد Cloudinary باستخدام المتغيرات السرية من .env
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function POST(request: NextRequest) {
+  // 1. التحقق من الصلاحيات
   if (!verifyAuth(request)) {
     return NextResponse.json(
-      { error: 'غير مصرح' },
+      { error: 'غير مصرح برفع الصور' },
       { status: 401 }
     );
   }
 
   try {
-    const body = await request.json();
-    const { name, price, category, barcode, image, stock } = body;
+    // 2. استقبال الصورة كـ Base64
+    const { image } = await request.json();
 
-    // Validation
-    if (!name || !price || !category || !barcode) {
+    if (!image) {
       return NextResponse.json(
-        { error: 'الاسم والسعر والفئة والباركود مطلوبة' },
+        { error: 'لم يتم إرسال صورة' },
         { status: 400 }
       );
     }
 
-    if (typeof price !== 'number' || price <= 0) {
-      return NextResponse.json(
-        { error: 'السعر يجب أن يكون رقماً موجباً' },
-        { status: 400 }
-      );
-    }
+    // 3. رفع الصورة إلى Cloudinary
+    const uploadResponse = await cloudinary.uploader.upload(image, {
+      folder: 'products', // اسم الفولدر في Cloudinary
+      resource_type: 'image',
+      transformation: [
+        { quality: 'auto', fetch_format: 'auto' }, // ضغط تلقائي وتحويل لـ WebP
+      ],
+    });
 
-    const productData = {
-      name,
-      price,
-      category,
-      barcode,
-      stock: stock || 0,
-      image: image || '',
-      createdAt: serverTimestamp(),
-    };
+    // 4. إرجاع الرابط الآمن والـ Public ID
+    return NextResponse.json({ 
+      url: uploadResponse.secure_url,
+      public_id: uploadResponse.public_id 
+    });
 
-    const docRef = await addDoc(collection(db, 'products'), productData);
-
-    return NextResponse.json(
-      { id: docRef.id, ...productData },
-      { status: 201 }
-    );
   } catch (error) {
+    console.error('Cloudinary Upload Error:', error);
     return NextResponse.json(
-      { error: 'خطأ في إنشاء المنتج' },
+      { error: 'حدث خطأ أثناء رفع الصورة' },
       { status: 500 }
     );
   }

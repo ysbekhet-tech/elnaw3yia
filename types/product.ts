@@ -17,8 +17,8 @@ export interface Product {
   originalPrice?: number;
   description?: string;
   stock: number;
-  minStock?: number; // ✅ الحد الأدنى للتنبيه
-  countryOfOrigin?: string; // ✅ بلد الصناعة
+  minStock?: number;
+  countryOfOrigin?: string;
   reserved?: number;
   purchased?: number;
   category: string;
@@ -33,7 +33,7 @@ export interface Product {
   isOffer?: boolean;
   isNew?: boolean;
   isActive?: boolean;
-  createdAt?: any; // ✅ تاريخ الإضافة (للترتيب حسب الأحدث)
+  createdAt?: Date | string | any;
 }
 
 export interface CartItem extends Product {
@@ -41,4 +41,11 @@ export interface CartItem extends Product {
   selectedColor?: string;
   selectedSize?: ProductSize;
   addedAt: number;
+}
+
+// ✅ Cloudinary types
+export interface CloudinaryUploadResult {
+  secure_url: string;
+  public_id: string;
+  [key: string]: any;
 }

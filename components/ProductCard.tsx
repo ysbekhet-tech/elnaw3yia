@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Heart, Eye, ShoppingCart, Star, Plus, Minus, ChevronRight, ChevronLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Product } from "@/types";
 import { useCart } from "@/app/context/CartContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import ColorPickerModal from "./ColorPickerModal";
 
 type ViewMode = "grid" | "compact" | "list";
@@ -26,24 +27,23 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
 
   const allImages = (product.images && product.images.length > 0)
     ? product.images
-    : (product.image ? [product.image] : ["https://via.placeholder.com/400"]);
+    : (product.image ? [product.image] : ["/placeholder.jpg"]);
 
-  // ✅ الاعتماد على البيانات الأساسية بدون Real-time
   const stock = product.stock || 0;
   const reserved = product.reserved || 0;
   const stockAvailable = Math.max(0, stock - reserved);
 
-  const nextImage = (e: React.MouseEvent) => {
+  const nextImage = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setCurrentImageIndex((prev) => (prev + 1) % allImages.length);
-  };
+  }, [allImages.length]);
 
-  const prevImage = (e: React.MouseEvent) => {
+  const prevImage = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
-  };
+  }, [allImages.length]);
 
   useEffect(() => {
     setCurrentImageIndex(0);
@@ -74,14 +74,10 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
     }
   };
 
-  // ✅ عرض القايمة (List) - مقاس ثابت وتصغير الحجم
   if (viewMode === "list") {
     return (
       <>
-        <motion.div
-          whileHover={{ scale: 1.01 }}
-          transition={{ duration: 0.2 }}
-          // ✅ إضافة h-40 (160px) كمقاس ثابت للكارت كله عشان كلهم يبقوا زي بعض
+        <div
           className="rounded-2xl overflow-hidden flex flex-row h-40 relative"
           style={{
             background: "rgba(255,255,255,0.04)",
@@ -90,7 +86,14 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
           }}
         >
           <Link href={`/products/${product.id}`} className="block relative w-32 h-full flex-shrink-0 overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
-            <img src={allImages[0]} alt={product.name} className="w-full h-full object-cover" />
+            <Image 
+              src={allImages[0]} 
+              alt={product.name} 
+              fill
+              sizes="128px"
+              className="object-cover"
+              loading="lazy"
+            />
             {discount > 0 && (
               <span className="absolute top-2 right-2 gradient-bg text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full z-10">
                 -{discount}%
@@ -143,13 +146,12 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
         <ColorPickerModal product={product} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
       </>
     );
   }
 
-  // ✅ عرض الكروت (Grid / Compact) - تصغير الحجم
   const isCompact = viewMode === "compact";
 
   return (
@@ -162,30 +164,29 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
           background: "rgba(255,255,255,0.04)",
           border: "1px solid rgba(124,58,237,0.2)",
           boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
-          transition: "box-shadow 0.3s",
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLElement).style.boxShadow = "0 20px 60px rgba(124,58,237,0.25)";
-          (e.currentTarget as HTMLElement).style.border = "1px solid rgba(124,58,237,0.4)";
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLElement).style.boxShadow = "0 4px 24px rgba(0,0,0,0.3)";
-          (e.currentTarget as HTMLElement).style.border = "1px solid rgba(124,58,237,0.2)";
         }}
       >
         <Link href={`/products/${product.id}`} className="block relative overflow-hidden" style={{ background: "rgba(255,255,255,0.06)", height: isCompact ? "120px" : "160px" }}>
           
           <AnimatePresence mode='wait'>
-            <motion.img
+            <motion.div
               key={currentImageIndex}
-              src={allImages[currentImageIndex]}
-              alt={product.name}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.3 }}
-              className="w-full h-full object-cover"
-            />
+              className="relative w-full h-full"
+            >
+              <Image
+                src={allImages[currentImageIndex]}
+                alt={product.name}
+                fill
+                sizes={isCompact ? "(max-width: 640px) 50vw, 20vw" : "(max-width: 768px) 50vw, 25vw"}
+                className="object-cover"
+                priority={currentImageIndex === 0}
+                loading={currentImageIndex === 0 ? "eager" : "lazy"}
+              />
+            </motion.div>
           </AnimatePresence>
 
           <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />

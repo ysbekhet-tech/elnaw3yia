@@ -1,12 +1,13 @@
-'use client';
+"use client";
 
-import { Product, ProductColor, ProductSize } from '@/types';
+import { Product, ProductColor, ProductSize } from "@/types";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
-import { X, Save, ChevronDown, Check, Upload, Palette, Plus, ImagePlus, Trash2, Ruler, AlertTriangle, Star, Search } from 'lucide-react';
-import { useState, useRef, useEffect, useCallback } from 'react';
-import ReactCrop, { Crop, PixelCrop } from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
+import { collection, onSnapshot, doc, getDoc } from "firebase/firestore";
+import { uploadBase64Image } from "@/lib/uploadImage";
+import { X, Save, ChevronDown, Check, Upload, Palette, Plus, ImagePlus, Trash2, Ruler, AlertTriangle, Star, Search } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import ReactCrop, { Crop, PixelCrop } from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 
 interface AdminPriceEditorProps {
   product: Product | null;
@@ -17,7 +18,7 @@ interface AdminPriceEditorProps {
 
 export default function AdminPriceEditor({ product, onClose, onSubmit, loading = false }: AdminPriceEditorProps) {
   const [formData, setFormData] = useState({
-    name: '', price: 0, originalPrice: 0, stock: 0, category: '', barcode: '', description: '', minStock: 5, countryOfOrigin: ''
+    name: "", price: 0, originalPrice: 0, stock: 0, category: "", barcode: "", description: "", minStock: 5, countryOfOrigin: ""
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -47,37 +48,123 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
 
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
-  const [cropTarget, setCropTarget] = useState<'main' | 'color'>('main');
+  const [cropTarget, setCropTarget] = useState<"main" | "color">("main");
   const [crop, setCrop] = useState<Crop>();
   const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
   const [isImageLoading, setIsImageLoading] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
+  // ✅ حالة الإشعارات
+  const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // ✅ إخفاء الإشعار تلقائياً
   useEffect(() => {
-    if (product) {
-      setFormData({
-        name: product.name || '', price: product.price || 0, originalPrice: product.originalPrice || 0,
-        stock: product.stock || 0, category: product.category || '', barcode: product.barcode || '',
-        description: product.description || '', minStock: product.minStock || 5, countryOfOrigin: (product as any).countryOfOrigin || ''
-      });
-
-      if (Array.isArray(product.images) && product.images.length > 0) {
-        setImagePreviews(product.images);
-      } else if ((product as any).image) {
-        setImagePreviews([(product as any).image]);
-      } else {
-        setImagePreviews([]);
-      }
-
-      setHasColors(product.hasColors || false);
-      setColors(product.colors || []);
-      setHasSizes(product.hasSizes || false);
-      setSizes(product.sizes || []);
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 4000);
+      return () => clearTimeout(timer);
     }
+  }, [notification]);
+
+  // ✅✅✅ جلب الداتا الكاملة من Firestore مباشرة
+  useEffect(() => {
+    if (!product?.id) return;
+
+    const fetchFullProduct = async () => {
+      try {
+        const productDoc = await getDoc(doc(db, "products", product.id));
+        if (productDoc.exists()) {
+          const data = productDoc.data();
+
+          setFormData({
+            name: data.name || product.name || "",
+            price: data.price || product.price || 0,
+            originalPrice: data.originalPrice || product.originalPrice || 0,
+            stock: data.stock ?? product.stock ?? 0,
+            category: data.category || product.category || "",
+            barcode: data.barcode || product.barcode || "",
+            description: data.description || data.desc || "",
+            minStock: data.minStock ?? product.minStock ?? 5,
+            countryOfOrigin: data.countryOfOrigin || "",
+          });
+
+          if (Array.isArray(data.images) && data.images.length > 0) {
+            setImagePreviews(data.images);
+          } else if (data.image) {
+            setImagePreviews([data.image]);
+          } else if (Array.isArray(product.images) && product.images.length > 0) {
+            setImagePreviews(product.images);
+          } else {
+            setImagePreviews([]);
+          }
+
+          setHasColors(data.hasColors || false);
+          setColors(Array.isArray(data.colors) ? data.colors : []);
+          setHasSizes(data.hasSizes || false);
+          setSizes(Array.isArray(data.sizes) ? data.sizes : []);
+        } else {
+          // لو المستند مش موجود في Firestore، نستخدم الداتا من الـ prop
+          const productAny = product as any;
+          setFormData({
+            name: product.name || "",
+            price: product.price || 0,
+            originalPrice: product.originalPrice || 0,
+            stock: product.stock || 0,
+            category: product.category || "",
+            barcode: product.barcode || "",
+            description: productAny.description || productAny.desc || "",
+            minStock: product.minStock || 5,
+            countryOfOrigin: productAny.countryOfOrigin || "",
+          });
+
+          if (Array.isArray(product.images) && product.images.length > 0) {
+            setImagePreviews(product.images);
+          } else if (productAny.image) {
+            setImagePreviews([productAny.image]);
+          } else {
+            setImagePreviews([]);
+          }
+
+          setHasColors(product.hasColors || false);
+          setColors(product.colors || []);
+          setHasSizes(product.hasSizes || false);
+          setSizes(product.sizes || []);
+        }
+      } catch (error) {
+        console.error("Error fetching full product:", error);
+        // Fallback للداتا من الـ prop
+        const productAny = product as any;
+        setFormData({
+          name: product.name || "",
+          price: product.price || 0,
+          originalPrice: product.originalPrice || 0,
+          stock: product.stock || 0,
+          category: product.category || "",
+          barcode: product.barcode || "",
+          description: productAny.description || productAny.desc || "",
+          minStock: product.minStock || 5,
+          countryOfOrigin: productAny.countryOfOrigin || "",
+        });
+
+        if (Array.isArray(product.images) && product.images.length > 0) {
+          setImagePreviews(product.images);
+        } else if (productAny.image) {
+          setImagePreviews([productAny.image]);
+        } else {
+          setImagePreviews([]);
+        }
+
+        setHasColors(product.hasColors || false);
+        setColors(product.colors || []);
+        setHasSizes(product.hasSizes || false);
+        setSizes(product.sizes || []);
+      }
+    };
+
+    fetchFullProduct();
   }, [product]);
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "categories"), (snapshot) => setCategories(snapshot.docs.map(doc => doc.data().name as string)));
+    const unsubscribe = onSnapshot(collection(db, "categories"), (snapshot) => setCategories(snapshot.docs.map((doc) => doc.data().name as string)));
     return () => unsubscribe();
   }, []);
 
@@ -88,8 +175,8 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
         setCategorySearch("");
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   if (!product) return null;
@@ -107,7 +194,6 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
   const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     imgRef.current = e.currentTarget;
     setIsImageLoading(false);
-    // الـ crop يملأ الصورة كلها افتراضياً
     setCrop({
       unit: "%",
       width: 100,
@@ -190,12 +276,12 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     try {
       const response = await fetch(url);
       const blob = await response.blob();
-      if (!blob.type.startsWith('image/')) {
+      if (!blob.type.startsWith("image/")) {
         alert("الرابط ده مش صورة!");
         return;
       }
       const reader = new FileReader();
-      reader.onloadend = () => openCropModal(reader.result as string, 'main');
+      reader.onloadend = () => openCropModal(reader.result as string, "main");
       reader.readAsDataURL(blob);
     } catch (error) {
       console.error("Error loading image from URL:", error);
@@ -207,9 +293,9 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     const files = e.target.files;
     if (!files) return;
     Array.from(files).forEach((file) => {
-      if (file.type.startsWith('image/')) {
+      if (file.type.startsWith("image/")) {
         const reader = new FileReader();
-        reader.onloadend = () => openCropModal(reader.result as string, 'main');
+        reader.onloadend = () => openCropModal(reader.result as string, "main");
         reader.readAsDataURL(file);
       }
     });
@@ -227,52 +313,55 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     setIsDragging(false);
   }, []);
 
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragging(false);
 
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      Array.from(files).forEach((file) => {
-        if (file.type.startsWith('image/')) {
-          const reader = new FileReader();
-          reader.onloadend = () => openCropModal(reader.result as string, 'main');
-          reader.readAsDataURL(file);
-        }
-      });
-      return;
-    }
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        Array.from(files).forEach((file) => {
+          if (file.type.startsWith("image/")) {
+            const reader = new FileReader();
+            reader.onloadend = () => openCropModal(reader.result as string, "main");
+            reader.readAsDataURL(file);
+          }
+        });
+        return;
+      }
 
-    const items = e.dataTransfer.items;
-    if (items) {
-      for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.kind === 'string') {
-          item.getAsString(async (url) => {
-            if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || url.startsWith('http')) {
-              await handleImageFromUrl(url);
-            }
-          });
+      const items = e.dataTransfer.items;
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (item.kind === "string") {
+            item.getAsString(async (url) => {
+              if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || url.startsWith("http")) {
+                await handleImageFromUrl(url);
+              }
+            });
+          }
         }
       }
-    }
 
-    const textData = e.dataTransfer.getData('text/plain');
-    if (textData && textData.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) {
-      await handleImageFromUrl(textData);
-    }
+      const textData = e.dataTransfer.getData("text/plain");
+      if (textData && textData.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) {
+        await handleImageFromUrl(textData);
+      }
 
-    const uriList = e.dataTransfer.getData('text/uri-list');
-    if (uriList) {
-      const urls = uriList.split('\n').filter(url => url.trim() && !url.startsWith('#'));
-      for (const url of urls) {
-        if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) {
-          await handleImageFromUrl(url);
+      const uriList = e.dataTransfer.getData("text/uri-list");
+      if (uriList) {
+        const urls = uriList.split("\n").filter((url) => url.trim() && !url.startsWith("#"));
+        for (const url of urls) {
+          if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) {
+            await handleImageFromUrl(url);
+          }
         }
       }
-    }
-  }, [handleImageFromUrl]);
+    },
+    [handleImageFromUrl]
+  );
 
   const handleRemoveImage = (index: number) => {
     setImagePreviews(imagePreviews.filter((_, i) => i !== index));
@@ -289,7 +378,7 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => openCropModal(reader.result as string, 'color');
+      reader.onloadend = () => openCropModal(reader.result as string, "color");
       reader.readAsDataURL(file);
     }
   };
@@ -300,20 +389,20 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     setIsColorDragging(false);
 
     const files = e.dataTransfer.files;
-    if (files.length > 0 && files[0].type.startsWith('image/')) {
+    if (files.length > 0 && files[0].type.startsWith("image/")) {
       const reader = new FileReader();
-      reader.onloadend = () => openCropModal(reader.result as string, 'color');
+      reader.onloadend = () => openCropModal(reader.result as string, "color");
       reader.readAsDataURL(files[0]);
       return;
     }
 
-    const textData = e.dataTransfer.getData('text/plain');
+    const textData = e.dataTransfer.getData("text/plain");
     if (textData && textData.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) {
       try {
         const response = await fetch(textData);
         const blob = await response.blob();
         const reader = new FileReader();
-        reader.onloadend = () => openCropModal(reader.result as string, 'color');
+        reader.onloadend = () => openCropModal(reader.result as string, "color");
         reader.readAsDataURL(blob);
       } catch (error) {
         alert("مقدرش أحمل الصورة من الرابط ده.");
@@ -321,10 +410,16 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     }
   }, []);
 
+  // ✅ الصورة اختيارية - يكفي اسم اللون
   const handleAddColor = () => {
-    if (!newColorName || !newColorImage) { alert("يجب إدخال اسم اللون وصورته!"); return; }
-    setColors([...colors, { name: newColorName, hex: newColorHex, image: newColorImage }]);
-    setNewColorName(""); setNewColorHex("#000000"); setNewColorImage(null);
+    if (!newColorName) {
+      alert("يجب إدخال اسم اللون!");
+      return;
+    }
+    setColors([...colors, { name: newColorName, hex: newColorHex, image: newColorImage || "" }]);
+    setNewColorName("");
+    setNewColorHex("#000000");
+    setNewColorImage(null);
     if (colorFileInputRef.current) colorFileInputRef.current.value = "";
   };
 
@@ -343,37 +438,98 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
 
   const handleRemoveSize = (index: number) => setSizes(sizes.filter((_, i) => i !== index));
 
+  // ✅ دالة مساعدة لرفع الصور الجديدة على Storage
+  const uploadNewImages = async (productId: string): Promise<string[]> => {
+    const finalUrls: string[] = [];
+
+    for (let i = 0; i < imagePreviews.length; i++) {
+      if (imagePreviews[i].startsWith("data:")) {
+        const path = `products/${productId}/image_${Date.now()}_${i}.jpg`;
+        const url = await uploadBase64Image(imagePreviews[i], path);
+        finalUrls.push(url);
+      } else {
+        finalUrls.push(imagePreviews[i]);
+      }
+    }
+
+    return finalUrls;
+  };
+
+  // ✅ دالة مساعدة لرفع صور الألوان الجديدة
+  const uploadNewColorImages = async (productId: string): Promise<ProductColor[]> => {
+    if (!hasColors || colors.length === 0) return [];
+
+    const updatedColors: ProductColor[] = [];
+
+    for (let i = 0; i < colors.length; i++) {
+      const color = colors[i];
+      if (color.image && color.image.startsWith("data:")) {
+        const path = `products/${productId}/colors/color_${Date.now()}_${i}.jpg`;
+        const url = await uploadBase64Image(color.image, path);
+        updatedColors.push({ ...color, image: url });
+      } else {
+        updatedColors.push(color);
+      }
+    }
+
+    return updatedColors;
+  };
+
   const handleSubmit = async () => {
     if (!formData.name || (!hasSizes && formData.price <= 0) || !formData.category || !formData.barcode) {
-      alert('يرجى ملء جميع الحقول المطلوبة');
+      alert("يرجى ملء جميع الحقول المطلوبة");
       return;
     }
-    if (!product.id) { alert('المنتج لا يحتوي على معرف صالح'); return; }
-
-    let finalPrice = Number(formData.price);
-    if (hasSizes && sizes.length > 0) {
-      finalPrice = Number(sizes[0].price);
+    if (!product.id) {
+      alert("المنتج لا يحتوي على معرف صالح");
+      return;
     }
 
     setIsSubmitting(true);
+
     try {
+      // ✅ رفع الصور الجديدة على Storage
+      const finalImageUrls = await uploadNewImages(product.id);
+
+      // ✅ رفع صور الألوان الجديدة
+      const finalColors = await uploadNewColorImages(product.id);
+
+      let finalPrice = Number(formData.price);
+      if (hasSizes && sizes.length > 0) {
+        finalPrice = Number(sizes[0].price);
+      }
+
       await onSubmit(product.id, {
         ...formData,
+        description: formData.description,
         price: finalPrice,
         minStock: Number(formData.minStock) || 5,
         countryOfOrigin: formData.countryOfOrigin,
-        images: imagePreviews,
+        images: finalImageUrls,
         originalPrice: Number(formData.originalPrice) || 0,
         hasColors: hasColors,
-        colors: hasColors ? colors : [],
+        colors: hasColors ? finalColors : [],
         hasSizes: hasSizes,
         sizes: hasSizes ? sizes : [],
       });
-      onClose();
-    } catch (error) { console.error('خطأ في التحديث:', error); } finally { setIsSubmitting(false); }
+
+      // ✅ رسالة نجاح
+      setNotification({ type: "success", message: "تم تعديل المنتج بنجاح! ✅" });
+
+      // ✅ إغلاق المودال بعد عرض رسالة النجاح
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+    } catch (error) {
+      console.error("خطأ في التحديث:", error);
+      // ✅ رسالة خطأ
+      setNotification({ type: "error", message: "حدث خطأ أثناء تعديل المنتج! حاول مرة أخرى ❌" });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const filteredCategories = categories.filter(cat => cat.toLowerCase().includes(categorySearch.toLowerCase()));
+  const filteredCategories = categories.filter((cat) => cat.toLowerCase().includes(categorySearch.toLowerCase()));
 
   return (
     <>
@@ -426,6 +582,25 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
       <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/50 backdrop-blur-sm">
         <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl p-6 bg-white border border-slate-200 shadow-xl">
 
+          {/* ✅ إشعار النجاح أو الخطأ */}
+          {notification && (
+            <div
+              className={`mb-4 p-4 rounded-xl flex items-center justify-between ${
+                notification.type === "success"
+                  ? "bg-green-50 border border-green-300 text-green-800"
+                  : "bg-red-50 border border-red-300 text-red-800"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {notification.type === "success" ? <Check size={18} /> : <AlertTriangle size={18} />}
+                <span className="font-bold text-sm">{notification.message}</span>
+              </div>
+              <button onClick={() => setNotification(null)} className="hover:opacity-70">
+                <X size={16} />
+              </button>
+            </div>
+          )}
+
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-black text-slate-900">تعديل بيانات المنتج</h2>
             <button onClick={onClose} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-slate-100 transition border border-slate-200">
@@ -444,8 +619,8 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                   onDrop={handleDrop}
                   className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed transition cursor-pointer ${
                     isDragging
-                      ? 'border-purple-500 bg-purple-50'
-                      : 'border-slate-300 hover:border-purple-400 bg-slate-50 hover:bg-purple-50/30'
+                      ? "border-purple-500 bg-purple-50"
+                      : "border-slate-300 hover:border-purple-400 bg-slate-50 hover:bg-purple-50/30"
                   }`}
                   onClick={() => fileInputRef.current?.click()}
                 >
@@ -485,6 +660,8 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                     ))}
                   </div>
                 )}
+
+                <span className="text-xs text-slate-500 font-bold">{imagePreviews.length} صور</span>
               </div>
             </div>
 
@@ -493,9 +670,17 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
               <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
             </div>
 
+            {/* ✅ وصف المنتج - داتا كاملة من Firestore */}
             <div>
               <label className="block text-xs font-bold text-slate-600 mb-1.5">وصف المنتج</label>
-              <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition resize-y min-h-[200px]" rows={8} disabled={isSubmitting} />
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="اكتب وصف المنتج هنا..."
+                className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition resize-y min-h-[200px]"
+                rows={8}
+                disabled={isSubmitting}
+              />
             </div>
 
             {!hasSizes && (
@@ -523,8 +708,8 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                   هل المنتج بمقاسات مختلفة؟
                 </div>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => { setHasSizes(false); setSizes([]); }} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasSizes ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>لا</button>
-                  <button type="button" onClick={() => setHasSizes(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasSizes ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>نعم</button>
+                  <button type="button" onClick={() => { setHasSizes(false); setSizes([]); }} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasSizes ? "bg-purple-600 text-white" : "bg-slate-200 text-slate-600 hover:bg-slate-300"}`}>لا</button>
+                  <button type="button" onClick={() => setHasSizes(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasSizes ? "bg-purple-600 text-white" : "bg-slate-200 text-slate-600 hover:bg-slate-300"}`}>نعم</button>
                 </div>
               </div>
 
@@ -581,8 +766,8 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                   هل المنتج متعدد الألوان؟
                 </div>
                 <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => { setHasColors(false); setColors([]); }} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasColors ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>لا</button>
-                  <button type="button" onClick={() => setHasColors(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasColors ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-600 hover:bg-slate-300'}`}>نعم</button>
+                  <button type="button" onClick={() => { setHasColors(false); setColors([]); }} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasColors ? "bg-purple-600 text-white" : "bg-slate-200 text-slate-600 hover:bg-slate-300"}`}>لا</button>
+                  <button type="button" onClick={() => setHasColors(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasColors ? "bg-purple-600 text-white" : "bg-slate-200 text-slate-600 hover:bg-slate-300"}`}>نعم</button>
                 </div>
               </div>
 
@@ -593,7 +778,11 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                       {colors.map((color, index) => (
                         <div key={index} className="relative group flex flex-col items-center gap-1">
                           <div className="w-12 h-12 rounded-full border-2 border-slate-200 overflow-hidden shadow-sm">
-                            <img src={color.image} alt={color.name} className="w-full h-full object-cover" />
+                            {color.image ? (
+                              <img src={color.image} alt={color.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full" style={{ backgroundColor: color.hex }} />
+                            )}
                           </div>
                           <span className="text-[10px] text-slate-600">{color.name}</span>
                           <button type="button" onClick={() => handleRemoveColor(index)} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X size={10} /></button>
@@ -614,17 +803,17 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs text-slate-500 mb-1">صورة اللون</label>
+                      <label className="block text-xs text-slate-500 mb-1">صورة اللون (اختياري)</label>
                       <div
                         onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsColorDragging(true); }}
                         onDragLeave={() => setIsColorDragging(false)}
                         onDrop={handleColorImageDrop}
-                        className={`flex items-center gap-1 h-10 px-2 rounded-lg border transition cursor-pointer ${isColorDragging ? 'border-purple-500 bg-purple-50' : 'bg-white border-slate-200 hover:bg-slate-50'}`}
+                        className={`flex items-center gap-1 h-10 px-2 rounded-lg border transition cursor-pointer ${isColorDragging ? "border-purple-500 bg-purple-50" : "bg-white border-slate-200 hover:bg-slate-50"}`}
                         onClick={() => colorFileInputRef.current?.click()}
                       >
                         <Upload size={14} className="text-purple-600" />
                         <span className="text-xs text-slate-500 truncate">
-                          {isColorDragging ? "أفلت هنا" : newColorImage ? "تم الاختيار ✂️" : "اسحب أو اختر"}
+                          {isColorDragging ? "أفلت هنا" : newColorImage ? "تم الاختيار ✂️" : "اختياري"}
                         </span>
                         <input type="file" accept="image/*" className="hidden" onChange={handleColorImageChange} ref={colorFileInputRef} />
                       </div>
@@ -685,7 +874,7 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                         <p className="text-center text-sm text-slate-400 py-2">لا توجد فئات</p>
                       )}
                       {filteredCategories.map((cat) => (
-                        <button key={cat} type="button" onClick={() => { setFormData({ ...formData, category: cat }); setCategoryOpen(false); setCategorySearch(""); }} className={`w-full px-4 py-2.5 text-right text-sm hover:bg-purple-50 transition ${formData.category === cat ? 'text-purple-700 font-bold' : 'text-slate-600'}`}>
+                        <button key={cat} type="button" onClick={() => { setFormData({ ...formData, category: cat }); setCategoryOpen(false); setCategorySearch(""); }} className={`w-full px-4 py-2.5 text-right text-sm hover:bg-purple-50 transition ${formData.category === cat ? "text-purple-700 font-bold" : "text-slate-600"}`}>
                           {cat}
                         </button>
                       ))}
@@ -704,7 +893,7 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
           <div className="flex gap-3 mt-6">
             <button onClick={onClose} disabled={isSubmitting} className="flex-1 py-3 rounded-xl font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition text-sm border border-slate-200 bg-white">إلغاء</button>
             <button onClick={handleSubmit} disabled={isSubmitting || loading} className="flex-1 py-3 rounded-xl font-bold text-white transition text-sm flex items-center justify-center gap-2" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}>
-              <Save size={16} /> {isSubmitting || loading ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+              <Save size={16} /> {isSubmitting || loading ? "جاري الحفظ..." : "حفظ التعديلات"}
             </button>
           </div>
         </div>
