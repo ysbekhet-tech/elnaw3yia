@@ -5,7 +5,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { clearAuthToken, isAuthenticated } from '@/lib/auth';
-import { LogOut, ShieldCheck, Package, ShoppingCart, Megaphone, Bell, X, Truck, Tags, Home, Menu } from 'lucide-react';
+// ✅ أضفت ExternalLink للأيقونة الجديدة
+import { LogOut, ShieldCheck, Package, ShoppingCart, Megaphone, Bell, X, Truck, Tags, Home, Menu, ExternalLink } from 'lucide-react';
 
 interface Order { id: string; status: string; }
 
@@ -30,7 +31,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allData = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Order));
       
-      // ✅ فلترة الطلبات: إزالة طلبات الـ POS اللي بتبدأ بـ pos_
       const websiteOrders = allData.filter(order => !order.id.startsWith('pos'));
       
       if (prevOrdersCount.current > 0 && websiteOrders.length > prevOrdersCount.current) {
@@ -113,7 +113,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
+        {/* ✅ الجزء السفلي: رابط الموقع + تسجيل الخروج */}
         <div className="p-4 border-t border-slate-100 mt-auto">
+          
+          {/* زرار زيارة الموقع */}
+          <a
+            href="/"
+            target="_blank" // يفتح في تاب جديد
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-purple-600 hover:bg-purple-50 transition font-bold text-sm border border-purple-200 mb-3"
+          >
+            <ExternalLink size={17} /><span>زيارة الموقع</span>
+          </a>
+
+          {/* زرار تسجيل الخروج */}
           <button onClick={() => { clearAuthToken(); router.push('/admin/login'); }} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-red-500 hover:bg-red-50 transition font-bold text-sm border border-red-200">
             <LogOut size={17} /><span>تسجيل الخروج</span>
           </button>

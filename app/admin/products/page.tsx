@@ -54,6 +54,9 @@ export default function ProductsPage() {
   const [sortOption, setSortOption] = useState<'name-asc' | 'name-desc' | 'stock-asc' | 'stock-desc' | 'newest'>('newest');
   const [currentPage, setCurrentPage] = useState(1);
 
+  // ✅ حالة مستطيل الانتقال السريع
+  const [quickJumpPage, setQuickJumpPage] = useState('');
+
   const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   const [newCatName, setNewCatName] = useState('');
   const [newCatIcon, setNewCatIcon] = useState('✏️');
@@ -107,43 +110,29 @@ export default function ProductsPage() {
     }
   }, [authChecked, fetchAllProducts]);
 
-  // فلترة وترتيب المنتجات
   const filtered = useMemo(() => {
     let result = [...allProducts];
-
-    // البحث
     if (searchTerm) {
       result = result.filter(p => 
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
         p.barcode === searchTerm
       );
     }
-
-    // الترتيب
     result.sort((a, b) => {
-      if (sortOption === 'newest') {
-        const timeA = a.createdAt?.seconds || 0;
-        const timeB = b.createdAt?.seconds || 0;
-        return timeB - timeA;
-      }
+      if (sortOption === 'newest') return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
       if (sortOption === 'name-asc') return a.name.localeCompare(b.name, 'ar');
       if (sortOption === 'name-desc') return b.name.localeCompare(a.name, 'ar');
       if (sortOption === 'stock-asc') return a.stock - b.stock;
       if (sortOption === 'stock-desc') return b.stock - a.stock;
       return 0;
     });
-
     return result;
   }, [allProducts, searchTerm, sortOption]);
 
-  // إعدادات الباجينيشن (الترقيم)
   const totalPages = Math.ceil(filtered.length / PRODUCTS_PER_PAGE);
   const currentProducts = filtered.slice((currentPage - 1) * PRODUCTS_PER_PAGE, currentPage * PRODUCTS_PER_PAGE);
 
-  // إرجاع للصفحة الأولى عند البحث أو تغيير الترتيب
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, sortOption]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, sortOption]);
 
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -152,9 +141,29 @@ export default function ProductsPage() {
     }
   };
 
-  const getPageNumbers = () => {
+  // ✅ دالة الانتقال السريع بالكتابة
+  const handleQuickJump = (e: React.KeyboardEvent<HTMLInputElement> | React.MouseEvent) => {
+    const page = parseInt(quickJumpPage);
+    if (!isNaN(page) && page >= 1 && page <= totalPages) {
+      goToPage(page);
+      setQuickJumpPage(''); // مسح المستطيل بعد الانتقال
+    }
+  };
+
+  // ✅ دالة عرض 4 أرقام بس (نافذة متحركة)
+  const getVisiblePages = () => {
+    const maxVisible = 4;
+    let start = Math.max(1, currentPage - 1); // يبدأ من قبل الصفحة الحالية بواحد
+    let end = start + maxVisible - 1;
+
+    // لو الـ End عدى عدد الصفحات الكلي، نرجع الـ Start خطوة للوراء
+    if (end > totalPages) {
+      end = totalPages;
+      start = Math.max(1, end - maxVisible + 1);
+    }
+
     const pages = [];
-    for (let i = 1; i <= totalPages; i++) {
+    for (let i = start; i <= end; i++) {
       pages.push(i);
     }
     return pages;
@@ -181,52 +190,15 @@ export default function ProductsPage() {
         return; 
       } 
       const docRef = await addDoc(collection(db, 'products'), { 
-        name, 
-        description: description || '',
-        price: Number(price), 
-        originalPrice: Number(originalPrice) || 0, 
-        rating: Number(rating) || 4.5, 
-        category, 
-        barcode, 
-        stock: Number(stock) || 0, 
-        minStock: Number(minStock) || 5, 
-        countryOfOrigin, 
-        images: images || [], 
-        hasColors: hasColors || false, 
-        colors: colors || [], 
-        hasSizes: hasSizes || false, 
-        sizes: sizes || [], 
-        createdAt: serverTimestamp(), 
-        isActive: true 
+        name, description: description || '', price: Number(price), originalPrice: Number(originalPrice) || 0, rating: Number(rating) || 4.5, category, barcode, stock: Number(stock) || 0, minStock: Number(minStock) || 5, countryOfOrigin, images: images || [], hasColors: hasColors || false, colors: colors || [], hasSizes: hasSizes || false, sizes: sizes || [], createdAt: serverTimestamp(), isActive: true 
       }); 
-      
       const newProduct: Product = { 
-        id: docRef.id, 
-        name: name!, 
-        description: description || '',
-        price: Number(price), 
-        originalPrice: Number(originalPrice) || 0, 
-        rating: Number(rating) || 4.5, 
-        category: category!, 
-        barcode: barcode!, 
-        stock: Number(stock) || 0, 
-        minStock: Number(minStock) || 5, 
-        countryOfOrigin, 
-        images: images || [], 
-        hasColors: hasColors || false, 
-        colors: colors || [], 
-        hasSizes: hasSizes || false, 
-        sizes: sizes || [], 
-        isActive: true,
-        createdAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } as any 
+        id: docRef.id, name: name!, description: description || '', price: Number(price), originalPrice: Number(originalPrice) || 0, rating: Number(rating) || 4.5, category: category!, barcode: barcode!, stock: Number(stock) || 0, minStock: Number(minStock) || 5, countryOfOrigin, images: images || [], hasColors: hasColors || false, colors: colors || [], hasSizes: hasSizes || false, sizes: sizes || [], isActive: true, createdAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } as any 
       };
-
       setAllProducts([newProduct, ...allProducts]); 
       setShowAddForm(false); 
       setModalConfig({ isOpen: true, title: 'نجاح ✓', message: 'تم إضافة المنتج بنجاح', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) }); 
-    } catch (error) { 
-      console.error(error); 
-    } 
+    } catch (error) { console.error(error); } 
   };
 
   const handleDeleteProduct = (id: string) => { setModalConfig({ isOpen: true, title: 'حذف المنتج', message: 'هل أنت متأكد من حذف هذا المنتج نهائياً من المتجر؟', onConfirm: () => executeDeleteProduct(id) }); };
@@ -237,9 +209,7 @@ export default function ProductsPage() {
       await updateDoc(doc(db, 'products', id), updatedData); 
       setAllProducts(allProducts.map((p) => (p.id === id ? { ...p, ...updatedData } : p))); 
       setModalConfig({ isOpen: true, title: 'نجاح ✓', message: 'تم تحديث المنتج بنجاح', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) }); 
-    } catch (error) { 
-      console.error(error); 
-    } 
+    } catch (error) { console.error(error); } 
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (!file) return; if (!file.type.startsWith('image/')) return; const reader = new FileReader(); reader.onloadend = () => openCatCropModal(reader.result as string, 'add'); reader.readAsDataURL(file); };
@@ -274,7 +244,6 @@ export default function ProductsPage() {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
       
-        {/* قسم إدارة الأقسام */}
         <div className="bg-white rounded-2xl p-6 mb-8 border border-slate-200 shadow-sm">
           <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 mb-5"><Tags size={20} className="text-purple-600" />إدارة الأقسام</h2>
           <div className="flex flex-col gap-4">
@@ -295,7 +264,6 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        {/* قسم إدارة المنتجات */}
         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
             <div className="flex items-center gap-3 shrink-0">
@@ -342,29 +310,30 @@ export default function ProductsPage() {
           {showAddForm && ( <div className="mb-8 p-6 rounded-xl bg-slate-50 border border-slate-200"> <h3 className="text-lg font-black text-slate-900 mb-5">إضافة منتج جديد</h3> <AdminProductForm onSubmit={handleAddProduct} /> </div> )}
           
           <AdminProductTable 
-            products={currentProducts} // تمرير منتجات الصفحة الحالية فقط 
+            products={currentProducts}
             onDelete={handleDeleteProduct} 
             onEditPrice={(product) => setEditingPrice(product)} 
             onToggleVisibility={handleToggleVisibility}
             loading={loading} 
           />
 
-          {/* ✅ أزرار الباجينيشن (الترقيم) المطابقة لطلبك تماماً */}
+          {/* ✅ الباجينيشن الجديد (4 أرقام + مستطيل الانتقال السريع) */}
           {!loading && totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-8">
+            <div className="flex items-center justify-center gap-2 mt-8 flex-wrap">
+              
+              {/* زرار الرجوع */}
               <button
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
                 className={`p-2 rounded-lg transition ${
-                  currentPage === 1
-                    ? 'text-slate-300 cursor-not-allowed'
-                    : 'text-slate-600 hover:bg-purple-50 hover:text-purple-600'
+                  currentPage === 1 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-purple-50 hover:text-purple-600'
                 }`}
               >
                 <ChevronRight size={18} />
               </button>
 
-              {getPageNumbers().map((page) => (
+              {/* عرض أرقام الصفحات (4 بس) */}
+              {getVisiblePages().map((page) => (
                 <button
                   key={page}
                   onClick={() => goToPage(page)}
@@ -378,19 +347,39 @@ export default function ProductsPage() {
                 </button>
               ))}
 
+              {/* زرار التقديم */}
               <button
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className={`p-2 rounded-lg transition ${
-                  currentPage === totalPages
-                    ? 'text-slate-300 cursor-not-allowed'
-                    : 'text-slate-600 hover:bg-purple-50 hover:text-purple-600'
+                  currentPage === totalPages ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-purple-50 hover:text-purple-600'
                 }`}
               >
                 <ChevronLeft size={18} />
               </button>
 
-              <span className="text-xs text-slate-400 font-bold mr-2">
+              {/* فاصل ومستطيل الانتقال السريع */}
+              <div className="flex items-center gap-2 mr-2 border-r border-slate-200 pr-3">
+                <span className="text-xs text-slate-500 font-bold whitespace-nowrap">الذهاب لصفحة:</span>
+                <input
+                  type="number"
+                  min="1"
+                  max={totalPages}
+                  value={quickJumpPage}
+                  onChange={(e) => setQuickJumpPage(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleQuickJump(e)}
+                  placeholder="#"
+                  className="w-14 h-8 text-center text-xs border border-slate-300 rounded-md outline-none focus:border-purple-500 text-black bg-white"
+                />
+                <button
+                  onClick={handleQuickJump}
+                  className="px-2 h-8 bg-purple-100 text-purple-700 text-xs font-bold rounded-md hover:bg-purple-200 transition"
+                >
+                  انتقال
+                </button>
+              </div>
+
+              <span className="text-xs text-slate-400 font-bold">
                 {filtered.length} منتج - صفحة {currentPage} من {totalPages}
               </span>
             </div>

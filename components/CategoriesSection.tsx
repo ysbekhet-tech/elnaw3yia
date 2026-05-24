@@ -48,21 +48,22 @@ export default function CategoriesSection() {
         <div className="absolute start-0 top-0 bottom-0 w-12 bg-gradient-to-e from-slate-900 to-transparent z-10 pointer-events-none rounded-s-xl"></div>
         <div className="absolute end-0 top-0 bottom-0 w-12 bg-gradient-to-s from-slate-900 to-transparent z-10 pointer-events-none rounded-e-xl"></div>
         
-        {/* زرار السحب - تم استخدام start و end بدل left و right لدعم RTL */}
-        <button 
-          onClick={() => scroll("left")}
-          className="absolute start-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/10 backdrop-blur-md text-white/70 flex items-center justify-center hover:bg-purple-500 hover:text-white hover:scale-110 transition-all duration-300 shadow-lg border border-white/5"
-          aria-label="Scroll Left"
-        >
-          <ChevronLeft size={18} strokeWidth={2.5} />
-        </button>
-
+        {/* زرار الرجوع لليمين - يظهر على اليمين في RTL */}
         <button 
           onClick={() => scroll("right")}
-          className="absolute end-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/10 backdrop-blur-md text-white/70 flex items-center justify-center hover:bg-purple-500 hover:text-white hover:scale-110 transition-all duration-300 shadow-lg border border-white/5"
+          className="absolute start-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/10 backdrop-blur-md text-white/70 flex items-center justify-center hover:bg-purple-500 hover:text-white hover:scale-110 transition-all duration-300 shadow-lg border border-white/5"
           aria-label="Scroll Right"
         >
           <ChevronRight size={18} strokeWidth={2.5} />
+        </button>
+
+        {/* زرار التقدم لليسار - يظهر على الشمال في RTL */}
+        <button 
+          onClick={() => scroll("left")}
+          className="absolute end-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/10 backdrop-blur-md text-white/70 flex items-center justify-center hover:bg-purple-500 hover:text-white hover:scale-110 transition-all duration-300 shadow-lg border border-white/5"
+          aria-label="Scroll Left"
+        >
+          <ChevronLeft size={18} strokeWidth={2.5} />
         </button>
 
         {/* صف الأقسام - إضافة justify-center لو الأقسام قليلة */}
