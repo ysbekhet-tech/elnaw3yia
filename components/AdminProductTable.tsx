@@ -119,23 +119,25 @@ export default function AdminProductTable({
                     )}
                   </td>
 
-                  <td className="px-4 py-3.5 font-bold text-sm">
+                  {/* ✅ تعديل خلية الاسم: إضافة max-w و truncate عشان يكمل بنقط */}
+                  <td className="px-4 py-3.5 font-bold text-sm max-w-[200px]">
                     <div className="flex items-center gap-2">
                       {isLowStock && (
                         <span 
-                          className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-50 border border-red-200"
+                          className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-50 border border-red-200 flex-shrink-0"
                           title={`الكمية وصلت للحد الأدنى (${minStock})`}
                         >
                           <AlertTriangle size={10} className="text-red-500" />
                         </span>
                       )}
-                      <span className={isLowStock ? "text-red-600" : "text-slate-900"}>
+                      <span className={`truncate block ${isLowStock ? "text-red-600" : "text-slate-900"}`}>
                         {product.name}
                       </span>
                     </div>
                   </td>
 
-                  <td className="px-4 py-3.5 text-sm">
+                  {/* ✅ تعديل خلية السعر: إضافة whitespace-nowrap */}
+                  <td className="px-4 py-3.5 text-sm whitespace-nowrap">
                     <span
                       className="font-black px-2 py-1 rounded-lg text-xs bg-purple-50 text-purple-700"
                     >
@@ -143,17 +145,18 @@ export default function AdminProductTable({
                     </span>
                   </td>
 
-                  <td className="px-4 py-3.5 text-sm">
+                  {/* ✅ تعديل خلية الكمية: إضافة whitespace-nowrap للخلية وللبادج */}
+                  <td className="px-4 py-3.5 text-sm whitespace-nowrap">
                     <span 
-                      className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold transition-all border ${stockBadgeClass}`}
+                      className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold transition-all border whitespace-nowrap ${stockBadgeClass}`}
                     >
                       {stockText}
                       {StockIcon}
                     </span>
                   </td>
 
-                  <td className="px-4 py-3.5 text-slate-600 text-sm">{product.category}</td>
-                  <td className="px-4 py-3.5 text-slate-500 text-xs font-mono">{product.barcode}</td>
+                  <td className="px-4 py-3.5 text-slate-600 text-sm whitespace-nowrap">{product.category}</td>
+                  <td className="px-4 py-3.5 text-slate-500 text-xs font-mono whitespace-nowrap">{product.barcode}</td>
 
                   <td className="px-4 py-3.5">
                     <div className="flex justify-center gap-2">
@@ -193,7 +196,7 @@ export default function AdminProductTable({
                         style={
                           deleteConfirm === product.id
                             ? { background: "#ef4444", color: "white", borderColor: "#ef4444" }
-                            : { background: "#fef2f2", color: "#ef4444", borderColor: "#fecaca" } // red-50, red-500, red-200
+                            : { background: "#fef2f2", color: "#ef4444", borderColor: "#fecaca" }
                         }
                         title="حذف"
                       >
