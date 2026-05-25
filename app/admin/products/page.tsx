@@ -19,7 +19,6 @@ import AdminProductForm from '@/components/AdminProductForm';
 import AdminPriceEditor from '@/components/AdminPriceEditor';
 import { isAuthenticated } from '@/lib/auth';
 import { Package, Plus, X, Tags, Filter, ImagePlus, Edit2, Check, Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import ConfirmModal from '@/components/ConfirmModal';
 import ReactCrop, { Crop, PixelCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
@@ -208,6 +207,7 @@ export default function ProductsPage() {
     try { 
       await updateDoc(doc(db, 'products', id), updatedData); 
       setAllProducts(allProducts.map((p) => (p.id === id ? { ...p, ...updatedData } : p))); 
+      setEditingPrice(null);
       setModalConfig({ isOpen: true, title: 'نجاح ✓', message: 'تم تحديث المنتج بنجاح', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) }); 
     } catch (error) { console.error(error); } 
   };
@@ -221,6 +221,9 @@ export default function ProductsPage() {
   const handleUpdateCategory = async (catId: string) => { if (!editingCatName.trim()) return; try { const catRef = doc(db, 'categories', catId); await updateDoc(catRef, { name: editingCatName.trim(), imageUrl: editCatImagePreview || '', icon: editCatImagePreview ? '' : (categories.find(c => c.id === catId)?.icon || '📦') }); handleCancelEditCategory(); } catch (error) { console.error(error); } };
   const handleDeleteCategory = (catId: string, catName: string) => { setModalConfig({ isOpen: true, title: 'حذف القسم', message: `هل أنت متأكد من حذف قسم "${catName}"؟`, onConfirm: () => executeDeleteCategory(catId) }); };
   const executeDeleteCategory = async (catId: string) => { try { await deleteDoc(doc(db, 'categories', catId)); setModalConfig(prev => ({ ...prev, isOpen: false })); } catch (error) { console.error('خطأ في حذف القسم:', error); } };
+
+  // ✅ تحديد إذا كان المودال نجاح عشان نظهر الصورة
+  const isSuccessModal = modalConfig.title.includes('نجاح') || modalConfig.title.includes('تمت');
 
   if (!authChecked) return null;
 
@@ -240,7 +243,47 @@ export default function ProductsPage() {
         </div>
       )}
 
-      <ConfirmModal isOpen={modalConfig.isOpen} title={modalConfig.title} message={modalConfig.message} onConfirm={modalConfig.onConfirm} onCancel={() => setModalConfig({ ...modalConfig, isOpen: false })} confirmText={modalConfig.title.includes('حذف') ? 'تأكيد الحذف' : 'موافق'} cancelText="رجوع" />
+      {/* ✅ ConfirmModal المعدل - أكبر حجم + صورة كبيرة + زر واحد في النص */}
+      {modalConfig.isOpen && (
+        <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-10 max-w-lg w-full text-center shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
+            
+            {/* ✅ صورة النجاح - حجم كبير جداً */}
+            {isSuccessModal && (
+              <div className="mb-8 flex justify-center">
+                <img 
+                  src="/success.png" 
+                  alt="Success" 
+                  className="w-96 h-96 object-contain"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              </div>
+            )}
+
+            <h3 className={`text-2xl font-black mb-4 ${isSuccessModal ? 'text-green-600' : 'text-slate-900'}`}>
+              {modalConfig.title}
+            </h3>
+            
+            <p className="text-slate-600 text-base mb-10 leading-relaxed">
+              {modalConfig.message}
+            </p>
+
+            {/* ✅ زر واحد بس في النص */}
+            <div className="flex justify-center">
+              <button
+                onClick={modalConfig.onConfirm}
+                className={`px-12 py-3.5 rounded-xl font-bold text-white text-sm transition hover:opacity-90 ${
+                  modalConfig.title.includes('حذف') 
+                    ? 'bg-red-500 hover:bg-red-600' 
+                    : 'bg-gradient-to-r from-purple-600 to-pink-500'
+                }`}
+              >
+                {modalConfig.title.includes('حذف') ? 'تأكيد الحذف' : 'موافق'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 py-8">
       
