@@ -13,6 +13,23 @@ interface AdminProductFormProps {
   onSubmit: (formData: Partial<Product>) => void | Promise<void>;
 }
 
+const DEFAULT_COUNTRIES = [
+  "مصر",
+  "الصين",
+  "المانيا",
+  "ايطاليا",
+  "تركيا",
+  "اسبانيا",
+  "الهند",
+  "ماليزيا",
+  "اندونيسيا",
+  "امريكا",
+  "اليابان",
+  "فيتنام",
+  "الامارات",
+  "السعودية",
+];
+
 export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
   const [formData, setFormData] = useState({
     name: "",
@@ -38,6 +55,13 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // ✅ بلد الصناعة - Dropdown
+  const [countries, setCountries] = useState<string[]>(DEFAULT_COUNTRIES);
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
+  const [newCountry, setNewCountry] = useState("");
+  const countryDropdownRef = useRef<HTMLDivElement>(null);
 
   const [hasColors, setHasColors] = useState(false);
   const [colors, setColors] = useState<ProductColor[]>([]);
@@ -88,6 +112,11 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
         setCategorySearch("");
         setEditingCatId(null);
       }
+      if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target as Node)) {
+        setCountryOpen(false);
+        setCountrySearch("");
+        setNewCountry("");
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -95,6 +124,18 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  // ✅ إضافة بلد جديد
+  const handleAddCountry = () => {
+    const trimmed = newCountry.trim();
+    if (!trimmed) return;
+    if (countries.includes(trimmed)) {
+      alert("البلد ده موجود بالفعل!");
+      return;
+    }
+    setCountries([...countries, trimmed]);
+    setNewCountry("");
   };
 
   // === دوال الـ Crop ===
@@ -489,6 +530,7 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
   const borderConfig = { borderColor: "rgba(124,58,237,0.3)" };
 
   const filteredCategories = categoriesData.filter((cat) => cat.name.toLowerCase().includes(categorySearch.toLowerCase()));
+  const filteredCountries = countries.filter((c) => c.includes(countrySearch));
 
   return (
     <>
@@ -618,7 +660,78 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
 
         <input type="number" name="originalPrice" value={formData.originalPrice} onChange={handleChange} placeholder="السعر قبل الخصم" className={inputStyle} style={borderConfig} />
 
-        <input type="text" name="countryOfOrigin" value={formData.countryOfOrigin} onChange={handleChange} placeholder="بلد الصناعة" className={inputStyle} style={borderConfig} />
+        {/* ✅ بلد الصناعة - Dropdown مع بحث وإضافة */}
+        <div ref={countryDropdownRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setCountryOpen(!countryOpen)}
+            className="w-full h-12 px-4 rounded-xl text-sm text-right flex items-center justify-between transition bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500"
+            style={borderConfig}
+          >
+            <span className={formData.countryOfOrigin ? "!text-black" : "text-slate-400"}>{formData.countryOfOrigin || "بلد الصناعة"}</span>
+            <ChevronDown size={16} className="text-black" style={{ transform: countryOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+          </button>
+          {countryOpen && (
+            <div className="absolute top-full right-0 left-0 mt-1 rounded-xl overflow-hidden z-50 bg-white shadow-xl" style={{ border: "1px solid rgba(124,58,237,0.3)" }}>
+              <div className="p-2 border-b border-slate-100">
+                <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded-lg">
+                  <Search size={14} className="text-slate-400" />
+                  <input
+                    type="text"
+                    value={countrySearch}
+                    onChange={(e) => setCountrySearch(e.target.value)}
+                    placeholder="ابحث عن بلد..."
+                    className="bg-transparent outline-none text-sm w-full !text-black !font-bold"
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="overflow-auto" style={{ maxHeight: "200px" }}>
+                {filteredCountries.length === 0 && <p className="text-center text-sm text-slate-400 py-2">لا توجد نتائج</p>}
+                {filteredCountries.map((country) => (
+                  <div
+                    key={country}
+                    className="w-full px-4 py-2.5 text-right text-sm flex items-center justify-between transition font-bold text-black hover:bg-slate-50 cursor-pointer"
+                    onClick={() => {
+                      setFormData({ ...formData, countryOfOrigin: country });
+                      setCountryOpen(false);
+                      setCountrySearch("");
+                    }}
+                  >
+                    <span className={formData.countryOfOrigin === country ? "text-purple-700" : ""}>{country}</span>
+                    {formData.countryOfOrigin === country && <Check size={14} className="text-purple-700" />}
+                  </div>
+                ))}
+              </div>
+              {/* ✅ إضافة بلد جديد */}
+              <div className="border-t border-slate-100 p-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={newCountry}
+                    onChange={(e) => setNewCountry(e.target.value)}
+                    placeholder="أضف بلد جديد..."
+                    className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none !text-black !font-bold"
+                    style={borderConfig}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddCountry();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCountry}
+                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"
+                  >
+                    <Plus size={12} /> إضافة
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
 
         <div className="md:col-span-2">
           <textarea

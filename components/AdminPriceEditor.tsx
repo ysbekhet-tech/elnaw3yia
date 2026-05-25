@@ -16,6 +16,23 @@ interface AdminPriceEditorProps {
   loading?: boolean;
 }
 
+const DEFAULT_COUNTRIES = [
+  "مصر",
+  "الصين",
+  "المانيا",
+  "ايطاليا",
+  "تركيا",
+  "اسبانيا",
+  "الهند",
+  "ماليزيا",
+  "اندونيسيا",
+  "امريكا",
+  "اليابان",
+  "فيتنام",
+  "الامارات",
+  "السعودية",
+];
+
 export default function AdminPriceEditor({ product, onClose, onSubmit, loading = false }: AdminPriceEditorProps) {
   const [formData, setFormData] = useState({
     name: "", price: 0, originalPrice: 0, stock: 0, category: "", barcode: "", description: "", minStock: 5, countryOfOrigin: ""
@@ -26,6 +43,13 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+
+  // ✅ بلد الصناعة - Dropdown
+  const [countries, setCountries] = useState<string[]>(DEFAULT_COUNTRIES);
+  const [countryOpen, setCountryOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
+  const [newCountry, setNewCountry] = useState("");
+  const countryDropdownRef = useRef<HTMLDivElement>(null);
 
   const [hasColors, setHasColors] = useState(false);
   const [colors, setColors] = useState<ProductColor[]>([]);
@@ -65,11 +89,22 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     }
   }, [notification]);
 
+  // ✅ إضافة بلد جديد
+  const handleAddCountry = () => {
+    const trimmed = newCountry.trim();
+    if (!trimmed) return;
+    if (countries.includes(trimmed)) {
+      alert("البلد ده موجود بالفعل!");
+      return;
+    }
+    setCountries([...countries, trimmed]);
+    setNewCountry("");
+  };
+
   // ✅✅✅ جلب الداتا الكاملة من Firestore مباشرة
   useEffect(() => {
     if (!product?.id) return;
     
-    // ✅ الحل: تعريف الـ id كمتغير string هنا عشان TypeScript ما يغلبش
     const productId = product.id;
 
     const fetchFullProduct = async () => {
@@ -105,7 +140,6 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
           setHasSizes(data.hasSizes || false);
           setSizes(Array.isArray(data.sizes) ? data.sizes : []);
         } else {
-          // لو المستند مش موجود في Firestore، نستخدم الداتا من الـ prop
           const productAny = product as any;
           setFormData({
             name: product.name || "",
@@ -134,7 +168,6 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
         }
       } catch (error) {
         console.error("Error fetching full product:", error);
-        // Fallback للداتا من الـ prop
         const productAny = product as any;
         setFormData({
           name: product.name || "",
@@ -176,6 +209,11 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setCategoryOpen(false);
         setCategorySearch("");
+      }
+      if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target as Node)) {
+        setCountryOpen(false);
+        setCountrySearch("");
+        setNewCountry("");
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -533,6 +571,7 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
   };
 
   const filteredCategories = categories.filter((cat) => cat.toLowerCase().includes(categorySearch.toLowerCase()));
+  const filteredCountries = countries.filter((c) => c.includes(countrySearch));
 
   return (
     <>
@@ -698,9 +737,82 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
               <input type="number" value={formData.originalPrice} onChange={(e) => setFormData({ ...formData, originalPrice: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
             </div>
 
-            <div>
+            {/* ✅ بلد الصناعة - Dropdown مع بحث وإضافة */}
+            <div ref={countryDropdownRef}>
               <label className="block text-xs font-bold text-slate-600 mb-1.5">بلد الصناعة</label>
-              <input type="text" value={formData.countryOfOrigin} onChange={(e) => setFormData({ ...formData, countryOfOrigin: e.target.value })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setCountryOpen(!countryOpen)}
+                  className="w-full px-4 py-3 rounded-xl text-sm text-right flex items-center justify-between transition bg-slate-50 border border-slate-200 focus:border-purple-400 text-slate-900"
+                  disabled={isSubmitting}
+                >
+                  <span className={formData.countryOfOrigin ? "text-slate-900" : "text-slate-400"}>{formData.countryOfOrigin || "اختر بلد الصناعة"}</span>
+                  <ChevronDown size={16} className="text-slate-400" />
+                </button>
+                {countryOpen && (
+                  <div className="absolute top-full right-0 left-0 mt-1 rounded-2xl overflow-hidden z-50 bg-white border border-slate-200 shadow-lg">
+                    <div className="p-2 border-b border-slate-100">
+                      <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded-lg">
+                        <Search size={14} className="text-slate-400" />
+                        <input
+                          type="text"
+                          value={countrySearch}
+                          onChange={(e) => setCountrySearch(e.target.value)}
+                          placeholder="ابحث عن بلد..."
+                          className="bg-transparent outline-none text-sm w-full text-slate-900 font-bold"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    <div className="overflow-auto max-h-[200px]">
+                      {filteredCountries.length === 0 && (
+                        <p className="text-center text-sm text-slate-400 py-2">لا توجد نتائج</p>
+                      )}
+                      {filteredCountries.map((country) => (
+                        <button
+                          key={country}
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, countryOfOrigin: country });
+                            setCountryOpen(false);
+                            setCountrySearch("");
+                          }}
+                          className={`w-full px-4 py-2.5 text-right text-sm hover:bg-purple-50 transition flex items-center justify-between ${formData.countryOfOrigin === country ? "text-purple-700 font-bold" : "text-slate-600"}`}
+                        >
+                          <span>{country}</span>
+                          {formData.countryOfOrigin === country && <Check size={14} className="text-purple-700" />}
+                        </button>
+                      ))}
+                    </div>
+                    {/* ✅ إضافة بلد جديد */}
+                    <div className="border-t border-slate-100 p-2">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={newCountry}
+                          onChange={(e) => setNewCountry(e.target.value)}
+                          placeholder="أضف بلد جديد..."
+                          className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-sm outline-none text-slate-900 font-bold"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddCountry();
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddCountry}
+                          className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"
+                        >
+                          <Plus size={12} /> إضافة
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* مقاسات */}
