@@ -1,19 +1,18 @@
 "use client";
 
-import { Product, ProductColor, ProductSize } from "@/types";
-import { db } from "@/lib/firebase";
-import { collection, onSnapshot, doc, getDoc } from "firebase/firestore";
-import { uploadBase64Image } from "@/lib/uploadImage";
-import { X, Save, ChevronDown, Check, Upload, Palette, Plus, ImagePlus, Trash2, Ruler, AlertTriangle, Star, Search } from "lucide-react";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { db } from "@/lib/firebase";
+import { doc, updateDoc, collection, onSnapshot, query, where, getDocs } from "firebase/firestore";
+import { uploadBase64Image } from "@/lib/uploadImage";
+import { Upload, ChevronDown, Check, X, Save, Palette, Plus, ImagePlus, Ruler, AlertTriangle, Star, Edit2, Search } from "lucide-react";
 import ReactCrop, { Crop, PixelCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
+import { Product, ProductColor, ProductSize } from "@/types";
 
-interface AdminPriceEditorProps {
-  product: Product | null;
+interface AdminEditProductFormProps {
+  product: Product;
+  onUpdate: (formData: Partial<Product>) => void | Promise<void>;
   onClose: () => void;
-  onSubmit: (productId: string, updatedData: Partial<Product>) => Promise<void>;
-  loading?: boolean;
 }
 
 const DEFAULT_COUNTRIES = [
@@ -33,42 +32,52 @@ const DEFAULT_COUNTRIES = [
   "السعودية",
 ];
 
-export default function AdminPriceEditor({ product, onClose, onSubmit, loading = false }: AdminPriceEditorProps) {
+export default function AdminEditProductForm({ product, onUpdate, onClose }: AdminEditProductFormProps) {
   const [formData, setFormData] = useState({
-    name: "", price: 0, originalPrice: 0, stock: 0, category: "", barcode: "", description: "", minStock: 5, countryOfOrigin: ""
+    name: product.name || "",
+    price: product.price?.toString() || "",
+    originalPrice: product.originalPrice?.toString() || "",
+    category: product.category || "",
+    barcode: product.barcode || "",
+    stock: product.stock?.toString() || "",
+    description: product.description || "",
+    minStock: product.minStock?.toString() || "5",
+    countryOfOrigin: product.countryOfOrigin || "",
   });
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>(product.images || []);
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const pasteZoneRef = useRef<HTMLDivElement>(null);
 
-  // ✅ بلد الصناعة - Dropdown
+  const [categoriesData, setCategoriesData] = useState<{ id: string; name: string }[]>([]);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [categorySearch, setCategorySearch] = useState("");
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editingCatName, setEditingCatName] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   const [countries, setCountries] = useState<string[]>(DEFAULT_COUNTRIES);
   const [countryOpen, setCountryOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
   const [newCountry, setNewCountry] = useState("");
   const countryDropdownRef = useRef<HTMLDivElement>(null);
 
-  const [hasColors, setHasColors] = useState(false);
-  const [colors, setColors] = useState<ProductColor[]>([]);
+  const [hasColors, setHasColors] = useState(product.hasColors || false);
+  const [colors, setColors] = useState<ProductColor[]>(product.colors || []);
   const [newColorName, setNewColorName] = useState("");
   const [newColorHex, setNewColorHex] = useState("#000000");
   const [newColorImage, setNewColorImage] = useState<string | null>(null);
   const colorFileInputRef = useRef<HTMLInputElement>(null);
   const [isColorDragging, setIsColorDragging] = useState(false);
 
-  const [hasSizes, setHasSizes] = useState(false);
-  const [sizes, setSizes] = useState<ProductSize[]>([]);
+  const [hasSizes, setHasSizes] = useState(product.hasSizes || false);
+  const [sizes, setSizes] = useState<ProductSize[]>(product.sizes || []);
   const [newLength, setNewLength] = useState("");
   const [newWidth, setNewWidth] = useState("");
   const [newSizePrice, setNewSizePrice] = useState("");
-
-  const [categories, setCategories] = useState<string[]>([]);
-  const [categoryOpen, setCategoryOpen] = useState(false);
-  const [categorySearch, setCategorySearch] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
@@ -78,10 +87,8 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
   const [isImageLoading, setIsImageLoading] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // ✅ حالة الإشعارات
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // ✅ إخفاء الإشعار تلقائياً
   useEffect(() => {
     if (notification) {
       const timer = setTimeout(() => setNotification(null), 4000);
@@ -89,118 +96,11 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     }
   }, [notification]);
 
-  // ✅ إضافة بلد جديد
-  const handleAddCountry = () => {
-    const trimmed = newCountry.trim();
-    if (!trimmed) return;
-    if (countries.includes(trimmed)) {
-      alert("البلد ده موجود بالفعل!");
-      return;
-    }
-    setCountries([...countries, trimmed]);
-    setNewCountry("");
-  };
-
-  // ✅✅✅ جلب الداتا الكاملة من Firestore مباشرة
   useEffect(() => {
-    if (!product?.id) return;
-    
-    const productId = product.id;
-
-    const fetchFullProduct = async () => {
-      try {
-        const productDoc = await getDoc(doc(db, "products", productId));
-        if (productDoc.exists()) {
-          const data = productDoc.data();
-
-          setFormData({
-            name: data.name || product.name || "",
-            price: data.price || product.price || 0,
-            originalPrice: data.originalPrice || product.originalPrice || 0,
-            stock: data.stock ?? product.stock ?? 0,
-            category: data.category || product.category || "",
-            barcode: data.barcode || product.barcode || "",
-            description: data.description || data.desc || "",
-            minStock: data.minStock ?? product.minStock ?? 5,
-            countryOfOrigin: data.countryOfOrigin || "",
-          });
-
-          if (Array.isArray(data.images) && data.images.length > 0) {
-            setImagePreviews(data.images);
-          } else if (data.image) {
-            setImagePreviews([data.image]);
-          } else if (Array.isArray(product.images) && product.images.length > 0) {
-            setImagePreviews(product.images);
-          } else {
-            setImagePreviews([]);
-          }
-
-          setHasColors(data.hasColors || false);
-          setColors(Array.isArray(data.colors) ? data.colors : []);
-          setHasSizes(data.hasSizes || false);
-          setSizes(Array.isArray(data.sizes) ? data.sizes : []);
-        } else {
-          const productAny = product as any;
-          setFormData({
-            name: product.name || "",
-            price: product.price || 0,
-            originalPrice: product.originalPrice || 0,
-            stock: product.stock || 0,
-            category: product.category || "",
-            barcode: product.barcode || "",
-            description: productAny.description || productAny.desc || "",
-            minStock: product.minStock || 5,
-            countryOfOrigin: productAny.countryOfOrigin || "",
-          });
-
-          if (Array.isArray(product.images) && product.images.length > 0) {
-            setImagePreviews(product.images);
-          } else if (productAny.image) {
-            setImagePreviews([productAny.image]);
-          } else {
-            setImagePreviews([]);
-          }
-
-          setHasColors(product.hasColors || false);
-          setColors(product.colors || []);
-          setHasSizes(product.hasSizes || false);
-          setSizes(product.sizes || []);
-        }
-      } catch (error) {
-        console.error("Error fetching full product:", error);
-        const productAny = product as any;
-        setFormData({
-          name: product.name || "",
-          price: product.price || 0,
-          originalPrice: product.originalPrice || 0,
-          stock: product.stock || 0,
-          category: product.category || "",
-          barcode: product.barcode || "",
-          description: productAny.description || productAny.desc || "",
-          minStock: product.minStock || 5,
-          countryOfOrigin: productAny.countryOfOrigin || "",
-        });
-
-        if (Array.isArray(product.images) && product.images.length > 0) {
-          setImagePreviews(product.images);
-        } else if (productAny.image) {
-          setImagePreviews([productAny.image]);
-        } else {
-          setImagePreviews([]);
-        }
-
-        setHasColors(product.hasColors || false);
-        setColors(product.colors || []);
-        setHasSizes(product.hasSizes || false);
-        setSizes(product.sizes || []);
-      }
-    };
-
-    fetchFullProduct();
-  }, [product]);
-
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "categories"), (snapshot) => setCategories(snapshot.docs.map((doc) => doc.data().name as string)));
+    const unsubscribe = onSnapshot(collection(db, "categories"), (snapshot) => {
+      const catsList = snapshot.docs.map((doc) => ({ id: doc.id, name: doc.data().name as string }));
+      setCategoriesData(catsList);
+    });
     return () => unsubscribe();
   }, []);
 
@@ -209,6 +109,7 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setCategoryOpen(false);
         setCategorySearch("");
+        setEditingCatId(null);
       }
       if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target as Node)) {
         setCountryOpen(false);
@@ -220,7 +121,26 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  if (!product) return null;
+  useEffect(() => {
+    if (navigator.clipboard && navigator.clipboard.read) {
+      navigator.clipboard.read().catch(() => {});
+    }
+  }, []);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleAddCountry = () => {
+    const trimmed = newCountry.trim();
+    if (!trimmed) return;
+    if (countries.includes(trimmed)) {
+      alert("البلد ده موجود بالفعل!");
+      return;
+    }
+    setCountries([...countries, trimmed]);
+    setNewCountry("");
+  };
 
   const openCropModal = (imageUrl: string, target: "main" | "color") => {
     imgRef.current = null;
@@ -246,21 +166,12 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
 
   async function getCroppedImg() {
     const image = imgRef.current;
-    if (!image) {
-      console.warn("getCroppedImg: imgRef.current is null");
-      return null;
-    }
-    if (!completedCrop || completedCrop.width === 0 || completedCrop.height === 0) {
-      console.warn("getCroppedImg: completedCrop is invalid", completedCrop);
-      return null;
-    }
+    if (!image) return null;
+    if (!completedCrop || completedCrop.width === 0 || completedCrop.height === 0) return null;
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      console.warn("getCroppedImg: canvas context is null");
-      return null;
-    }
+    if (!ctx) return null;
 
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
@@ -291,7 +202,6 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
 
     try {
       const croppedImage = await getCroppedImg();
-
       if (croppedImage) {
         if (cropTarget === "main") {
           setImagePreviews((prev) => [...prev, croppedImage]);
@@ -329,6 +239,125 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
       alert("مقدرش أحمل الصورة من الرابط ده. جرب ترفعها من الجهاز.");
     }
   }, []);
+
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const activeElement = document.activeElement;
+      const isPasteZone = pasteZoneRef.current?.contains(activeElement) || 
+                          dropZoneRef.current?.contains(activeElement);
+      
+      if (!isPasteZone) return;
+
+      e.preventDefault();
+      
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => openCropModal(reader.result as string, "main");
+            reader.readAsDataURL(file);
+          }
+        }
+        else if (item.type === "text/plain") {
+          item.getAsString(async (text) => {
+            if (text.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || 
+                text.startsWith("http") && (text.includes(".jpg") || text.includes(".png") || text.includes(".jpeg"))) {
+              await handleImageFromUrl(text);
+            }
+          });
+        }
+      }
+    };
+
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [handleImageFromUrl]);
+
+  useEffect(() => {
+  const handleContextMenu = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const isPasteZone = pasteZoneRef.current?.contains(target) || 
+                        dropZoneRef.current?.contains(target);
+    
+    if (!isPasteZone) return;
+
+    e.preventDefault();
+    
+    const customMenu = document.createElement('div');
+    customMenu.className = 'fixed bg-white rounded-lg shadow-xl border z-[200] overflow-hidden';
+    customMenu.style.top = `${e.clientY}px`;
+    customMenu.style.left = `${e.clientX}px`;
+    
+    const pasteOption = document.createElement('button');
+    pasteOption.innerHTML = `
+      <div class="flex items-center gap-2 px-4 py-2 hover:bg-purple-50 transition-colors w-full text-right">
+        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+        </svg>
+        <span class="text-sm font-bold text-gray-700">لصق الصورة</span>
+        <span class="text-xs text-gray-400 mr-auto">Ctrl+V</span>
+      </div>
+    `;
+    pasteOption.className = 'w-full text-right';
+    
+    let isRemoved = false;
+    
+    const removeMenu = () => {
+      if (!isRemoved && document.body.contains(customMenu)) {
+        document.body.removeChild(customMenu);
+        isRemoved = true;
+      }
+      document.removeEventListener('click', removeMenu);
+      document.removeEventListener('contextmenu', removeMenu);
+    };
+    
+    pasteOption.onclick = async () => {
+      try {
+        const clipboardText = await navigator.clipboard.readText();
+        if (clipboardText && (clipboardText.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || clipboardText.startsWith('http'))) {
+          await handleImageFromUrl(clipboardText);
+        } else {
+          const clipboardItems = await navigator.clipboard.read();
+          for (const clipboardItem of clipboardItems) {
+            const imageTypes = clipboardItem.types.filter(type => type.startsWith('image/'));
+            for (const type of imageTypes) {
+              const blob = await clipboardItem.getType(type);
+              const reader = new FileReader();
+              reader.onloadend = () => openCropModal(reader.result as string, "main");
+              reader.readAsDataURL(blob);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to paste:', err);
+        alert('اضغط Ctrl+V للصق الصورة');
+      }
+      removeMenu();
+    };
+    
+    customMenu.appendChild(pasteOption);
+    document.body.appendChild(customMenu);
+    
+    setTimeout(() => {
+      document.addEventListener('click', removeMenu);
+      document.addEventListener('contextmenu', removeMenu);
+    }, 0);
+  };
+
+  const pasteZone = pasteZoneRef.current || dropZoneRef.current;
+  if (pasteZone) {
+    pasteZone.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      pasteZone.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }
+}, [handleImageFromUrl]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -405,7 +434,9 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
   );
 
   const handleRemoveImage = (index: number) => {
-    setImagePreviews(imagePreviews.filter((_, i) => i !== index));
+    const newImages = imagePreviews.filter((_, i) => i !== index);
+    setImagePreviews(newImages);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSetPrimaryImage = (index: number) => {
@@ -413,15 +444,6 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     const primaryImg = newImages.splice(index, 1)[0];
     newImages.unshift(primaryImg);
     setImagePreviews(newImages);
-  };
-
-  const handleColorImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => openCropModal(reader.result as string, "color");
-      reader.readAsDataURL(file);
-    }
   };
 
   const handleColorImageDrop = useCallback(async (e: React.DragEvent) => {
@@ -451,7 +473,15 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     }
   }, []);
 
-  // ✅ الصورة اختيارية - يكفي اسم اللون
+  const handleColorImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => openCropModal(reader.result as string, "color");
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleAddColor = () => {
     if (!newColorName) {
       alert("يجب إدخال اسم اللون!");
@@ -464,7 +494,9 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     if (colorFileInputRef.current) colorFileInputRef.current.value = "";
   };
 
-  const handleRemoveColor = (index: number) => setColors(colors.filter((_, i) => i !== index));
+  const handleRemoveColor = (index: number) => {
+    setColors(colors.filter((_, i) => i !== index));
+  };
 
   const handleAddSize = () => {
     if (!newLength || !newWidth || !newSizePrice) {
@@ -477,27 +509,39 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     setNewSizePrice("");
   };
 
-  const handleRemoveSize = (index: number) => setSizes(sizes.filter((_, i) => i !== index));
+  const handleRemoveSize = (index: number) => {
+    setSizes(sizes.filter((_, i) => i !== index));
+  };
 
-  // ✅ دالة مساعدة لرفع الصور الجديدة على Storage
-  const uploadNewImages = async (productId: string): Promise<string[]> => {
-    const finalUrls: string[] = [];
+  const handleUpdateCategory = async (catId: string) => {
+    if (!editingCatName.trim()) return;
+    try {
+      const { updateDoc, doc } = await import("firebase/firestore");
+      await updateDoc(doc(db, "categories", catId), { name: editingCatName });
+      setEditingCatId(null);
+      setEditingCatName("");
+    } catch (error) {
+      alert("خطأ في تحديث القسم");
+    }
+  };
+
+  const uploadImagesToStorage = async (productId: string): Promise<string[]> => {
+    const imageUrls: string[] = [];
 
     for (let i = 0; i < imagePreviews.length; i++) {
       if (imagePreviews[i].startsWith("data:")) {
-        const path = `products/${productId}/image_${Date.now()}_${i}.jpg`;
+        const path = `products/${productId}/image_${i}_${Date.now()}.jpg`;
         const url = await uploadBase64Image(imagePreviews[i], path);
-        finalUrls.push(url);
+        imageUrls.push(url);
       } else {
-        finalUrls.push(imagePreviews[i]);
+        imageUrls.push(imagePreviews[i]);
       }
     }
 
-    return finalUrls;
+    return imageUrls;
   };
 
-  // ✅ دالة مساعدة لرفع صور الألوان الجديدة
-  const uploadNewColorImages = async (productId: string): Promise<ProductColor[]> => {
+  const uploadColorImages = async (productId: string): Promise<ProductColor[]> => {
     if (!hasColors || colors.length === 0) return [];
 
     const updatedColors: ProductColor[] = [];
@@ -505,7 +549,7 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     for (let i = 0; i < colors.length; i++) {
       const color = colors[i];
       if (color.image && color.image.startsWith("data:")) {
-        const path = `products/${productId}/colors/color_${Date.now()}_${i}.jpg`;
+        const path = `products/${productId}/colors/color_${i}_${Date.now()}.jpg`;
         const url = await uploadBase64Image(color.image, path);
         updatedColors.push({ ...color, image: url });
       } else {
@@ -516,67 +560,82 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
     return updatedColors;
   };
 
-  const handleSubmit = async () => {
-    if (!formData.name || (!hasSizes && formData.price <= 0) || !formData.category || !formData.barcode) {
-      alert("يرجى ملء جميع الحقول المطلوبة");
-      return;
-    }
-    if (!product.id) {
-      alert("المنتج لا يحتوي على معرف صالح");
-      return;
-    }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-    setIsSubmitting(true);
+    if (isUploading) return;
+
+    setIsUploading(true);
 
     try {
-      // ✅ رفع الصور الجديدة على Storage
-      const finalImageUrls = await uploadNewImages(product.id);
+      if (formData.name !== product.name) {
+        const nameQuery = query(collection(db, "products"), where("name", "==", formData.name.trim()));
+        const nameSnapshot = await getDocs(nameQuery);
+        if (!nameSnapshot.empty) {
+          setNotification({ type: "error", message: "اسم المنتج ده موجود بالفعل! ❌" });
+          setIsUploading(false);
+          return;
+        }
+      }
 
-      // ✅ رفع صور الألوان الجديدة
-      const finalColors = await uploadNewColorImages(product.id);
+      if (formData.barcode !== product.barcode) {
+        const barcodeQuery = query(collection(db, "products"), where("barcode", "==", formData.barcode.trim()));
+        const barcodeSnapshot = await getDocs(barcodeQuery);
+        if (!barcodeSnapshot.empty) {
+          setNotification({ type: "error", message: "الباركود مستخدم بالفعل ❌" });
+          setIsUploading(false);
+          return;
+        }
+      }
+
+      const productId = product.id || crypto.randomUUID();
+      const imageUrls = await uploadImagesToStorage(productId);
+      const finalColors = await uploadColorImages(productId);
 
       let finalPrice = Number(formData.price);
       if (hasSizes && sizes.length > 0) {
         finalPrice = Number(sizes[0].price);
       }
 
-      await onSubmit(product.id, {
+      await onUpdate({
+        id: productId,
         ...formData,
-        description: formData.description,
         price: finalPrice,
+        originalPrice: Number(formData.originalPrice),
+        stock: Number(formData.stock),
         minStock: Number(formData.minStock) || 5,
         countryOfOrigin: formData.countryOfOrigin,
-        images: finalImageUrls,
-        originalPrice: Number(formData.originalPrice) || 0,
+        images: imageUrls,
         hasColors: hasColors,
         colors: hasColors ? finalColors : [],
         hasSizes: hasSizes,
         sizes: hasSizes ? sizes : [],
       });
 
-      // ✅ رسالة نجاح
-      setNotification({ type: "success", message: "تم تعديل المنتج بنجاح! ✅" });
-
-      // ✅ إغلاق المودال بعد عرض رسالة النجاح
+      setNotification({ type: "success", message: "تم تحديث المنتج بنجاح! ✅" });
+      
       setTimeout(() => {
         onClose();
       }, 1500);
     } catch (error) {
-      console.error("خطأ في التحديث:", error);
-      // ✅ رسالة خطأ
-      setNotification({ type: "error", message: "حدث خطأ أثناء تعديل المنتج! حاول مرة أخرى ❌" });
+      console.error("Error updating product:", error);
+      setNotification({ type: "error", message: "حدث خطأ أثناء تحديث المنتج! ❌" });
     } finally {
-      setIsSubmitting(false);
+      setIsUploading(false);
     }
   };
 
-  const filteredCategories = categories.filter((cat) => cat.toLowerCase().includes(categorySearch.toLowerCase()));
+  const inputStyle = "w-full h-12 px-4 rounded-xl bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500 transition placeholder:text-slate-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+  const innerInputStyle = "w-full h-10 px-3 rounded-lg bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500 transition placeholder:text-slate-400 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+  const borderConfig = { borderColor: "rgba(124,58,237,0.3)" };
+
+  const filteredCategories = categoriesData.filter((cat) => cat.name.toLowerCase().includes(categorySearch.toLowerCase()));
   const filteredCountries = countries.filter((c) => c.includes(countrySearch));
 
   return (
     <>
       {cropModalOpen && imageToCrop && (
-        <div className="fixed inset-0 z-[200] bg-black/80 flex flex-col items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] bg-black/80 flex flex-col items-center justify-center p-4">
           <div className="bg-white p-4 rounded-xl max-w-3xl max-h-[80vh] overflow-auto">
             {isImageLoading && (
               <div className="flex items-center justify-center p-8">
@@ -584,435 +643,241 @@ export default function AdminPriceEditor({ product, onClose, onSubmit, loading =
                 <span className="mr-3 text-black font-bold">جاري تحميل الصورة...</span>
               </div>
             )}
-            <ReactCrop
-              crop={crop}
-              onChange={(c) => setCrop(c)}
-              onComplete={(c) => setCompletedCrop(c)}
-              keepSelection
-            >
-              <img
-                ref={imgRef}
-                src={imageToCrop}
-                alt="Crop"
-                onLoad={onImageLoad}
-                style={{ maxWidth: "100%", maxHeight: "60vh", display: isImageLoading ? "none" : "block" }}
-              />
+            <ReactCrop crop={crop} onChange={(c) => setCrop(c)} onComplete={(c) => setCompletedCrop(c)} keepSelection>
+              <img ref={imgRef} src={imageToCrop} alt="Crop" onLoad={onImageLoad} style={{ maxWidth: "100%", maxHeight: "60vh", display: isImageLoading ? "none" : "block" }} />
             </ReactCrop>
           </div>
           <div className="mt-4 flex items-center gap-4">
-            <button
-              onClick={handleSaveCrop}
-              disabled={isImageLoading}
-              className={`px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center gap-2 ${isImageLoading ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
+            <button onClick={handleSaveCrop} disabled={isImageLoading} className={`px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center gap-2 ${isImageLoading ? "opacity-50 cursor-not-allowed" : ""}`}>
               <Check size={16} /> حفظ القص
             </button>
-            <button
-              onClick={() => {
-                setCropModalOpen(false);
-                setImageToCrop(null);
-                imgRef.current = null;
-              }}
-              className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold flex items-center gap-2"
-            >
+            <button onClick={() => { setCropModalOpen(false); setImageToCrop(null); imgRef.current = null; }} className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold flex items-center gap-2">
               <X size={16} /> إلغاء
             </button>
           </div>
         </div>
       )}
 
-      <div className="fixed inset-0 flex items-center justify-center z-50 p-4 bg-black/50 backdrop-blur-sm">
-        <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl p-6 bg-white border border-slate-200 shadow-xl">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="md:col-span-2 flex items-center justify-between mb-2">
+          <h2 className="text-lg font-bold text-black">تعديل المنتج</h2>
+          <button type="button" onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition"><X size={20} className="text-black" /></button>
+        </div>
 
-          {/* ✅ إشعار النجاح أو الخطأ */}
-          {notification && (
-            <div
-              className={`mb-4 p-4 rounded-xl flex items-center justify-between ${
-                notification.type === "success"
-                  ? "bg-green-50 border border-green-300 text-green-800"
-                  : "bg-red-50 border border-red-300 text-red-800"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {notification.type === "success" ? <Check size={18} /> : <AlertTriangle size={18} />}
-                <span className="font-bold text-sm">{notification.message}</span>
-              </div>
-              <button onClick={() => setNotification(null)} className="hover:opacity-70">
-                <X size={16} />
-              </button>
+        {notification && (
+          <div className={`md:col-span-2 mb-2 p-4 rounded-xl flex items-center justify-between ${notification.type === "success" ? "bg-green-50 border border-green-300 text-green-800" : "bg-red-50 border border-red-300 text-red-800"}`}>
+            <div className="flex items-center gap-2">
+              {notification.type === "success" ? <Check size={18} /> : <AlertTriangle size={18} />}
+              <span className="font-bold text-sm">{notification.message}</span>
             </div>
-          )}
-
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-black text-slate-900">تعديل بيانات المنتج</h2>
-            <button onClick={onClose} className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-slate-100 transition border border-slate-200">
-              <X size={18} className="text-slate-500" />
-            </button>
+            <button onClick={() => setNotification(null)} className="hover:opacity-70"><X size={16} /></button>
           </div>
+        )}
 
-          <div className="flex flex-col gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">صور المنتج</label>
-              <div className="flex flex-col gap-3">
-                <div
-                  ref={dropZoneRef}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  className={`relative flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 border-dashed transition cursor-pointer ${
-                    isDragging
-                      ? "border-purple-500 bg-purple-50"
-                      : "border-slate-300 hover:border-purple-400 bg-slate-50 hover:bg-purple-50/30"
-                  }`}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <ImagePlus size={24} className={isDragging ? "text-purple-600" : "text-slate-400"} />
-                  <div className="text-center">
-                    <p className="text-xs text-slate-600 font-medium">
-                      {isDragging ? "أفلت الصور هنا..." : "اسحب الصور هنا أو اضغط لاختيارها"}
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-1">
-                      تقدر تسحب صور من الجهاز أو من أى موقع على النت! 🌐 سيتم فتح نافذة القص ✂️
-                    </p>
-                  </div>
-                  <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} ref={fileInputRef} />
-                </div>
-
-                {imagePreviews.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {imagePreviews.map((img, idx) => (
-                      <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border-2 border-slate-200">
-                        <img src={img} alt="preview" className="w-full h-full object-cover" />
-                        {idx === 0 && (
-                          <div className="absolute top-1 left-1 bg-yellow-400 text-black p-0.5 rounded-full">
-                            <Star size={10} fill="black" />
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
-                          {idx !== 0 && (
-                            <button type="button" onClick={() => handleSetPrimaryImage(idx)} className="p-1 bg-yellow-400 text-black rounded-full hover:bg-yellow-300" title="اجعلها الصورة الرئيسية">
-                              <Star size={12} />
-                            </button>
-                          )}
-                          <button type="button" onClick={() => handleRemoveImage(idx)} className="p-1 bg-red-500 text-white rounded-full hover:bg-red-400">
-                            <X size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <span className="text-xs text-slate-500 font-bold">{imagePreviews.length} صور</span>
+        <div className="md:col-span-2">
+          <label className="block text-sm font-bold text-black mb-2">صور المنتج (متعدد)</label>
+          <div className="flex flex-col gap-3">
+            <div
+              ref={(node) => {
+                dropZoneRef.current = node;
+                pasteZoneRef.current = node;
+              }}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              tabIndex={0}
+              className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                isDragging ? "border-purple-500 bg-purple-500/10" : "border-slate-600 hover:border-purple-400 hover:bg-purple-500/5"
+              }`}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <ImagePlus size={32} className={isDragging ? "text-purple-400" : "text-slate-500"} />
+              <div className="text-center">
+                <p className="text-sm text-black font-medium">{isDragging ? "أفلت الصور هنا..." : "اختر الصور من جهازك"}</p>
+                <p className="text-xs text-slate-500 mt-1">اسحب الصور أو استخدم Ctrl+V للصق</p>
               </div>
+              <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} ref={fileInputRef} />
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">اسم المنتج *</label>
-              <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
-            </div>
+            <span className="text-xs text-black font-bold">{imagePreviews.length} صور مختارة</span>
 
-            {/* ✅ وصف المنتج - داتا كاملة من Firestore */}
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">وصف المنتج</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="اكتب وصف المنتج هنا..."
-                className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition resize-y min-h-[200px]"
-                rows={8}
-                disabled={isSubmitting}
-              />
-            </div>
-
-            {!hasSizes && (
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">السعر (جنيه) *</label>
-                <input type="number" value={formData.price} onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
+            {imagePreviews.length > 0 && (
+              <div className="flex flex-wrap gap-3">
+                {imagePreviews.map((img, idx) => (
+                  <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border-2 border-purple-500/30">
+                    <img src={img} alt={`preview-${idx}`} className="w-full h-full object-cover" />
+                    {idx === 0 && (
+                      <div className="absolute top-1 left-1 bg-yellow-400 text-black p-0.5 rounded-full">
+                        <Star size={10} fill="black" />
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                      {idx !== 0 && (
+                        <button type="button" onClick={() => handleSetPrimaryImage(idx)} className="p-1 bg-yellow-400 text-black rounded-full hover:bg-yellow-300" title="اجعلها الصورة الرئيسية">
+                          <Star size={12} />
+                        </button>
+                      )}
+                      <button type="button" onClick={() => handleRemoveImage(idx)} className="p-1 bg-red-500 text-white rounded-full hover:bg-red-400">
+                        <X size={12} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">السعر قبل الخصم</label>
-              <input type="number" value={formData.originalPrice} onChange={(e) => setFormData({ ...formData, originalPrice: parseFloat(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
-            </div>
-
-            {/* ✅ بلد الصناعة - Dropdown مع بحث وإضافة */}
-            <div ref={countryDropdownRef}>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">بلد الصناعة</label>
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setCountryOpen(!countryOpen)}
-                  className="w-full px-4 py-3 rounded-xl text-sm text-right flex items-center justify-between transition bg-slate-50 border border-slate-200 focus:border-purple-400 text-slate-900"
-                  disabled={isSubmitting}
-                >
-                  <span className={formData.countryOfOrigin ? "text-slate-900" : "text-slate-400"}>{formData.countryOfOrigin || "اختر بلد الصناعة"}</span>
-                  <ChevronDown size={16} className="text-slate-400" />
-                </button>
-                {countryOpen && (
-                  <div className="absolute top-full right-0 left-0 mt-1 rounded-2xl overflow-hidden z-50 bg-white border border-slate-200 shadow-lg">
-                    <div className="p-2 border-b border-slate-100">
-                      <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded-lg">
-                        <Search size={14} className="text-slate-400" />
-                        <input
-                          type="text"
-                          value={countrySearch}
-                          onChange={(e) => setCountrySearch(e.target.value)}
-                          placeholder="ابحث عن بلد..."
-                          className="bg-transparent outline-none text-sm w-full text-slate-900 font-bold"
-                          autoFocus
-                        />
-                      </div>
-                    </div>
-                    <div className="overflow-auto max-h-[200px]">
-                      {filteredCountries.length === 0 && (
-                        <p className="text-center text-sm text-slate-400 py-2">لا توجد نتائج</p>
-                      )}
-                      {filteredCountries.map((country) => (
-                        <button
-                          key={country}
-                          type="button"
-                          onClick={() => {
-                            setFormData({ ...formData, countryOfOrigin: country });
-                            setCountryOpen(false);
-                            setCountrySearch("");
-                          }}
-                          className={`w-full px-4 py-2.5 text-right text-sm hover:bg-purple-50 transition flex items-center justify-between ${formData.countryOfOrigin === country ? "text-purple-700 font-bold" : "text-slate-600"}`}
-                        >
-                          <span>{country}</span>
-                          {formData.countryOfOrigin === country && <Check size={14} className="text-purple-700" />}
-                        </button>
-                      ))}
-                    </div>
-                    {/* ✅ إضافة بلد جديد */}
-                    <div className="border-t border-slate-100 p-2">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={newCountry}
-                          onChange={(e) => setNewCountry(e.target.value)}
-                          placeholder="أضف بلد جديد..."
-                          className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg text-sm outline-none text-slate-900 font-bold"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              handleAddCountry();
-                            }
-                          }}
-                        />
-                        <button
-                          type="button"
-                          onClick={handleAddCountry}
-                          className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"
-                        >
-                          <Plus size={12} /> إضافة
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* مقاسات */}
-            <div className="rounded-xl p-4 bg-slate-50 border border-slate-200">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                  <Ruler size={14} className="text-purple-600" />
-                  هل المنتج بمقاسات مختلفة؟
-                </div>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => { setHasSizes(false); setSizes([]); }} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasSizes ? "bg-purple-600 text-white" : "bg-slate-200 text-slate-600 hover:bg-slate-300"}`}>لا</button>
-                  <button type="button" onClick={() => setHasSizes(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasSizes ? "bg-purple-600 text-white" : "bg-slate-200 text-slate-600 hover:bg-slate-300"}`}>نعم</button>
-                </div>
-              </div>
-
-              {hasSizes && (
-                <div className="mt-4 border-t border-slate-200 pt-4">
-                  {sizes.length > 0 && (
-                    <div className="flex flex-wrap gap-3 mb-4">
-                      {sizes.map((size, index) => (
-                        <div key={index} className="relative group flex flex-col items-center gap-1 bg-white rounded-lg p-3 border border-slate-200 shadow-sm">
-                          <div className="text-xs text-slate-700 font-bold">
-                            {size.length} × {size.width} سم
-                          </div>
-                          <div className="text-sm text-purple-600 font-bold">
-                            {size.price} جنيه
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSize(index)}
-                            className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                          >
-                            <X size={10} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 gap-3 items-end">
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1">الطول (سم)</label>
-                      <input type="number" value={newLength} onChange={(e) => setNewLength(e.target.value)} placeholder="مثال: 100" className="w-full h-10 px-3 rounded-lg text-sm bg-white border border-slate-200 text-slate-900 outline-none focus:border-purple-400" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1">العرض (سم)</label>
-                      <input type="number" value={newWidth} onChange={(e) => setNewWidth(e.target.value)} placeholder="مثال: 50" className="w-full h-10 px-3 rounded-lg text-sm bg-white border border-slate-200 text-slate-900 outline-none focus:border-purple-400" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1">السعر (جنيه)</label>
-                      <input type="number" value={newSizePrice} onChange={(e) => setNewSizePrice(e.target.value)} placeholder="مثال: 250" className="w-full h-10 px-3 rounded-lg text-sm bg-white border border-slate-200 text-slate-900 outline-none focus:border-purple-400" />
-                    </div>
-                    <button type="button" onClick={handleAddSize} className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition flex items-center justify-center gap-1">
-                      <Plus size={14} /> إضافة مقاس
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* ألوان */}
-            <div className="rounded-xl p-4 bg-slate-50 border border-slate-200">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                  <Palette size={14} className="text-purple-600" />
-                  هل المنتج متعدد الألوان؟
-                </div>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => { setHasColors(false); setColors([]); }} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasColors ? "bg-purple-600 text-white" : "bg-slate-200 text-slate-600 hover:bg-slate-300"}`}>لا</button>
-                  <button type="button" onClick={() => setHasColors(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasColors ? "bg-purple-600 text-white" : "bg-slate-200 text-slate-600 hover:bg-slate-300"}`}>نعم</button>
-                </div>
-              </div>
-
-              {hasColors && (
-                <div className="mt-4 border-t border-slate-200 pt-4">
-                  {colors.length > 0 && (
-                    <div className="flex flex-wrap gap-3 mb-4">
-                      {colors.map((color, index) => (
-                        <div key={index} className="relative group flex flex-col items-center gap-1">
-                          <div className="w-12 h-12 rounded-full border-2 border-slate-200 overflow-hidden shadow-sm">
-                            {color.image ? (
-                              <img src={color.image} alt={color.name} className="w-full h-full object-cover" />
-                            ) : (
-                              <div className="w-full h-full" style={{ backgroundColor: color.hex }} />
-                            )}
-                          </div>
-                          <span className="text-[10px] text-slate-600">{color.name}</span>
-                          <button type="button" onClick={() => handleRemoveColor(index)} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X size={10} /></button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 gap-3 items-end">
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1">اسم اللون</label>
-                      <input type="text" value={newColorName} onChange={(e) => setNewColorName(e.target.value)} placeholder="مثال: أحمر" className="w-full h-10 px-3 rounded-lg text-sm bg-white border border-slate-200 text-slate-900 outline-none focus:border-purple-400" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1">كود اللون</label>
-                      <div className="flex items-center gap-2 h-10 px-2 rounded-lg bg-white border border-slate-200">
-                        <input type="color" value={newColorHex} onChange={(e) => setNewColorHex(e.target.value)} className="w-6 h-6 bg-transparent cursor-pointer" />
-                        <span className="text-slate-500 text-xs">{newColorHex}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-500 mb-1">صورة اللون (اختياري)</label>
-                      <div
-                        onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsColorDragging(true); }}
-                        onDragLeave={() => setIsColorDragging(false)}
-                        onDrop={handleColorImageDrop}
-                        className={`flex items-center gap-1 h-10 px-2 rounded-lg border transition cursor-pointer ${isColorDragging ? "border-purple-500 bg-purple-50" : "bg-white border-slate-200 hover:bg-slate-50"}`}
-                        onClick={() => colorFileInputRef.current?.click()}
-                      >
-                        <Upload size={14} className="text-purple-600" />
-                        <span className="text-xs text-slate-500 truncate">
-                          {isColorDragging ? "أفلت هنا" : newColorImage ? "تم الاختيار ✂️" : "اختياري"}
-                        </span>
-                        <input type="file" accept="image/*" className="hidden" onChange={handleColorImageChange} ref={colorFileInputRef} />
-                      </div>
-                    </div>
-                    <button type="button" onClick={handleAddColor} className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition flex items-center justify-center gap-1">
-                      <Plus size={14} /> إضافة لون
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5">الكمية المتاحة</label>
-                <input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: parseInt(e.target.value) || 0 })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1.5 flex items-center gap-1">
-                  <AlertTriangle size={12} className="text-orange-500" />
-                  الحد الأدنى للتنبيه
-                </label>
-                <input
-                  type="number"
-                  value={formData.minStock}
-                  onChange={(e) => setFormData({ ...formData, minStock: parseInt(e.target.value) || 5 })}
-                  className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition"
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
-
-            <div ref={dropdownRef}>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">الفئة *</label>
-              <div className="relative">
-                <button type="button" onClick={() => setCategoryOpen(!categoryOpen)} className="w-full px-4 py-3 rounded-xl text-sm text-right flex items-center justify-between transition bg-slate-50 border border-slate-200 focus:border-purple-400 text-slate-900" disabled={isSubmitting}>
-                  <span className={formData.category ? "text-slate-900" : "text-slate-400"}>{formData.category || "اختر الفئة"}</span>
-                  <ChevronDown size={16} className="text-slate-400" />
-                </button>
-                {categoryOpen && (
-                  <div className="absolute top-full right-0 left-0 mt-1 rounded-2xl overflow-hidden z-50 bg-white border border-slate-200 shadow-lg">
-                    <div className="p-2 border-b border-slate-100">
-                      <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded-lg">
-                        <Search size={14} className="text-slate-400" />
-                        <input
-                          type="text"
-                          value={categorySearch}
-                          onChange={(e) => setCategorySearch(e.target.value)}
-                          placeholder="ابحث عن فئة..."
-                          className="bg-transparent outline-none text-sm w-full text-slate-900 font-bold"
-                          autoFocus
-                        />
-                      </div>
-                    </div>
-                    <div className="overflow-auto max-h-[200px]">
-                      {filteredCategories.length === 0 && (
-                        <p className="text-center text-sm text-slate-400 py-2">لا توجد فئات</p>
-                      )}
-                      {filteredCategories.map((cat) => (
-                        <button key={cat} type="button" onClick={() => { setFormData({ ...formData, category: cat }); setCategoryOpen(false); setCategorySearch(""); }} className={`w-full px-4 py-2.5 text-right text-sm hover:bg-purple-50 transition ${formData.category === cat ? "text-purple-700 font-bold" : "text-slate-600"}`}>
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-1.5">الباركود *</label>
-              <input type="text" value={formData.barcode} onChange={(e) => setFormData({ ...formData, barcode: e.target.value })} className="w-full px-4 py-3 rounded-xl outline-none text-sm bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 focus:border-purple-400 transition" disabled={isSubmitting} />
-            </div>
-          </div>
-
-          <div className="flex gap-3 mt-6">
-            <button onClick={onClose} disabled={isSubmitting} className="flex-1 py-3 rounded-xl font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition text-sm border border-slate-200 bg-white">إلغاء</button>
-            <button onClick={handleSubmit} disabled={isSubmitting || loading} className="flex-1 py-3 rounded-xl font-bold text-white transition text-sm flex items-center justify-center gap-2" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}>
-              <Save size={16} /> {isSubmitting || loading ? "جاري الحفظ..." : "حفظ التعديلات"}
-            </button>
           </div>
         </div>
-      </div>
+
+        <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="اسم المنتج *" required className={inputStyle} style={borderConfig} />
+        {!hasSizes && <input type="number" name="price" value={formData.price} onChange={handleChange} placeholder="السعر *" required className={inputStyle} style={borderConfig} />}
+        <input type="number" name="originalPrice" value={formData.originalPrice} onChange={handleChange} placeholder="السعر قبل الخصم" className={inputStyle} style={borderConfig} />
+
+        <div ref={countryDropdownRef} className="relative">
+          <button type="button" onClick={() => setCountryOpen(!countryOpen)} className="w-full h-12 px-4 rounded-xl text-sm text-right flex items-center justify-between transition bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500" style={borderConfig}>
+            <span className={formData.countryOfOrigin ? "!text-black" : "text-slate-400"}>{formData.countryOfOrigin || "بلد الصناعة"}</span>
+            <ChevronDown size={16} className="text-black" style={{ transform: countryOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+          </button>
+          {countryOpen && (
+            <div className="absolute top-full right-0 left-0 mt-1 rounded-xl overflow-hidden z-50 bg-white shadow-xl" style={{ border: "1px solid rgba(124,58,237,0.3)" }}>
+              <div className="p-2 border-b border-slate-100">
+                <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded-lg">
+                  <Search size={14} className="text-slate-400" />
+                  <input type="text" value={countrySearch} onChange={(e) => setCountrySearch(e.target.value)} placeholder="ابحث عن بلد..." className="bg-transparent outline-none text-sm w-full !text-black !font-bold" autoFocus />
+                </div>
+              </div>
+              <div className="overflow-auto" style={{ maxHeight: "200px" }}>
+                {filteredCountries.length === 0 && <p className="text-center text-sm text-slate-400 py-2">لا توجد نتائج</p>}
+                {filteredCountries.map((country) => (
+                  <div key={country} className="w-full px-4 py-2.5 text-right text-sm flex items-center justify-between transition font-bold text-black hover:bg-slate-50 cursor-pointer" onClick={() => { setFormData({ ...formData, countryOfOrigin: country }); setCountryOpen(false); setCountrySearch(""); }}>
+                    <span className={formData.countryOfOrigin === country ? "text-purple-700" : ""}>{country}</span>
+                    {formData.countryOfOrigin === country && <Check size={14} className="text-purple-700" />}
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-slate-100 p-2">
+                <div className="flex items-center gap-2">
+                  <input type="text" value={newCountry} onChange={(e) => setNewCountry(e.target.value)} placeholder="أضف بلد جديد..." className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none !text-black !font-bold" style={borderConfig} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddCountry(); } }} />
+                  <button type="button" onClick={handleAddCountry} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"><Plus size={12} /> إضافة</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="md:col-span-2">
+          <textarea name="description" value={formData.description} onChange={handleChange} placeholder="اكتب وصف المنتج..." rows={10} className="w-full px-4 py-3 rounded-xl bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500 transition placeholder:text-slate-400 resize-y min-h-[250px]" style={borderConfig} />
+        </div>
+
+        <div className="md:col-span-2 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-sm font-bold text-black"><Ruler size={16} className="text-purple-400" /> هل المنتج بمقاسات مختلفة؟</div>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setHasSizes(false)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasSizes ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400"}`}>لا</button>
+              <button type="button" onClick={() => setHasSizes(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasSizes ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400"}`}>نعم</button>
+            </div>
+          </div>
+          {hasSizes && (
+            <div className="mt-4 border-t border-slate-700 pt-4">
+              {sizes.length > 0 && (
+                <div className="flex flex-wrap gap-3 mb-4">
+                  {sizes.map((size, index) => (
+                    <div key={index} className="relative group flex flex-col items-center gap-1 bg-slate-800 rounded-lg p-3 border border-slate-700">
+                      <div className="text-xs text-black font-bold">{size.length} × {size.width} سم</div>
+                      <div className="text-sm text-purple-400 font-bold">{size.price} جنيه</div>
+                      <button type="button" onClick={() => handleRemoveSize(index)} className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X size={10} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                <div><label className="block text-xs text-black font-bold mb-1">الطول (سم)</label><input type="number" value={newLength} onChange={(e) => setNewLength(e.target.value)} placeholder="مثال: 100" className={innerInputStyle} style={borderConfig} /></div>
+                <div><label className="block text-xs text-black font-bold mb-1">العرض (سم)</label><input type="number" value={newWidth} onChange={(e) => setNewWidth(e.target.value)} placeholder="مثال: 50" className={innerInputStyle} style={borderConfig} /></div>
+                <div><label className="block text-xs text-black font-bold mb-1">السعر (جنيه)</label><input type="number" value={newSizePrice} onChange={(e) => setNewSizePrice(e.target.value)} placeholder="مثال: 250" className={innerInputStyle} style={borderConfig} /></div>
+                <button type="button" onClick={handleAddSize} className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition flex items-center justify-center gap-1"><Plus size={14} /> إضافة مقاس</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="md:col-span-2 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-sm font-bold text-black"><Palette size={16} className="text-purple-400" /> هل المنتج متعدد الألوان؟</div>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setHasColors(false)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasColors ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400"}`}>لا</button>
+              <button type="button" onClick={() => setHasColors(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasColors ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400"}`}>نعم</button>
+            </div>
+          </div>
+          {hasColors && (
+            <div className="mt-4 border-t border-slate-700 pt-4">
+              {colors.length > 0 && (
+                <div className="flex flex-wrap gap-3 mb-4">
+                  {colors.map((color, index) => (
+                    <div key={index} className="relative group flex flex-col items-center gap-1">
+                      <div className="w-12 h-12 rounded-full border-2 border-slate-600 overflow-hidden">
+                        {color.image ? <img src={color.image} alt={color.name} className="w-full h-full object-cover" /> : <div className="w-full h-full" style={{ backgroundColor: color.hex }} />}
+                      </div>
+                      <span className="text-[10px] text-black font-bold">{color.name}</span>
+                      <button type="button" onClick={() => handleRemoveColor(index)} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X size={10} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                <div><label className="block text-xs text-black font-bold mb-1">اسم اللون</label><input type="text" value={newColorName} onChange={(e) => setNewColorName(e.target.value)} placeholder="مثال: أحمر" className={innerInputStyle} style={borderConfig} /></div>
+                <div><label className="block text-xs text-black font-bold mb-1">كود اللون</label><div className="flex items-center gap-2 h-10 px-2 rounded-lg bg-white border" style={borderConfig}><input type="color" value={newColorHex} onChange={(e) => setNewColorHex(e.target.value)} className="w-6 h-6 bg-transparent cursor-pointer" /><span className="!text-black !font-bold text-xs">{newColorHex}</span></div></div>
+                <div><label className="block text-xs text-black font-bold mb-1">صورة اللون (اختياري)</label><div onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsColorDragging(true); }} onDragLeave={() => setIsColorDragging(false)} onDrop={handleColorImageDrop} className={`flex items-center gap-1 h-10 px-2 rounded-lg border transition cursor-pointer ${isColorDragging ? "border-purple-500 bg-purple-50" : "bg-white hover:bg-slate-50"}`} style={borderConfig} onClick={() => colorFileInputRef.current?.click()}><Upload size={14} className="text-purple-400" /><span className="text-xs !text-black !font-bold truncate">{isColorDragging ? "أفلت هنا" : newColorImage ? "تم الاختيار" : "اختياري"}</span><input type="file" accept="image/*" className="hidden" onChange={handleColorImageChange} ref={colorFileInputRef} /></div></div>
+                <button type="button" onClick={handleAddColor} className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition flex items-center justify-center gap-1"><Plus size={14} /> إضافة لون</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div ref={dropdownRef} className="relative">
+          <button type="button" onClick={() => setCategoryOpen(!categoryOpen)} className="w-full h-12 px-4 rounded-xl text-sm text-right flex items-center justify-between transition bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500" style={borderConfig}>
+            <span className={formData.category ? "!text-black" : "text-slate-400"}>{formData.category || "اختر الفئة *"}</span>
+            <ChevronDown size={16} className="text-black" style={{ transform: categoryOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
+          </button>
+          {categoryOpen && (
+            <div className="absolute top-full right-0 left-0 mt-1 rounded-xl overflow-hidden z-50 bg-white shadow-xl" style={{ border: "1px solid rgba(124,58,237,0.3)" }}>
+              <div className="p-2 border-b border-slate-100">
+                <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded-lg"><Search size={14} className="text-slate-400" /><input type="text" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} placeholder="ابحث عن فئة..." className="bg-transparent outline-none text-sm w-full !text-black !font-bold" autoFocus /></div>
+              </div>
+              <div className="overflow-auto" style={{ maxHeight: "200px" }}>
+                {filteredCategories.length === 0 && <p className="text-center text-sm text-slate-400 py-2">لا توجد فئات</p>}
+                {filteredCategories.map((cat) => (
+                  <div key={cat.id} className="w-full px-4 py-2.5 text-right text-sm flex items-center justify-between transition font-bold group text-black hover:bg-slate-50">
+                    {editingCatId === cat.id ? (
+                      <div className="flex items-center gap-2 w-full"><input type="text" value={editingCatName} onChange={(e) => setEditingCatName(e.target.value)} className="w-full px-2 py-1 border rounded !text-black text-sm outline-none" autoFocus /><button onClick={() => handleUpdateCategory(cat.id)} className="text-green-600 hover:text-green-800"><Check size={16} /></button><button onClick={() => setEditingCatId(null)} className="text-red-500 hover:text-red-700"><X size={16} /></button></div>
+                    ) : (
+                      <>
+                        <span className={`flex-1 cursor-pointer ${formData.category === cat.name ? "text-purple-700" : ""}`} onClick={() => { setFormData({ ...formData, category: cat.name }); setCategoryOpen(false); setCategorySearch(""); }}>{cat.name}</span>
+                        <div className="flex items-center gap-2">{formData.category === cat.name && <Check size={14} className="text-purple-700" />}<button onClick={(e) => { e.stopPropagation(); setEditingCatId(cat.id); setEditingCatName(cat.name); }} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-purple-600 transition"><Edit2 size={12} /></button></div>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <input type="text" name="barcode" value={formData.barcode} onChange={handleChange} placeholder="الباركود *" required className={inputStyle} style={borderConfig} />
+        <input type="number" name="stock" value={formData.stock} onChange={handleChange} placeholder="الكمية بالمخزن *" required className={inputStyle} style={borderConfig} />
+
+        <div className="relative">
+          <input type="number" name="minStock" value={formData.minStock} onChange={handleChange} placeholder="الحد الأدنى للتنبيه *" required className={inputStyle} style={borderConfig} />
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-red-400"><AlertTriangle size={14} /><span className="text-[10px] font-bold">تنبيه</span></div>
+        </div>
+
+        <div className="md:col-span-2 mt-2 flex gap-3">
+          <button type="button" onClick={onClose} className="flex-1 h-14 rounded-xl font-bold text-black bg-slate-200 hover:bg-slate-300 transition flex items-center justify-center gap-2">
+            <X size={18} /> إلغاء
+          </button>
+          <button type="submit" disabled={isUploading} className={`flex-1 h-14 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition hover:opacity-90 ${isUploading ? "opacity-70 cursor-not-allowed" : ""}`} style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}>
+            <Save size={18} /> {isUploading ? "جاري رفع الصور..." : "تحديث المنتج"}
+          </button>
+        </div>
+      </form>
     </>
   );
 }

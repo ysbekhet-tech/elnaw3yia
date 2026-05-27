@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, query, where, getDocs } from "firebase/firestore";
 import { uploadBase64Image } from "@/lib/uploadImage";
 import { Upload, ChevronDown, Check, X, Save, Palette, Plus, ImagePlus, Ruler, AlertTriangle, Star, Edit2, Search } from "lucide-react";
 import ReactCrop, { Crop, PixelCrop } from "react-image-crop";
@@ -48,6 +48,7 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropZoneRef = useRef<HTMLDivElement>(null);
+  const pasteZoneRef = useRef<HTMLDivElement>(null);
 
   const [categoriesData, setCategoriesData] = useState<{ id: string; name: string }[]>([]);
   const [categoryOpen, setCategoryOpen] = useState(false);
@@ -56,7 +57,6 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
   const [editingCatName, setEditingCatName] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // ✅ بلد الصناعة - Dropdown
   const [countries, setCountries] = useState<string[]>(DEFAULT_COUNTRIES);
   const [countryOpen, setCountryOpen] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
@@ -77,7 +77,6 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
   const [newWidth, setNewWidth] = useState("");
   const [newSizePrice, setNewSizePrice] = useState("");
 
-  // حالات الـ Crop
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const [cropTarget, setCropTarget] = useState<"main" | "color">("main");
@@ -86,10 +85,8 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
   const [isImageLoading, setIsImageLoading] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // ✅ حالة الإشعارات
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // ✅ إخفاء الإشعار تلقائياً
   useEffect(() => {
     if (notification) {
       const timer = setTimeout(() => setNotification(null), 4000);
@@ -122,11 +119,16 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    if (navigator.clipboard && navigator.clipboard.read) {
+      navigator.clipboard.read().catch(() => {});
+    }
+  }, []);
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // ✅ إضافة بلد جديد
   const handleAddCountry = () => {
     const trimmed = newCountry.trim();
     if (!trimmed) return;
@@ -138,7 +140,6 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
     setNewCountry("");
   };
 
-  // === دوال الـ Crop ===
   const openCropModal = (imageUrl: string, target: "main" | "color") => {
     imgRef.current = null;
     setImageToCrop(imageUrl);
@@ -229,7 +230,6 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
     setImageToCrop(null);
     imgRef.current = null;
   };
-  // === نهاية دوال الـ Crop ===
 
   const handleImageFromUrl = useCallback(async (url: string) => {
     try {
@@ -247,6 +247,125 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
       alert("مقدرش أحمل الصورة من الرابط ده. جرب ترفعها من الجهاز.");
     }
   }, []);
+
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const activeElement = document.activeElement;
+      const isPasteZone = pasteZoneRef.current?.contains(activeElement) || 
+                          dropZoneRef.current?.contains(activeElement);
+      
+      if (!isPasteZone) return;
+
+      e.preventDefault();
+      
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => openCropModal(reader.result as string, "main");
+            reader.readAsDataURL(file);
+          }
+        }
+        else if (item.type === "text/plain") {
+          item.getAsString(async (text) => {
+            if (text.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || 
+                text.startsWith("http") && (text.includes(".jpg") || text.includes(".png") || text.includes(".jpeg"))) {
+              await handleImageFromUrl(text);
+            }
+          });
+        }
+      }
+    };
+
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [handleImageFromUrl]);
+
+  useEffect(() => {
+  const handleContextMenu = (e: MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const isPasteZone = pasteZoneRef.current?.contains(target) || 
+                        dropZoneRef.current?.contains(target);
+    
+    if (!isPasteZone) return;
+
+    e.preventDefault();
+    
+    const customMenu = document.createElement('div');
+    customMenu.className = 'fixed bg-white rounded-lg shadow-xl border z-[200] overflow-hidden';
+    customMenu.style.top = `${e.clientY}px`;
+    customMenu.style.left = `${e.clientX}px`;
+    
+    const pasteOption = document.createElement('button');
+    pasteOption.innerHTML = `
+      <div class="flex items-center gap-2 px-4 py-2 hover:bg-purple-50 transition-colors w-full text-right">
+        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+        </svg>
+        <span class="text-sm font-bold text-gray-700">لصق الصورة</span>
+        <span class="text-xs text-gray-400 mr-auto">Ctrl+V</span>
+      </div>
+    `;
+    pasteOption.className = 'w-full text-right';
+    
+    let isRemoved = false;
+    
+    const removeMenu = () => {
+      if (!isRemoved && document.body.contains(customMenu)) {
+        document.body.removeChild(customMenu);
+        isRemoved = true;
+      }
+      document.removeEventListener('click', removeMenu);
+      document.removeEventListener('contextmenu', removeMenu);
+    };
+    
+    pasteOption.onclick = async () => {
+      try {
+        const clipboardText = await navigator.clipboard.readText();
+        if (clipboardText && (clipboardText.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || clipboardText.startsWith('http'))) {
+          await handleImageFromUrl(clipboardText);
+        } else {
+          const clipboardItems = await navigator.clipboard.read();
+          for (const clipboardItem of clipboardItems) {
+            const imageTypes = clipboardItem.types.filter(type => type.startsWith('image/'));
+            for (const type of imageTypes) {
+              const blob = await clipboardItem.getType(type);
+              const reader = new FileReader();
+              reader.onloadend = () => openCropModal(reader.result as string, "main");
+              reader.readAsDataURL(blob);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to paste:', err);
+        alert('اضغط Ctrl+V للصق الصورة');
+      }
+      removeMenu();
+    };
+    
+    customMenu.appendChild(pasteOption);
+    document.body.appendChild(customMenu);
+    
+    setTimeout(() => {
+      document.addEventListener('click', removeMenu);
+      document.addEventListener('contextmenu', removeMenu);
+    }, 0);
+  };
+
+  const pasteZone = pasteZoneRef.current || dropZoneRef.current;
+  if (pasteZone) {
+    pasteZone.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      pasteZone.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }
+}, [handleImageFromUrl]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -373,7 +492,6 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
     }
   };
 
-  // ✅ الصورة اختيارية - يكفي اسم اللون
   const handleAddColor = () => {
     if (!newColorName) {
       alert("يجب إدخال اسم اللون!");
@@ -417,7 +535,6 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
     }
   };
 
-  // ✅ دالة مساعدة لرفع الصور على Storage
   const uploadImagesToStorage = async (productId: string): Promise<string[]> => {
     const imageUrls: string[] = [];
 
@@ -434,7 +551,6 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
     return imageUrls;
   };
 
-  // ✅ دالة مساعدة لرفع صور الألوان
   const uploadColorImages = async (productId: string): Promise<ProductColor[]> => {
     if (!hasColors || colors.length === 0) return [];
 
@@ -461,14 +577,27 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
 
     setIsUploading(true);
 
+    const nameQuery = query(collection(db, "products"), where("name", "==", formData.name.trim()));
+    const nameSnapshot = await getDocs(nameQuery);
+    if (!nameSnapshot.empty) {
+      setNotification({ type: "error", message: "اسم المنتج ده موجود بالفعل! ❌" });
+      setIsUploading(false);
+      return;
+    }
+
+    const barcode = formData.barcode.trim();
+    const barcodeQuery = query(collection(db, "products"), where("barcode", "==", barcode));
+    const barcodeSnapshot = await getDocs(barcodeQuery);
+    
+    if (!barcodeSnapshot.empty) {
+      setNotification({ type: "error", message: "الباركود مستخدم بالفعل ❌" });
+      setIsUploading(false);
+      return;
+    }
+
     try {
-      // ✅ توليد ID للمنتج
       const productId = crypto.randomUUID();
-
-      // ✅ رفع الصور على Storage
       const imageUrls = await uploadImagesToStorage(productId);
-
-      // ✅ رفع صور الألوان
       const finalColors = await uploadColorImages(productId);
 
       let finalPrice = Number(formData.price);
@@ -476,7 +605,6 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
         finalPrice = Number(sizes[0].price);
       }
 
-      // ✅ نبعت URLs مش Base64
       await onSubmit({
         id: productId,
         ...formData,
@@ -493,10 +621,8 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
         sizes: hasSizes ? sizes : [],
       });
 
-      // ✅ رسالة نجاح
       setNotification({ type: "success", message: "تم إضافة المنتج بنجاح! ✅" });
 
-      // ✅ تنظيف الفورم
       setFormData({
         name: "",
         price: "",
@@ -516,17 +642,14 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
       if (fileInputRef.current) fileInputRef.current.value = "";
     } catch (error) {
       console.error("Error uploading images:", error);
-      // ✅ رسالة خطأ
       setNotification({ type: "error", message: "حدث خطأ أثناء إضافة المنتج! حاول مرة أخرى ❌" });
     } finally {
       setIsUploading(false);
     }
   };
 
-  const inputStyle =
-    "w-full h-12 px-4 rounded-xl bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500 transition placeholder:text-slate-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
-  const innerInputStyle =
-    "w-full h-10 px-3 rounded-lg bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500 transition placeholder:text-slate-400 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+  const inputStyle = "w-full h-12 px-4 rounded-xl bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500 transition placeholder:text-slate-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+  const innerInputStyle = "w-full h-10 px-3 rounded-lg bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500 transition placeholder:text-slate-400 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
   const borderConfig = { borderColor: "rgba(124,58,237,0.3)" };
 
   const filteredCategories = categoriesData.filter((cat) => cat.name.toLowerCase().includes(categorySearch.toLowerCase()));
@@ -543,37 +666,15 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
                 <span className="mr-3 text-black font-bold">جاري تحميل الصورة...</span>
               </div>
             )}
-            <ReactCrop
-              crop={crop}
-              onChange={(c) => setCrop(c)}
-              onComplete={(c) => setCompletedCrop(c)}
-              keepSelection
-            >
-              <img
-                ref={imgRef}
-                src={imageToCrop}
-                alt="Crop"
-                onLoad={onImageLoad}
-                style={{ maxWidth: "100%", maxHeight: "60vh", display: isImageLoading ? "none" : "block" }}
-              />
+            <ReactCrop crop={crop} onChange={(c) => setCrop(c)} onComplete={(c) => setCompletedCrop(c)} keepSelection>
+              <img ref={imgRef} src={imageToCrop} alt="Crop" onLoad={onImageLoad} style={{ maxWidth: "100%", maxHeight: "60vh", display: isImageLoading ? "none" : "block" }} />
             </ReactCrop>
           </div>
           <div className="mt-4 flex items-center gap-4">
-            <button
-              onClick={handleSaveCrop}
-              disabled={isImageLoading}
-              className={`px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center gap-2 ${isImageLoading ? "opacity-50 cursor-not-allowed" : ""}`}
-            >
+            <button onClick={handleSaveCrop} disabled={isImageLoading} className={`px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold flex items-center gap-2 ${isImageLoading ? "opacity-50 cursor-not-allowed" : ""}`}>
               <Check size={16} /> حفظ القص
             </button>
-            <button
-              onClick={() => {
-                setCropModalOpen(false);
-                setImageToCrop(null);
-                imgRef.current = null;
-              }}
-              className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold flex items-center gap-2"
-            >
+            <button onClick={() => { setCropModalOpen(false); setImageToCrop(null); imgRef.current = null; }} className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold flex items-center gap-2">
               <X size={16} /> إلغاء
             </button>
           </div>
@@ -581,46 +682,41 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
       )}
 
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* ✅ إشعار النجاح أو الخطأ */}
         {notification && (
-          <div
-            className={`md:col-span-2 mb-2 p-4 rounded-xl flex items-center justify-between ${
-              notification.type === "success"
-                ? "bg-green-50 border border-green-300 text-green-800"
-                : "bg-red-50 border border-red-300 text-red-800"
-            }`}
-          >
+          <div className={`md:col-span-2 mb-2 p-4 rounded-xl flex items-center justify-between ${notification.type === "success" ? "bg-green-50 border border-green-300 text-green-800" : "bg-red-50 border border-red-300 text-red-800"}`}>
             <div className="flex items-center gap-2">
               {notification.type === "success" ? <Check size={18} /> : <AlertTriangle size={18} />}
               <span className="font-bold text-sm">{notification.message}</span>
             </div>
-            <button onClick={() => setNotification(null)} className="hover:opacity-70">
-              <X size={16} />
-            </button>
+            <button onClick={() => setNotification(null)} className="hover:opacity-70"><X size={16} /></button>
           </div>
         )}
 
         <div className="md:col-span-2 mb-2">
-          <h2 className="text-lg font-bold text-black">إدارة المنتجات</h2>
+          <h2 className="text-lg font-bold text-black">إضافة منتج جديد</h2>
         </div>
 
         <div className="md:col-span-2">
           <label className="block text-sm font-bold text-black mb-2">صور المنتج (متعدد)</label>
           <div className="flex flex-col gap-3">
             <div
-              ref={dropZoneRef}
+              ref={(node) => {
+                dropZoneRef.current = node;
+                pasteZoneRef.current = node;
+              }}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition cursor-pointer ${
+              tabIndex={0}
+              className={`relative flex flex-col items-center justify-center gap-2 p-6 rounded-xl border-2 border-dashed transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-purple-500 ${
                 isDragging ? "border-purple-500 bg-purple-500/10" : "border-slate-600 hover:border-purple-400 hover:bg-purple-500/5"
               }`}
               onClick={() => fileInputRef.current?.click()}
             >
               <ImagePlus size={32} className={isDragging ? "text-purple-400" : "text-slate-500"} />
               <div className="text-center">
-                <p className="text-sm text-black font-medium">{isDragging ? "أفلت الصور هنا..." : "اسحب الصور هنا أو اضغط لاختيارها"}</p>
-                <p className="text-xs text-slate-500 mt-1">تقدر تسحب صور من الجهاز أو من أى موقع على النت! 🌐 سيتم فتح نافذة القص تلقائياً ✂️</p>
+                <p className="text-sm text-black font-medium">{isDragging ? "أفلت الصور هنا..." : "اختر الصور من جهازك"}</p>
+                <p className="text-xs text-slate-500 mt-1">اسحب الصور أو استخدم Ctrl+V للصق</p>
               </div>
               <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageChange} ref={fileInputRef} />
             </div>
@@ -655,19 +751,11 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
         </div>
 
         <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="اسم المنتج *" required className={inputStyle} style={borderConfig} />
-
         {!hasSizes && <input type="number" name="price" value={formData.price} onChange={handleChange} placeholder="السعر *" required className={inputStyle} style={borderConfig} />}
-
         <input type="number" name="originalPrice" value={formData.originalPrice} onChange={handleChange} placeholder="السعر قبل الخصم" className={inputStyle} style={borderConfig} />
 
-        {/* ✅ بلد الصناعة - Dropdown مع بحث وإضافة */}
         <div ref={countryDropdownRef} className="relative">
-          <button
-            type="button"
-            onClick={() => setCountryOpen(!countryOpen)}
-            className="w-full h-12 px-4 rounded-xl text-sm text-right flex items-center justify-between transition bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500"
-            style={borderConfig}
-          >
+          <button type="button" onClick={() => setCountryOpen(!countryOpen)} className="w-full h-12 px-4 rounded-xl text-sm text-right flex items-center justify-between transition bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500" style={borderConfig}>
             <span className={formData.countryOfOrigin ? "!text-black" : "text-slate-400"}>{formData.countryOfOrigin || "بلد الصناعة"}</span>
             <ChevronDown size={16} className="text-black" style={{ transform: countryOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
           </button>
@@ -676,57 +764,22 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
               <div className="p-2 border-b border-slate-100">
                 <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded-lg">
                   <Search size={14} className="text-slate-400" />
-                  <input
-                    type="text"
-                    value={countrySearch}
-                    onChange={(e) => setCountrySearch(e.target.value)}
-                    placeholder="ابحث عن بلد..."
-                    className="bg-transparent outline-none text-sm w-full !text-black !font-bold"
-                    autoFocus
-                  />
+                  <input type="text" value={countrySearch} onChange={(e) => setCountrySearch(e.target.value)} placeholder="ابحث عن بلد..." className="bg-transparent outline-none text-sm w-full !text-black !font-bold" autoFocus />
                 </div>
               </div>
               <div className="overflow-auto" style={{ maxHeight: "200px" }}>
                 {filteredCountries.length === 0 && <p className="text-center text-sm text-slate-400 py-2">لا توجد نتائج</p>}
                 {filteredCountries.map((country) => (
-                  <div
-                    key={country}
-                    className="w-full px-4 py-2.5 text-right text-sm flex items-center justify-between transition font-bold text-black hover:bg-slate-50 cursor-pointer"
-                    onClick={() => {
-                      setFormData({ ...formData, countryOfOrigin: country });
-                      setCountryOpen(false);
-                      setCountrySearch("");
-                    }}
-                  >
+                  <div key={country} className="w-full px-4 py-2.5 text-right text-sm flex items-center justify-between transition font-bold text-black hover:bg-slate-50 cursor-pointer" onClick={() => { setFormData({ ...formData, countryOfOrigin: country }); setCountryOpen(false); setCountrySearch(""); }}>
                     <span className={formData.countryOfOrigin === country ? "text-purple-700" : ""}>{country}</span>
                     {formData.countryOfOrigin === country && <Check size={14} className="text-purple-700" />}
                   </div>
                 ))}
               </div>
-              {/* ✅ إضافة بلد جديد */}
               <div className="border-t border-slate-100 p-2">
                 <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={newCountry}
-                    onChange={(e) => setNewCountry(e.target.value)}
-                    placeholder="أضف بلد جديد..."
-                    className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none !text-black !font-bold"
-                    style={borderConfig}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        handleAddCountry();
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddCountry}
-                    className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"
-                  >
-                    <Plus size={12} /> إضافة
-                  </button>
+                  <input type="text" value={newCountry} onChange={(e) => setNewCountry(e.target.value)} placeholder="أضف بلد جديد..." className="flex-1 px-3 py-1.5 border rounded-lg text-sm outline-none !text-black !font-bold" style={borderConfig} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddCountry(); } }} />
+                  <button type="button" onClick={handleAddCountry} className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition"><Plus size={12} /> إضافة</button>
                 </div>
               </div>
             </div>
@@ -734,67 +787,35 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
         </div>
 
         <div className="md:col-span-2">
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            placeholder="اكتب وصف المنتج..."
-            rows={10}
-            className="w-full px-4 py-3 rounded-xl bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500 transition placeholder:text-slate-400 resize-y min-h-[250px]"
-            style={borderConfig}
-          />
+          <textarea name="description" value={formData.description} onChange={handleChange} placeholder="اكتب وصف المنتج..." rows={10} className="w-full px-4 py-3 rounded-xl bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500 transition placeholder:text-slate-400 resize-y min-h-[250px]" style={borderConfig} />
         </div>
 
         <div className="md:col-span-2 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2 text-sm font-bold text-black">
-              <Ruler size={16} className="text-purple-400" />
-              هل المنتج بمقاسات مختلفة؟
-            </div>
+            <div className="flex items-center gap-2 text-sm font-bold text-black"><Ruler size={16} className="text-purple-400" /> هل المنتج بمقاسات مختلفة؟</div>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setHasSizes(false)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasSizes ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400"}`}>
-                لا
-              </button>
-              <button type="button" onClick={() => setHasSizes(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasSizes ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400"}`}>
-                نعم
-              </button>
+              <button type="button" onClick={() => setHasSizes(false)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasSizes ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400"}`}>لا</button>
+              <button type="button" onClick={() => setHasSizes(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasSizes ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400"}`}>نعم</button>
             </div>
           </div>
-
           {hasSizes && (
             <div className="mt-4 border-t border-slate-700 pt-4">
               {sizes.length > 0 && (
                 <div className="flex flex-wrap gap-3 mb-4">
                   {sizes.map((size, index) => (
                     <div key={index} className="relative group flex flex-col items-center gap-1 bg-slate-800 rounded-lg p-3 border border-slate-700">
-                      <div className="text-xs text-black font-bold">
-                        {size.length} × {size.width} سم
-                      </div>
+                      <div className="text-xs text-black font-bold">{size.length} × {size.width} سم</div>
                       <div className="text-sm text-purple-400 font-bold">{size.price} جنيه</div>
-                      <button type="button" onClick={() => handleRemoveSize(index)} className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                        <X size={10} />
-                      </button>
+                      <button type="button" onClick={() => handleRemoveSize(index)} className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X size={10} /></button>
                     </div>
                   ))}
                 </div>
               )}
-
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                <div>
-                  <label className="block text-xs text-black font-bold mb-1">الطول (سم)</label>
-                  <input type="number" value={newLength} onChange={(e) => setNewLength(e.target.value)} placeholder="مثال: 100" className={innerInputStyle} style={borderConfig} />
-                </div>
-                <div>
-                  <label className="block text-xs text-black font-bold mb-1">العرض (سم)</label>
-                  <input type="number" value={newWidth} onChange={(e) => setNewWidth(e.target.value)} placeholder="مثال: 50" className={innerInputStyle} style={borderConfig} />
-                </div>
-                <div>
-                  <label className="block text-xs text-black font-bold mb-1">السعر (جنيه)</label>
-                  <input type="number" value={newSizePrice} onChange={(e) => setNewSizePrice(e.target.value)} placeholder="مثال: 250" className={innerInputStyle} style={borderConfig} />
-                </div>
-                <button type="button" onClick={handleAddSize} className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition flex items-center justify-center gap-1">
-                  <Plus size={14} /> إضافة مقاس
-                </button>
+                <div><label className="block text-xs text-black font-bold mb-1">الطول (سم)</label><input type="number" value={newLength} onChange={(e) => setNewLength(e.target.value)} placeholder="مثال: 100" className={innerInputStyle} style={borderConfig} /></div>
+                <div><label className="block text-xs text-black font-bold mb-1">العرض (سم)</label><input type="number" value={newWidth} onChange={(e) => setNewWidth(e.target.value)} placeholder="مثال: 50" className={innerInputStyle} style={borderConfig} /></div>
+                <div><label className="block text-xs text-black font-bold mb-1">السعر (جنيه)</label><input type="number" value={newSizePrice} onChange={(e) => setNewSizePrice(e.target.value)} placeholder="مثال: 250" className={innerInputStyle} style={borderConfig} /></div>
+                <button type="button" onClick={handleAddSize} className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition flex items-center justify-center gap-1"><Plus size={14} /> إضافة مقاس</button>
               </div>
             </div>
           )}
@@ -802,17 +823,10 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
 
         <div className="md:col-span-2 rounded-xl p-4" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(124,58,237,0.2)" }}>
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2 text-sm font-bold text-black">
-              <Palette size={16} className="text-purple-400" />
-              هل المنتج متعدد الألوان؟
-            </div>
+            <div className="flex items-center gap-2 text-sm font-bold text-black"><Palette size={16} className="text-purple-400" /> هل المنتج متعدد الألوان؟</div>
             <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setHasColors(false)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasColors ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400"}`}>
-                لا
-              </button>
-              <button type="button" onClick={() => setHasColors(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasColors ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400"}`}>
-                نعم
-              </button>
+              <button type="button" onClick={() => setHasColors(false)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${!hasColors ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400"}`}>لا</button>
+              <button type="button" onClick={() => setHasColors(true)} className={`px-3 py-1 rounded-lg text-xs font-bold transition ${hasColors ? "bg-purple-600 text-white" : "bg-slate-800 text-slate-400"}`}>نعم</button>
             </div>
           </div>
           {hasColors && (
@@ -822,123 +836,44 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
                   {colors.map((color, index) => (
                     <div key={index} className="relative group flex flex-col items-center gap-1">
                       <div className="w-12 h-12 rounded-full border-2 border-slate-600 overflow-hidden">
-                        {color.image ? (
-                          <img src={color.image} alt={color.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full" style={{ backgroundColor: color.hex }} />
-                        )}
+                        {color.image ? <img src={color.image} alt={color.name} className="w-full h-full object-cover" /> : <div className="w-full h-full" style={{ backgroundColor: color.hex }} />}
                       </div>
                       <span className="text-[10px] text-black font-bold">{color.name}</span>
-                      <button type="button" onClick={() => handleRemoveColor(index)} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                        <X size={10} />
-                      </button>
+                      <button type="button" onClick={() => handleRemoveColor(index)} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X size={10} /></button>
                     </div>
                   ))}
                 </div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                <div>
-                  <label className="block text-xs text-black font-bold mb-1">اسم اللون</label>
-                  <input type="text" value={newColorName} onChange={(e) => setNewColorName(e.target.value)} placeholder="مثال: أحمر" className={innerInputStyle} style={borderConfig} />
-                </div>
-                <div>
-                  <label className="block text-xs text-black font-bold mb-1">كود اللون</label>
-                  <div className="flex items-center gap-2 h-10 px-2 rounded-lg bg-white border" style={borderConfig}>
-                    <input type="color" value={newColorHex} onChange={(e) => setNewColorHex(e.target.value)} className="w-6 h-6 bg-transparent cursor-pointer" />
-                    <span className="!text-black !font-bold text-xs">{newColorHex}</span>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs text-black font-bold mb-1">صورة اللون (اختياري)</label>
-                  <div
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsColorDragging(true);
-                    }}
-                    onDragLeave={() => setIsColorDragging(false)}
-                    onDrop={handleColorImageDrop}
-                    className={`flex items-center gap-1 h-10 px-2 rounded-lg border transition cursor-pointer ${isColorDragging ? "border-purple-500 bg-purple-50" : "bg-white hover:bg-slate-50"}`}
-                    style={borderConfig}
-                    onClick={() => colorFileInputRef.current?.click()}
-                  >
-                    <Upload size={14} className="text-purple-400" />
-                    <span className="text-xs !text-black !font-bold truncate">{isColorDragging ? "أفلت هنا" : newColorImage ? "تم الاختيار ✂️" : "اختياري"}</span>
-                    <input type="file" accept="image/*" className="hidden" onChange={handleColorImageChange} ref={colorFileInputRef} />
-                  </div>
-                </div>
-                <button type="button" onClick={handleAddColor} className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition flex items-center justify-center gap-1">
-                  <Plus size={14} /> إضافة لون
-                </button>
+                <div><label className="block text-xs text-black font-bold mb-1">اسم اللون</label><input type="text" value={newColorName} onChange={(e) => setNewColorName(e.target.value)} placeholder="مثال: أحمر" className={innerInputStyle} style={borderConfig} /></div>
+                <div><label className="block text-xs text-black font-bold mb-1">كود اللون</label><div className="flex items-center gap-2 h-10 px-2 rounded-lg bg-white border" style={borderConfig}><input type="color" value={newColorHex} onChange={(e) => setNewColorHex(e.target.value)} className="w-6 h-6 bg-transparent cursor-pointer" /><span className="!text-black !font-bold text-xs">{newColorHex}</span></div></div>
+                <div><label className="block text-xs text-black font-bold mb-1">صورة اللون (اختياري)</label><div onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsColorDragging(true); }} onDragLeave={() => setIsColorDragging(false)} onDrop={handleColorImageDrop} className={`flex items-center gap-1 h-10 px-2 rounded-lg border transition cursor-pointer ${isColorDragging ? "border-purple-500 bg-purple-50" : "bg-white hover:bg-slate-50"}`} style={borderConfig} onClick={() => colorFileInputRef.current?.click()}><Upload size={14} className="text-purple-400" /><span className="text-xs !text-black !font-bold truncate">{isColorDragging ? "أفلت هنا" : newColorImage ? "تم الاختيار" : "اختياري"}</span><input type="file" accept="image/*" className="hidden" onChange={handleColorImageChange} ref={colorFileInputRef} /></div></div>
+                <button type="button" onClick={handleAddColor} className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition flex items-center justify-center gap-1"><Plus size={14} /> إضافة لون</button>
               </div>
             </div>
           )}
         </div>
 
         <div ref={dropdownRef} className="relative">
-          <button
-            type="button"
-            onClick={() => setCategoryOpen(!categoryOpen)}
-            className="w-full h-12 px-4 rounded-xl text-sm text-right flex items-center justify-between transition bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500"
-            style={borderConfig}
-          >
+          <button type="button" onClick={() => setCategoryOpen(!categoryOpen)} className="w-full h-12 px-4 rounded-xl text-sm text-right flex items-center justify-between transition bg-white border !text-black !font-bold focus:outline-none focus:border-purple-500" style={borderConfig}>
             <span className={formData.category ? "!text-black" : "text-slate-400"}>{formData.category || "اختر الفئة *"}</span>
             <ChevronDown size={16} className="text-black" style={{ transform: categoryOpen ? "rotate(180deg)" : "rotate(0deg)" }} />
           </button>
           {categoryOpen && (
             <div className="absolute top-full right-0 left-0 mt-1 rounded-xl overflow-hidden z-50 bg-white shadow-xl" style={{ border: "1px solid rgba(124,58,237,0.3)" }}>
               <div className="p-2 border-b border-slate-100">
-                <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded-lg">
-                  <Search size={14} className="text-slate-400" />
-                  <input
-                    type="text"
-                    value={categorySearch}
-                    onChange={(e) => setCategorySearch(e.target.value)}
-                    placeholder="ابحث عن فئة..."
-                    className="bg-transparent outline-none text-sm w-full !text-black !font-bold"
-                    autoFocus
-                  />
-                </div>
+                <div className="flex items-center gap-2 px-2 py-1.5 bg-slate-50 rounded-lg"><Search size={14} className="text-slate-400" /><input type="text" value={categorySearch} onChange={(e) => setCategorySearch(e.target.value)} placeholder="ابحث عن فئة..." className="bg-transparent outline-none text-sm w-full !text-black !font-bold" autoFocus /></div>
               </div>
               <div className="overflow-auto" style={{ maxHeight: "200px" }}>
                 {filteredCategories.length === 0 && <p className="text-center text-sm text-slate-400 py-2">لا توجد فئات</p>}
                 {filteredCategories.map((cat) => (
                   <div key={cat.id} className="w-full px-4 py-2.5 text-right text-sm flex items-center justify-between transition font-bold group text-black hover:bg-slate-50">
                     {editingCatId === cat.id ? (
-                      <div className="flex items-center gap-2 w-full">
-                        <input type="text" value={editingCatName} onChange={(e) => setEditingCatName(e.target.value)} className="w-full px-2 py-1 border rounded !text-black text-sm outline-none" autoFocus />
-                        <button onClick={() => handleUpdateCategory(cat.id)} className="text-green-600 hover:text-green-800">
-                          <Check size={16} />
-                        </button>
-                        <button onClick={() => setEditingCatId(null)} className="text-red-500 hover:text-red-700">
-                          <X size={16} />
-                        </button>
-                      </div>
+                      <div className="flex items-center gap-2 w-full"><input type="text" value={editingCatName} onChange={(e) => setEditingCatName(e.target.value)} className="w-full px-2 py-1 border rounded !text-black text-sm outline-none" autoFocus /><button onClick={() => handleUpdateCategory(cat.id)} className="text-green-600 hover:text-green-800"><Check size={16} /></button><button onClick={() => setEditingCatId(null)} className="text-red-500 hover:text-red-700"><X size={16} /></button></div>
                     ) : (
                       <>
-                        <span
-                          className={`flex-1 cursor-pointer ${formData.category === cat.name ? "text-purple-700" : ""}`}
-                          onClick={() => {
-                            setFormData({ ...formData, category: cat.name });
-                            setCategoryOpen(false);
-                            setCategorySearch("");
-                          }}
-                        >
-                          {cat.name}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          {formData.category === cat.name && <Check size={14} className="text-purple-700" />}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingCatId(cat.id);
-                              setEditingCatName(cat.name);
-                            }}
-                            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-purple-600 transition"
-                          >
-                            <Edit2 size={12} />
-                          </button>
-                        </div>
+                        <span className={`flex-1 cursor-pointer ${formData.category === cat.name ? "text-purple-700" : ""}`} onClick={() => { setFormData({ ...formData, category: cat.name }); setCategoryOpen(false); setCategorySearch(""); }}>{cat.name}</span>
+                        <div className="flex items-center gap-2">{formData.category === cat.name && <Check size={14} className="text-purple-700" />}<button onClick={(e) => { e.stopPropagation(); setEditingCatId(cat.id); setEditingCatName(cat.name); }} className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-purple-600 transition"><Edit2 size={12} /></button></div>
                       </>
                     )}
                   </div>
@@ -949,26 +884,16 @@ export default function AdminProductForm({ onSubmit }: AdminProductFormProps) {
         </div>
 
         <input type="text" name="barcode" value={formData.barcode} onChange={handleChange} placeholder="الباركود *" required className={inputStyle} style={borderConfig} />
-
         <input type="number" name="stock" value={formData.stock} onChange={handleChange} placeholder="الكمية بالمخزن *" required className={inputStyle} style={borderConfig} />
 
         <div className="relative">
           <input type="number" name="minStock" value={formData.minStock} onChange={handleChange} placeholder="الحد الأدنى للتنبيه *" required className={inputStyle} style={borderConfig} />
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-red-400">
-            <AlertTriangle size={14} />
-            <span className="text-[10px] font-bold">تنبيه</span>
-          </div>
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-red-400"><AlertTriangle size={14} /><span className="text-[10px] font-bold">تنبيه</span></div>
         </div>
 
         <div className="md:col-span-2 mt-2">
-          <button
-            type="submit"
-            disabled={isUploading}
-            className={`w-full h-14 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition hover:opacity-90 ${isUploading ? "opacity-70 cursor-not-allowed" : ""}`}
-            style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}
-          >
-            <Save size={18} />
-            {isUploading ? "جاري رفع الصور..." : "حفظ المنتج في الداتابيز"}
+          <button type="submit" disabled={isUploading} className={`w-full h-14 rounded-xl font-bold text-white flex items-center justify-center gap-2 transition hover:opacity-90 ${isUploading ? "opacity-70 cursor-not-allowed" : ""}`} style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}>
+            <Save size={18} /> {isUploading ? "جاري رفع الصور..." : "حفظ المنتج في الداتابيز"}
           </button>
         </div>
       </form>
