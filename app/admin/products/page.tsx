@@ -46,14 +46,13 @@ export default function ProductsPage() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
-  const [editingPrice, setEditingPrice] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOption, setSortOption] = useState<'name-asc' | 'name-desc' | 'stock-asc' | 'stock-desc' | 'newest'>('newest');
   const [currentPage, setCurrentPage] = useState(1);
 
-  // ✅ حالة مستطيل الانتقال السريع
   const [quickJumpPage, setQuickJumpPage] = useState('');
 
   const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
@@ -140,27 +139,22 @@ export default function ProductsPage() {
     }
   };
 
-  // ✅ دالة الانتقال السريع بالكتابة
   const handleQuickJump = (e: React.KeyboardEvent<HTMLInputElement> | React.MouseEvent) => {
     const page = parseInt(quickJumpPage);
     if (!isNaN(page) && page >= 1 && page <= totalPages) {
       goToPage(page);
-      setQuickJumpPage(''); // مسح المستطيل بعد الانتقال
+      setQuickJumpPage('');
     }
   };
 
-  // ✅ دالة عرض 4 أرقام بس (نافذة متحركة)
   const getVisiblePages = () => {
     const maxVisible = 4;
-    let start = Math.max(1, currentPage - 1); // يبدأ من قبل الصفحة الحالية بواحد
+    let start = Math.max(1, currentPage - 1);
     let end = start + maxVisible - 1;
-
-    // لو الـ End عدى عدد الصفحات الكلي، نرجع الـ Start خطوة للوراء
     if (end > totalPages) {
       end = totalPages;
       start = Math.max(1, end - maxVisible + 1);
     }
-
     const pages = [];
     for (let i = start; i <= end; i++) {
       pages.push(i);
@@ -168,16 +162,125 @@ export default function ProductsPage() {
     return pages;
   };
 
-  const openCatCropModal = (imageUrl: string, target: 'add' | 'edit') => { setCatImageToCrop(imageUrl); setCatCropTarget(target); setCatCrop({ unit: '%', width: 80, height: 80, x: 10, y: 10 }); setCatCompletedCrop(undefined); setCatCropModalOpen(true); };
-  const onCatImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => { catImgRef.current = e.currentTarget; };
-  async function getCatCroppedImg() { const image = catImgRef.current; if (!image || !catCompletedCrop) return null; const canvas = document.createElement("canvas"); const ctx = canvas.getContext("2d") as CanvasRenderingContext2D | null; if (!ctx) return null; const scaleX = image.naturalWidth / image.width; const scaleY = image.naturalHeight / image.height; canvas.width = catCompletedCrop.width * scaleX; canvas.height = catCompletedCrop.height * scaleY; ctx.drawImage(image, catCompletedCrop.x * scaleX, catCompletedCrop.y * scaleY, catCompletedCrop.width * scaleX, catCompletedCrop.height * scaleY, 0, 0, canvas.width, canvas.height); return canvas.toDataURL("image/jpeg"); }
-  const handleSaveCatCrop = async () => { try { const croppedImage = await getCatCroppedImg(); if (croppedImage) { if (catCropTarget === 'add') { setNewCatImagePreview(croppedImage); setNewCatImage(new File([croppedImage], `category_${Date.now()}.jpg`, { type: 'image/jpeg' })); } else { setEditCatImagePreview(croppedImage); } } } catch (e) { console.error(e); } setCatCropModalOpen(false); setCatImageToCrop(null); };
-  const handleCatImageFromUrl = useCallback(async (url: string) => { try { const response = await fetch(url); const blob = await response.blob(); if (!blob.type.startsWith('image/')) { setModalConfig({ isOpen: true, title: 'خطأ', message: 'الرابط ده مش صورة!', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) }); return; } const reader = new FileReader(); reader.onloadend = () => openCatCropModal(reader.result as string, 'add'); reader.readAsDataURL(blob); } catch (error) { console.error("Error loading image from URL:", error); } }, []);
-  const handleCatDragOver = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsCatImageDragging(true); }, []);
-  const handleCatDragLeave = useCallback((e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsCatImageDragging(false); }, []);
-  const handleCatDrop = useCallback(async (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsCatImageDragging(false); const files = e.dataTransfer.files; if (files.length > 0) { const file = files[0]; if (file.type.startsWith('image/')) { const reader = new FileReader(); reader.onloadend = () => openCatCropModal(reader.result as string, 'add'); reader.readAsDataURL(file); } return; } const items = e.dataTransfer.items; if (items) { for (let i = 0; i < items.length; i++) { const item = items[i]; if (item.kind === 'string') { item.getAsString(async (url) => { if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || url.startsWith('http')) await handleCatImageFromUrl(url); }); } } } const textData = e.dataTransfer.getData('text/plain'); if (textData && textData.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) await handleCatImageFromUrl(textData); const uriList = e.dataTransfer.getData('text/uri-list'); if (uriList) { const urls = uriList.split('\n').filter(url => url.trim() && !url.startsWith('#')); for (const url of urls) { if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) await handleCatImageFromUrl(url); } } }, [handleCatImageFromUrl]);
+  const openCatCropModal = (imageUrl: string, target: 'add' | 'edit') => { 
+    setCatImageToCrop(imageUrl); 
+    setCatCropTarget(target); 
+    setCatCrop({ unit: '%', width: 80, height: 80, x: 10, y: 10 }); 
+    setCatCompletedCrop(undefined); 
+    setCatCropModalOpen(true); 
+  };
+  
+  const onCatImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => { 
+    catImgRef.current = e.currentTarget; 
+  };
+  
+  async function getCatCroppedImg() { 
+    const image = catImgRef.current; 
+    if (!image || !catCompletedCrop) return null; 
+    const canvas = document.createElement("canvas"); 
+    const ctx = canvas.getContext("2d") as CanvasRenderingContext2D | null; 
+    if (!ctx) return null; 
+    const scaleX = image.naturalWidth / image.width; 
+    const scaleY = image.naturalHeight / image.height; 
+    canvas.width = catCompletedCrop.width * scaleX; 
+    canvas.height = catCompletedCrop.height * scaleY; 
+    ctx.drawImage(image, catCompletedCrop.x * scaleX, catCompletedCrop.y * scaleY, catCompletedCrop.width * scaleX, catCompletedCrop.height * scaleY, 0, 0, canvas.width, canvas.height); 
+    return canvas.toDataURL("image/jpeg"); 
+  }
+  
+  const handleSaveCatCrop = async () => { 
+    try { 
+      const croppedImage = await getCatCroppedImg(); 
+      if (croppedImage) { 
+        if (catCropTarget === 'add') { 
+          setNewCatImagePreview(croppedImage); 
+          setNewCatImage(new File([croppedImage], `category_${Date.now()}.jpg`, { type: 'image/jpeg' })); 
+        } else { 
+          setEditCatImagePreview(croppedImage); 
+        } 
+      } 
+    } catch (e) { 
+      console.error(e); 
+    } 
+    setCatCropModalOpen(false); 
+    setCatImageToCrop(null); 
+  };
+  
+  const handleCatImageFromUrl = useCallback(async (url: string) => { 
+    try { 
+      const response = await fetch(url); 
+      const blob = await response.blob(); 
+      if (!blob.type.startsWith('image/')) { 
+        setModalConfig({ isOpen: true, title: 'خطأ', message: 'الرابط ده مش صورة!', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) }); 
+        return; 
+      } 
+      const reader = new FileReader(); 
+      reader.onloadend = () => openCatCropModal(reader.result as string, 'add'); 
+      reader.readAsDataURL(blob); 
+    } catch (error) { 
+      console.error("Error loading image from URL:", error); 
+    } 
+  }, []);
+  
+  const handleCatDragOver = useCallback((e: React.DragEvent) => { 
+    e.preventDefault(); 
+    e.stopPropagation(); 
+    setIsCatImageDragging(true); 
+  }, []);
+  
+  const handleCatDragLeave = useCallback((e: React.DragEvent) => { 
+    e.preventDefault(); 
+    e.stopPropagation(); 
+    setIsCatImageDragging(false); 
+  }, []);
+  
+  const handleCatDrop = useCallback(async (e: React.DragEvent) => { 
+    e.preventDefault(); 
+    e.stopPropagation(); 
+    setIsCatImageDragging(false); 
+    const files = e.dataTransfer.files; 
+    if (files.length > 0) { 
+      const file = files[0]; 
+      if (file.type.startsWith('image/')) { 
+        const reader = new FileReader(); 
+        reader.onloadend = () => openCatCropModal(reader.result as string, 'add'); 
+        reader.readAsDataURL(file); 
+      } 
+      return; 
+    } 
+    const items = e.dataTransfer.items; 
+    if (items) { 
+      for (let i = 0; i < items.length; i++) { 
+        const item = items[i]; 
+        if (item.kind === 'string') { 
+          item.getAsString(async (url) => { 
+            if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || url.startsWith('http')) 
+              await handleCatImageFromUrl(url); 
+          }); 
+        } 
+      } 
+    } 
+    const textData = e.dataTransfer.getData('text/plain'); 
+    if (textData && textData.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) 
+      await handleCatImageFromUrl(textData); 
+    const uriList = e.dataTransfer.getData('text/uri-list'); 
+    if (uriList) { 
+      const urls = uriList.split('\n').filter(url => url.trim() && !url.startsWith('#')); 
+      for (const url of urls) { 
+        if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) 
+          await handleCatImageFromUrl(url); 
+      } 
+    } 
+  }, [handleCatImageFromUrl]);
 
-  const handleToggleVisibility = async (id: string, currentVisibility: boolean) => { try { await updateDoc(doc(db, 'products', id), { isActive: !currentVisibility }); setAllProducts(allProducts.map(p => p.id === id ? { ...p, isActive: !currentVisibility } : p)); } catch (error) { console.error(error); } };
+  const handleToggleVisibility = async (id: string, currentVisibility: boolean) => { 
+    try { 
+      await updateDoc(doc(db, 'products', id), { isActive: !currentVisibility }); 
+      setAllProducts(allProducts.map(p => p.id === id ? { ...p, isActive: !currentVisibility } : p)); 
+    } catch (error) { 
+      console.error(error); 
+    } 
+  };
 
   const handleAddProduct = async (formData: Partial<Product>) => { 
     try { 
@@ -197,32 +300,113 @@ export default function ProductsPage() {
       setAllProducts([newProduct, ...allProducts]); 
       setShowAddForm(false); 
       setModalConfig({ isOpen: true, title: 'نجاح ✓', message: 'تم إضافة المنتج بنجاح', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) }); 
-    } catch (error) { console.error(error); } 
+    } catch (error) { 
+      console.error(error); 
+    } 
   };
 
-  const handleDeleteProduct = (id: string) => { setModalConfig({ isOpen: true, title: 'حذف المنتج', message: 'هل أنت متأكد من حذف هذا المنتج نهائياً من المتجر؟', onConfirm: () => executeDeleteProduct(id) }); };
-  const executeDeleteProduct = async (id: string) => { try { await deleteDoc(doc(db, 'products', id)); setAllProducts(allProducts.filter((p) => p.id !== id)); setModalConfig(prev => ({ ...prev, isOpen: false })); } catch (error) { console.error(error); } };
-
-  const handleEditProduct = async (id: string, updatedData: Partial<Product>) => { 
+  const handleDeleteProduct = (id: string) => { 
+    setModalConfig({ isOpen: true, title: 'حذف المنتج', message: 'هل أنت متأكد من حذف هذا المنتج نهائياً من المتجر؟', onConfirm: () => executeDeleteProduct(id) }); 
+  };
+  
+  const executeDeleteProduct = async (id: string) => { 
     try { 
-      await updateDoc(doc(db, 'products', id), updatedData); 
-      setAllProducts(allProducts.map((p) => (p.id === id ? { ...p, ...updatedData } : p))); 
-      setEditingPrice(null);
-      setModalConfig({ isOpen: true, title: 'نجاح ✓', message: 'تم تحديث المنتج بنجاح', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) }); 
-    } catch (error) { console.error(error); } 
+      await deleteDoc(doc(db, 'products', id)); 
+      setAllProducts(allProducts.filter((p) => p.id !== id)); 
+      setModalConfig(prev => ({ ...prev, isOpen: false })); 
+    } catch (error) { 
+      console.error(error); 
+    } 
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (!file) return; if (!file.type.startsWith('image/')) return; const reader = new FileReader(); reader.onloadend = () => openCatCropModal(reader.result as string, 'add'); reader.readAsDataURL(file); };
-  const handleEditCatImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { const file = e.target.files?.[0]; if (!file || !file.type.startsWith('image/')) return; const reader = new FileReader(); reader.onloadend = () => openCatCropModal(reader.result as string, 'edit'); reader.readAsDataURL(file); };
+  // ✅ دالة تعديل المنتج الكامل
+  const handleEditProduct = (product: Product) => {
+    setEditingProduct(product);
+  };
 
-  const handleAddCategory = async () => { if (!newCatName.trim()) return; try { let imageUrl: string | undefined = undefined; if (newCatImage) imageUrl = newCatImagePreview || undefined; await addDoc(collection(db, 'categories'), { name: newCatName.trim(), icon: imageUrl ? '' : newCatIcon, imageUrl: imageUrl || '' }); setNewCatName(''); setNewCatIcon('✏️'); setNewCatImage(null); setNewCatImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; setModalConfig({ isOpen: true, title: 'تمت الإضافة ✓', message: `تم إضافة قسم "${newCatName.trim()}" بنجاح`, onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) }); } catch (error) { console.error(error); } };
-  const handleStartEditCategory = (cat: Category) => { setEditingCatId(cat.id); setEditingCatName(cat.name); setEditCatImagePreview(cat.imageUrl || null); };
-  const handleCancelEditCategory = () => { setEditingCatId(null); setEditingCatName(''); setEditCatImagePreview(null); };
-  const handleUpdateCategory = async (catId: string) => { if (!editingCatName.trim()) return; try { const catRef = doc(db, 'categories', catId); await updateDoc(catRef, { name: editingCatName.trim(), imageUrl: editCatImagePreview || '', icon: editCatImagePreview ? '' : (categories.find(c => c.id === catId)?.icon || '📦') }); handleCancelEditCategory(); } catch (error) { console.error(error); } };
-  const handleDeleteCategory = (catId: string, catName: string) => { setModalConfig({ isOpen: true, title: 'حذف القسم', message: `هل أنت متأكد من حذف قسم "${catName}"؟`, onConfirm: () => executeDeleteCategory(catId) }); };
-  const executeDeleteCategory = async (catId: string) => { try { await deleteDoc(doc(db, 'categories', catId)); setModalConfig(prev => ({ ...prev, isOpen: false })); } catch (error) { console.error('خطأ في حذف القسم:', error); } };
+  // ✅ دالة تحديث المنتج بعد التعديل
+  const handleUpdateProduct = async (updatedData: Partial<Product>) => {
+    try {
+      await updateDoc(doc(db, 'products', updatedData.id!), updatedData);
+      setAllProducts(allProducts.map((p) => (p.id === updatedData.id ? { ...p, ...updatedData } : p)));
+      setEditingProduct(null);
+      setModalConfig({ isOpen: true, title: 'نجاح ✓', message: 'تم تحديث المنتج بنجاح', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) });
+    } catch (error) {
+      console.error(error);
+      setModalConfig({ isOpen: true, title: 'خطأ', message: 'حدث خطأ أثناء تحديث المنتج', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) });
+    }
+  };
 
-  // ✅ تحديد إذا كان المودال نجاح عشان نظهر الصورة
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { 
+    const file = e.target.files?.[0]; 
+    if (!file) return; 
+    if (!file.type.startsWith('image/')) return; 
+    const reader = new FileReader(); 
+    reader.onloadend = () => openCatCropModal(reader.result as string, 'add'); 
+    reader.readAsDataURL(file); 
+  };
+  
+  const handleEditCatImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { 
+    const file = e.target.files?.[0]; 
+    if (!file || !file.type.startsWith('image/')) return; 
+    const reader = new FileReader(); 
+    reader.onloadend = () => openCatCropModal(reader.result as string, 'edit'); 
+    reader.readAsDataURL(file); 
+  };
+
+  const handleAddCategory = async () => { 
+    if (!newCatName.trim()) return; 
+    try { 
+      let imageUrl: string | undefined = undefined; 
+      if (newCatImage) imageUrl = newCatImagePreview || undefined; 
+      await addDoc(collection(db, 'categories'), { name: newCatName.trim(), icon: imageUrl ? '' : newCatIcon, imageUrl: imageUrl || '' }); 
+      setNewCatName(''); 
+      setNewCatIcon('✏️'); 
+      setNewCatImage(null); 
+      setNewCatImagePreview(null); 
+      if (fileInputRef.current) fileInputRef.current.value = ''; 
+      setModalConfig({ isOpen: true, title: 'تمت الإضافة ✓', message: `تم إضافة قسم "${newCatName.trim()}" بنجاح`, onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) }); 
+    } catch (error) { 
+      console.error(error); 
+    } 
+  };
+  
+  const handleStartEditCategory = (cat: Category) => { 
+    setEditingCatId(cat.id); 
+    setEditingCatName(cat.name); 
+    setEditCatImagePreview(cat.imageUrl || null); 
+  };
+  
+  const handleCancelEditCategory = () => { 
+    setEditingCatId(null); 
+    setEditingCatName(''); 
+    setEditCatImagePreview(null); 
+  };
+  
+  const handleUpdateCategory = async (catId: string) => { 
+    if (!editingCatName.trim()) return; 
+    try { 
+      const catRef = doc(db, 'categories', catId); 
+      await updateDoc(catRef, { name: editingCatName.trim(), imageUrl: editCatImagePreview || '', icon: editCatImagePreview ? '' : (categories.find(c => c.id === catId)?.icon || '📦') }); 
+      handleCancelEditCategory(); 
+    } catch (error) { 
+      console.error(error); 
+    } 
+  };
+  
+  const handleDeleteCategory = (catId: string, catName: string) => { 
+    setModalConfig({ isOpen: true, title: 'حذف القسم', message: `هل أنت متأكد من حذف قسم "${catName}"؟`, onConfirm: () => executeDeleteCategory(catId) }); 
+  };
+  
+  const executeDeleteCategory = async (catId: string) => { 
+    try { 
+      await deleteDoc(doc(db, 'categories', catId)); 
+      setModalConfig(prev => ({ ...prev, isOpen: false })); 
+    } catch (error) { 
+      console.error('خطأ في حذف القسم:', error); 
+    } 
+  };
+
   const isSuccessModal = modalConfig.title.includes('نجاح') || modalConfig.title.includes('تمت');
 
   if (!authChecked) return null;
@@ -243,12 +427,9 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* ✅ ConfirmModal المعدل - أكبر حجم + صورة كبيرة + زر واحد في النص */}
       {modalConfig.isOpen && (
         <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-10 max-w-lg w-full text-center shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
-            
-            {/* ✅ صورة النجاح - حجم كبير جداً */}
             {isSuccessModal && (
               <div className="mb-8 flex justify-center">
                 <img 
@@ -259,16 +440,12 @@ export default function ProductsPage() {
                 />
               </div>
             )}
-
             <h3 className={`text-2xl font-black mb-4 ${isSuccessModal ? 'text-green-600' : 'text-slate-900'}`}>
               {modalConfig.title}
             </h3>
-            
             <p className="text-slate-600 text-base mb-10 leading-relaxed">
               {modalConfig.message}
             </p>
-
-            {/* ✅ زر واحد بس في النص */}
             <div className="flex justify-center">
               <button
                 onClick={modalConfig.onConfirm}
@@ -355,16 +532,13 @@ export default function ProductsPage() {
           <AdminProductTable 
             products={currentProducts}
             onDelete={handleDeleteProduct} 
-            onEditPrice={(product) => setEditingPrice(product)} 
+            onEdit={handleEditProduct}
             onToggleVisibility={handleToggleVisibility}
             loading={loading} 
           />
 
-          {/* ✅ الباجينيشن الجديد (4 أرقام + مستطيل الانتقال السريع) */}
           {!loading && totalPages > 1 && (
             <div className="flex items-center justify-center gap-2 mt-8 flex-wrap">
-              
-              {/* زرار الرجوع */}
               <button
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
@@ -375,7 +549,6 @@ export default function ProductsPage() {
                 <ChevronRight size={18} />
               </button>
 
-              {/* عرض أرقام الصفحات (4 بس) */}
               {getVisiblePages().map((page) => (
                 <button
                   key={page}
@@ -390,7 +563,6 @@ export default function ProductsPage() {
                 </button>
               ))}
 
-              {/* زرار التقديم */}
               <button
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
@@ -401,7 +573,6 @@ export default function ProductsPage() {
                 <ChevronLeft size={18} />
               </button>
 
-              {/* فاصل ومستطيل الانتقال السريع */}
               <div className="flex items-center gap-2 mr-2 border-r border-slate-200 pr-3">
                 <span className="text-xs text-slate-500 font-bold whitespace-nowrap">الذهاب لصفحة:</span>
                 <input
@@ -430,9 +601,25 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {editingPrice && (
-        // @ts-ignore - AdminPriceEditor props mismatch in external component types; passing onSubmit handler used at runtime
-        <AdminPriceEditor product={editingPrice} onClose={() => setEditingPrice(null)} onSubmit={handleEditProduct} />
+      {/* ✅ مودال تعديل المنتج الكامل */}
+      {editingProduct && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-auto">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-black">تعديل المنتج</h3>
+              <button onClick={() => setEditingProduct(null)} className="p-2 hover:bg-slate-100 rounded-lg">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6">
+              <AdminPriceEditor
+                product={editingProduct}
+                onUpdate={handleUpdateProduct}
+                onClose={() => setEditingProduct(null)}
+              />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

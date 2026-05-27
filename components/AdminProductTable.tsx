@@ -7,7 +7,7 @@ import { Trash2, Edit2, Package, AlertTriangle, CheckCircle, Eye, EyeOff } from 
 interface AdminProductTableProps {
   products: Product[];
   onDelete: (id: string) => void;
-  onEditPrice: (product: Product) => void;
+  onEdit: (product: Product) => void;
   onToggleVisibility: (id: string, isActive: boolean) => void;
   loading?: boolean;
 }
@@ -15,7 +15,7 @@ interface AdminProductTableProps {
 export default function AdminProductTable({
   products,
   onDelete,
-  onEditPrice,
+  onEdit,
   onToggleVisibility,
   loading = false,
 }: AdminProductTableProps) {
@@ -57,7 +57,7 @@ export default function AdminProductTable({
             <th className="px-4 py-3.5 text-right text-sm font-black text-slate-600">الفئة</th>
             <th className="px-4 py-3.5 text-right text-sm font-black text-slate-600">الباركود</th>
             <th className="px-4 py-3.5 text-center text-sm font-black text-slate-600">الإجراءات</th>
-          </tr>
+           </tr>
         </thead>
         <tbody>
           {products.length === 0 ? (
@@ -119,7 +119,6 @@ export default function AdminProductTable({
                     )}
                   </td>
 
-                  {/* ✅ تعديل خلية الاسم: إضافة max-w و truncate عشان يكمل بنقط */}
                   <td className="px-4 py-3.5 font-bold text-sm max-w-[200px]">
                     <div className="flex items-center gap-2">
                       {isLowStock && (
@@ -136,7 +135,6 @@ export default function AdminProductTable({
                     </div>
                   </td>
 
-                  {/* ✅ تعديل خلية السعر: إضافة whitespace-nowrap */}
                   <td className="px-4 py-3.5 text-sm whitespace-nowrap">
                     <span
                       className="font-black px-2 py-1 rounded-lg text-xs bg-purple-50 text-purple-700"
@@ -145,7 +143,6 @@ export default function AdminProductTable({
                     </span>
                   </td>
 
-                  {/* ✅ تعديل خلية الكمية: إضافة whitespace-nowrap للخلية وللبادج */}
                   <td className="px-4 py-3.5 text-sm whitespace-nowrap">
                     <span 
                       className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold transition-all border whitespace-nowrap ${stockBadgeClass}`}
@@ -161,7 +158,16 @@ export default function AdminProductTable({
                   <td className="px-4 py-3.5">
                     <div className="flex justify-center gap-2">
                       
-                      {/* زرار الإخفاء والإظهار */}
+                      {/* ✅ زرار تعديل المنتج (قلم) */}
+                      <button
+                        onClick={() => onEdit(product)}
+                        className="p-2 rounded-xl transition hover:scale-110 border bg-amber-50 text-amber-600 hover:bg-amber-100 border-amber-200"
+                        title="تعديل المنتج"
+                      >
+                        <Edit2 size={15} />
+                      </button>
+
+                      {/* زرار الإخفاء والإظهار (عين) */}
                       <button
                         onClick={() => onToggleVisibility(product.id || "", product.isActive ?? true)}
                         className={`p-2 rounded-xl transition hover:scale-110 border ${
@@ -174,16 +180,7 @@ export default function AdminProductTable({
                         {product.isActive === false ? <EyeOff size={15} /> : <Eye size={15} />}
                       </button>
 
-                      {/* زرار تعديل السعر */}
-                      <button
-                        onClick={() => onEditPrice(product)}
-                        className="p-2 rounded-xl transition hover:scale-110 border bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-200"
-                        title="تعديل السعر"
-                      >
-                        <Edit2 size={15} />
-                      </button>
-
-                      {/* زرار الحذف */}
+                      {/* زرار الحذف (سلة) */}
                       <button
                         onClick={() => {
                           if (!product.id) {

@@ -280,84 +280,80 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
   }, [handleImageFromUrl]);
 
   useEffect(() => {
-  const handleContextMenu = (e: MouseEvent) => {
-    const target = e.target as HTMLElement;
-    const isPasteZone = pasteZoneRef.current?.contains(target) || 
-                        dropZoneRef.current?.contains(target);
-    
-    if (!isPasteZone) return;
+    const handleContextMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const isPasteZone = pasteZoneRef.current?.contains(target) || 
+                          dropZoneRef.current?.contains(target);
+      
+      if (!isPasteZone) return;
 
-    e.preventDefault();
-    
-    const customMenu = document.createElement('div');
-    customMenu.className = 'fixed bg-white rounded-lg shadow-xl border z-[200] overflow-hidden';
-    customMenu.style.top = `${e.clientY}px`;
-    customMenu.style.left = `${e.clientX}px`;
-    
-    const pasteOption = document.createElement('button');
-    pasteOption.innerHTML = `
-      <div class="flex items-center gap-2 px-4 py-2 hover:bg-purple-50 transition-colors w-full text-right">
-        <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-        </svg>
-        <span class="text-sm font-bold text-gray-700">لصق الصورة</span>
-        <span class="text-xs text-gray-400 mr-auto">Ctrl+V</span>
-      </div>
-    `;
-    pasteOption.className = 'w-full text-right';
-    
-    let isRemoved = false;
-    
-    const removeMenu = () => {
-      if (!isRemoved && document.body.contains(customMenu)) {
-        document.body.removeChild(customMenu);
-        isRemoved = true;
-      }
-      document.removeEventListener('click', removeMenu);
-      document.removeEventListener('contextmenu', removeMenu);
-    };
-    
-    pasteOption.onclick = async () => {
-      try {
-        const clipboardText = await navigator.clipboard.readText();
-        if (clipboardText && (clipboardText.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || clipboardText.startsWith('http'))) {
-          await handleImageFromUrl(clipboardText);
-        } else {
-          const clipboardItems = await navigator.clipboard.read();
-          for (const clipboardItem of clipboardItems) {
-            const imageTypes = clipboardItem.types.filter(type => type.startsWith('image/'));
-            for (const type of imageTypes) {
-              const blob = await clipboardItem.getType(type);
-              const reader = new FileReader();
-              reader.onloadend = () => openCropModal(reader.result as string, "main");
-              reader.readAsDataURL(blob);
+      e.preventDefault();
+      
+      const customMenu = document.createElement('div');
+      customMenu.className = 'fixed bg-white rounded-lg shadow-xl border z-[200] overflow-hidden';
+      customMenu.style.top = `${e.clientY}px`;
+      customMenu.style.left = `${e.clientX}px`;
+      
+      const pasteOption = document.createElement('button');
+      pasteOption.innerHTML = `
+        <div class="flex items-center gap-2 px-4 py-2 hover:bg-purple-50 transition-colors w-full text-right">
+          <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+          </svg>
+          <span class="text-sm font-bold text-gray-700">لصق الصورة</span>
+          <span class="text-xs text-gray-400 mr-auto">Ctrl+V</span>
+        </div>
+      `;
+      pasteOption.className = 'w-full text-right';
+      pasteOption.onclick = async () => {
+        try {
+          const clipboardText = await navigator.clipboard.readText();
+          if (clipboardText && (clipboardText.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || clipboardText.startsWith('http'))) {
+            await handleImageFromUrl(clipboardText);
+          } else {
+            const clipboardItems = await navigator.clipboard.read();
+            for (const clipboardItem of clipboardItems) {
+              const imageTypes = clipboardItem.types.filter(type => type.startsWith('image/'));
+              for (const type of imageTypes) {
+                const blob = await clipboardItem.getType(type);
+                const reader = new FileReader();
+                reader.onloadend = () => openCropModal(reader.result as string, "main");
+                reader.readAsDataURL(blob);
+              }
             }
           }
+        } catch (err) {
+          console.error('Failed to paste:', err);
+          alert('اضغط Ctrl+V للصق الصورة');
         }
-      } catch (err) {
-        console.error('Failed to paste:', err);
-        alert('اضغط Ctrl+V للصق الصورة');
-      }
-      removeMenu();
+        document.body.removeChild(customMenu);
+      };
+      
+      customMenu.appendChild(pasteOption);
+      document.body.appendChild(customMenu);
+      
+      const removeMenu = () => {
+        if (document.body.contains(customMenu)) {
+          document.body.removeChild(customMenu);
+        }
+        document.removeEventListener('click', removeMenu);
+        document.removeEventListener('contextmenu', removeMenu);
+      };
+      
+      setTimeout(() => {
+        document.addEventListener('click', removeMenu);
+        document.addEventListener('contextmenu', removeMenu);
+      }, 0);
     };
-    
-    customMenu.appendChild(pasteOption);
-    document.body.appendChild(customMenu);
-    
-    setTimeout(() => {
-      document.addEventListener('click', removeMenu);
-      document.addEventListener('contextmenu', removeMenu);
-    }, 0);
-  };
 
-  const pasteZone = pasteZoneRef.current || dropZoneRef.current;
-  if (pasteZone) {
-    pasteZone.addEventListener('contextmenu', handleContextMenu);
-    return () => {
-      pasteZone.removeEventListener('contextmenu', handleContextMenu);
-    };
-  }
-}, [handleImageFromUrl]);
+    const pasteZone = pasteZoneRef.current || dropZoneRef.current;
+    if (pasteZone) {
+      pasteZone.addEventListener('contextmenu', handleContextMenu);
+      return () => {
+        pasteZone.removeEventListener('contextmenu', handleContextMenu);
+      };
+    }
+  }, [handleImageFromUrl]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
