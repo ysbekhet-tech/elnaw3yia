@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Heart, Eye, ShoppingCart, Star, Plus, Minus, ChevronRight, ChevronLeft } from "lucide-react";
+import { Heart, Eye, ShoppingCart, Plus, Minus, ChevronRight, ChevronLeft } from "lucide-react"; // تم إزالة Star
 import { motion, AnimatePresence } from "framer-motion";
 import { Product } from "@/types";
 import { useCart } from "@/app/context/CartContext";
@@ -85,7 +85,6 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
             boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
           }}
         >
-          {/* ✅ تعديل: استخدام aspect-square للمحافظة على شكل مربع موحد */}
           <Link href={`/products/${product.id}`} className="block relative w-32 aspect-square flex-shrink-0 overflow-hidden bg-slate-900/40">
             <Image 
               src={allImages[0]} 
@@ -93,7 +92,7 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
               fill
               sizes="128px"
               className="object-contain p-2"
-              style={{ maxWidth: '100%', maxHeight: '100%' }} // لإصلاح تحذير Next.js
+              style={{ maxWidth: '100%', maxHeight: '100%' }}
               loading="lazy"
             />
             {discount > 0 && (
@@ -111,10 +110,8 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
               <h3 className="font-bold text-sm text-slate-200 hover:text-purple-400 transition line-clamp-1">{product.name}</h3>
             </Link>
             
-            <div className="flex items-center gap-1 mt-1">
-              <Star size={11} className="fill-yellow-400 text-yellow-400" />
-              <span className="text-[10px] text-slate-500">{product.rating || 4.5}</span>
-              <span className="text-slate-600 mx-1">|</span>
+            {/* تم إزالة التقييم من هنا */}
+            <div className="mt-1">
               <span className={`text-[10px] font-bold ${stockAvailable > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 متاح: {stockAvailable}
               </span>
@@ -168,7 +165,6 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
           boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
         }}
       >
-        {/* ✅ تعديل: استخدام aspect-square بدلاً من الارتفاع الثابت، وتغيير الخلفية لتتناسب مع البطاقة */}
         <Link href={`/products/${product.id}`} className="block relative overflow-hidden aspect-square bg-slate-900/40">
           
           <AnimatePresence mode='wait'>
@@ -180,14 +176,13 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
               transition={{ duration: 0.3 }}
               className="relative w-full h-full"
             >
-              {/* ✅ إصلاح مشكلة التصغير والتحذير */}
               <Image
                 src={allImages[currentImageIndex]}
                 alt={product.name}
                 fill
                 sizes={isCompact ? "(max-width: 640px) 50vw, 20vw" : "(max-width: 768px) 50vw, 25vw"}
                 className="object-contain p-4"
-                style={{ maxWidth: '100%', maxHeight: '100%' }} // إصلاح تحذير الـ Next.js
+                style={{ maxWidth: '100%', maxHeight: '100%' }}
                 priority={currentImageIndex === 0}
                 loading={currentImageIndex === 0 ? "eager" : "lazy"}
               />
@@ -239,12 +234,7 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
             </h3>
           </Link>
 
-          {!isCompact && (
-            <div className="flex items-center gap-1 mt-1">
-              <Star size={11} className="fill-yellow-400 text-yellow-400" />
-              <span className="text-[10px] text-slate-500">{product.rating || 4.5}</span>
-            </div>
-          )}
+          {/* تم إزالة التقييم بالكامل من هنا */}
 
           <div className="flex items-center gap-2 mt-1.5">
             <span className={`${isCompact ? "text-sm" : "text-base"} font-black text-white`}>{product.price} ج</span>
