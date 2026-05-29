@@ -85,14 +85,15 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
             boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
           }}
         >
-          {/* ✅ تعديل: إضافة خلفية موحدة للصورة وتغيير object-cover إلى object-contain مع p-2 */}
-          <Link href={`/products/${product.id}`} className="block relative w-32 h-full flex-shrink-0 overflow-hidden bg-slate-800/50">
+          {/* ✅ تعديل: استخدام aspect-square للمحافظة على شكل مربع موحد */}
+          <Link href={`/products/${product.id}`} className="block relative w-32 aspect-square flex-shrink-0 overflow-hidden bg-slate-900/40">
             <Image 
               src={allImages[0]} 
               alt={product.name} 
               fill
               sizes="128px"
               className="object-contain p-2"
+              style={{ maxWidth: '100%', maxHeight: '100%' }} // لإصلاح تحذير Next.js
               loading="lazy"
             />
             {discount > 0 && (
@@ -167,8 +168,8 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
           boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
         }}
       >
-        {/* ✅ تعديل: تغيير الخلفية لتكون موحدة وتغيير الـ class للصورة */}
-        <Link href={`/products/${product.id}`} className="block relative overflow-hidden bg-slate-800/50" style={{ height: isCompact ? "120px" : "160px" }}>
+        {/* ✅ تعديل: استخدام aspect-square بدلاً من الارتفاع الثابت، وتغيير الخلفية لتتناسب مع البطاقة */}
+        <Link href={`/products/${product.id}`} className="block relative overflow-hidden aspect-square bg-slate-900/40">
           
           <AnimatePresence mode='wait'>
             <motion.div
@@ -179,13 +180,14 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
               transition={{ duration: 0.3 }}
               className="relative w-full h-full"
             >
-              {/* ✅ تعديل: تغيير object-cover إلى object-contain مع p-3 لترك مسافة بيضاء */}
+              {/* ✅ إصلاح مشكلة التصغير والتحذير */}
               <Image
                 src={allImages[currentImageIndex]}
                 alt={product.name}
                 fill
                 sizes={isCompact ? "(max-width: 640px) 50vw, 20vw" : "(max-width: 768px) 50vw, 25vw"}
-                className="object-contain p-3"
+                className="object-contain p-4"
+                style={{ maxWidth: '100%', maxHeight: '100%' }} // إصلاح تحذير الـ Next.js
                 priority={currentImageIndex === 0}
                 loading={currentImageIndex === 0 ? "eager" : "lazy"}
               />
