@@ -85,13 +85,14 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
             boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
           }}
         >
-          <Link href={`/products/${product.id}`} className="block relative w-32 h-full flex-shrink-0 overflow-hidden" style={{ background: "rgba(255,255,255,0.06)" }}>
+          {/* ✅ تعديل: إضافة خلفية موحدة للصورة وتغيير object-cover إلى object-contain مع p-2 */}
+          <Link href={`/products/${product.id}`} className="block relative w-32 h-full flex-shrink-0 overflow-hidden bg-slate-800/50">
             <Image 
               src={allImages[0]} 
               alt={product.name} 
               fill
               sizes="128px"
-              className="object-cover"
+              className="object-contain p-2"
               loading="lazy"
             />
             {discount > 0 && (
@@ -166,7 +167,8 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
           boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
         }}
       >
-        <Link href={`/products/${product.id}`} className="block relative overflow-hidden" style={{ background: "rgba(255,255,255,0.06)", height: isCompact ? "120px" : "160px" }}>
+        {/* ✅ تعديل: تغيير الخلفية لتكون موحدة وتغيير الـ class للصورة */}
+        <Link href={`/products/${product.id}`} className="block relative overflow-hidden bg-slate-800/50" style={{ height: isCompact ? "120px" : "160px" }}>
           
           <AnimatePresence mode='wait'>
             <motion.div
@@ -177,12 +179,13 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
               transition={{ duration: 0.3 }}
               className="relative w-full h-full"
             >
+              {/* ✅ تعديل: تغيير object-cover إلى object-contain مع p-3 لترك مسافة بيضاء */}
               <Image
                 src={allImages[currentImageIndex]}
                 alt={product.name}
                 fill
                 sizes={isCompact ? "(max-width: 640px) 50vw, 20vw" : "(max-width: 768px) 50vw, 25vw"}
-                className="object-cover"
+                className="object-contain p-3"
                 priority={currentImageIndex === 0}
                 loading={currentImageIndex === 0 ? "eager" : "lazy"}
               />
