@@ -8,7 +8,7 @@ import React, {
   useCallback,
   useRef,
 } from "react";
-import { Product, CartItem, ProductSize } from "@/types"; // ← أضفنا ProductSize هنا
+import { Product, CartItem, ProductSize } from "@/types";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
 
@@ -19,10 +19,10 @@ type CartContextType = {
     openSidebar?: boolean,
     selectedColor?: string,
     qty?: number,
-    selectedSize?: ProductSize // ← عدلنا النوع هنا
+    selectedSize?: ProductSize
   ) => Promise<boolean>;
-  removeFromCart: (id: string, selectedColor?: string, selectedSize?: ProductSize) => void; // ← عدلنا النوع هنا
-  deleteFromCart: (id: string, selectedColor?: string, selectedSize?: ProductSize) => void; // ← عدلنا النوع هنا
+  removeFromCart: (id: string, selectedColor?: string, selectedSize?: ProductSize) => void;
+  deleteFromCart: (id: string, selectedColor?: string, selectedSize?: ProductSize) => void;
   clearLocalCart: () => void;
   cartTotal: number;
   cartCount: number;
@@ -167,7 +167,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // دالة مساعدة لتحويل المقاس لمفتاح فريد للمقارنة
   const getSizeKey = (size?: ProductSize) => {
     return size ? `${size.length}x${size.width}` : "";
   };
@@ -264,7 +263,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCart([]);
   }, [cart]);
 
-  const cartTotal = cart.reduce((t, i) => t + i.price * i.quantity, 0);
+  // ✅ إصلاح مهم: حساب السعر الإجمالي ليشمل سعر المقاس الإضافي
+  const cartTotal = cart.reduce((t, i) => {
+    const basePrice = Number(i.price) || 0;
+    const sizeExtraPrice = Number(i.selectedSize?.price) || 0;
+    const finalItemPrice = basePrice + sizeExtraPrice;
+    return t + (finalItemPrice * i.quantity);
+  }, 0);
+
   const cartCount = cart.reduce((t, i) => t + i.quantity, 0);
 
   return (

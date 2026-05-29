@@ -1,5 +1,3 @@
-// ملف: ProductDetails.tsx
-
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
@@ -38,7 +36,7 @@ export default function ProductDetails() {
   const { id } = useParams();
   const router = useRouter();
   const { addToCart, cart } = useCart();
-  
+
   const { stock, reserved } = useProductStock(id as string);
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -75,7 +73,7 @@ export default function ProductDetails() {
     setSelectedSizeIndex(0);
   }, [id]);
 
-  const allImages = (product?.images && product.images.length > 0)
+  const allImages = product?.images && product.images.length > 0
     ? product.images
     : product?.image
       ? [product.image]
@@ -96,9 +94,12 @@ export default function ProductDetails() {
   const cartQuantity = useMemo(() => {
     if (!product) return 0;
     return cart.reduce((sum, item) => {
-      if (item.id === product.id && item.selectedColor === selectedColorName && 
-          item.selectedSize?.length === selectedSize?.length && 
-          item.selectedSize?.width === selectedSize?.width) {
+      if (
+        item.id === product.id &&
+        item.selectedColor === selectedColorName &&
+        item.selectedSize?.length === selectedSize?.length &&
+        item.selectedSize?.width === selectedSize?.width
+      ) {
         return sum + item.quantity;
       }
       return sum;
@@ -118,10 +119,11 @@ export default function ProductDetails() {
     }
   }, [canAddMore, quantity]);
 
-  // ✅ حساب السعر النهائي (سعر المنتج + سعر المقاس لو موجود)
+  // ✅ إصلاح: حماية من null عند حساب السعر
   const finalItemPrice = useMemo(() => {
+    if (!product) return 0;
     const sizeExtraPrice = selectedSize?.price ? parseFloat(selectedSize.price) || 0 : 0;
-    return product!.price + sizeExtraPrice;
+    return product.price + sizeExtraPrice;
   }, [product, selectedSize]);
 
   const nextImage = (e?: React.MouseEvent) => {
@@ -272,7 +274,11 @@ export default function ProductDetails() {
                       style={{ backgroundColor: color.hex }}
                     >
                       {selectedColorIndex === index && (
-                        <Check size={18} className={isLightColor(color.hex) ? "text-black" : "text-white"} strokeWidth={3} />
+                        <Check
+                          size={18}
+                          className={isLightColor(color.hex) ? "text-black" : "text-white"}
+                          strokeWidth={3}
+                        />
                       )}
                     </button>
                   ))}
@@ -280,7 +286,7 @@ export default function ProductDetails() {
               </div>
             )}
 
-            {/* المقاسات - ✅ تم تعديل العرض ليظهر الأبعاد والسعر */}
+            {/* المقاسات */}
             {product.sizes && product.sizes.length > 0 && (
               <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
                 <h3 className="text-sm font-bold text-purple-400 mb-3">المقاسات:</h3>
@@ -305,7 +311,7 @@ export default function ProductDetails() {
               </div>
             )}
 
-            {/* السعر والخصم - ✅ تم تعديل السعر ليظهر السعر النهائي مع المقاس */}
+            {/* السعر والخصم */}
             <div className="flex items-center gap-3">
               <span className="text-2xl font-black text-purple-400">{finalItemPrice} جنيه</span>
               {product.originalPrice && (
@@ -347,7 +353,7 @@ export default function ProductDetails() {
               </div>
             </div>
 
-            {/* اختيار الكمية - ✅ تم تعديل الإجمالي بالسعر النهائي */}
+            {/* اختيار الكمية */}
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
