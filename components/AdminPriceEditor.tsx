@@ -857,7 +857,21 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
           )}
         </div>
 
-        <input type="text" name="barcode" value={formData.barcode} onChange={handleChange} placeholder="الباركود *" required className={inputStyle} style={borderConfig} />
+        <input 
+  type="text" 
+  name="barcode" 
+  value={formData.barcode} 
+  onChange={handleChange} 
+  onKeyDown={(e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+    }
+  }}
+  placeholder="الباركود *" 
+  required 
+  className={inputStyle} 
+  style={borderConfig} 
+/>
         <input type="number" name="stock" value={formData.stock} onChange={handleChange} placeholder="الكمية بالمخزن *" required className={inputStyle} style={borderConfig} />
 
         <div className="relative">
