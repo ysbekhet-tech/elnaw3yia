@@ -70,6 +70,7 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
   const [newColorName, setNewColorName] = useState("");
   const [newColorHex, setNewColorHex] = useState("#000000");
   const [newColorImage, setNewColorImage] = useState<string | null>(null);
+  const [isColorPickerTouched, setIsColorPickerTouched] = useState(false);
   const colorFileInputRef = useRef<HTMLInputElement>(null);
   const [isColorDragging, setIsColorDragging] = useState(false);
 
@@ -89,6 +90,7 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
 
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
+  // Notification timer
   useEffect(() => {
     if (notification) {
       const timer = setTimeout(() => setNotification(null), 4000);
@@ -96,14 +98,22 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
     }
   }, [notification]);
 
+  // Categories listener
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "categories"), (snapshot) => {
-      const catsList = snapshot.docs.map((doc) => ({ id: doc.id, name: doc.data().name as string }));
-      setCategoriesData(catsList);
-    });
+    const unsubscribe = onSnapshot(
+      collection(db, "categories"),
+      (snapshot) => {
+        const catsList = snapshot.docs.map((doc) => ({ id: doc.id, name: doc.data().name as string }));
+        setCategoriesData(catsList);
+      },
+      (error) => {
+        console.error("Categories listener error:", error);
+      }
+    );
     return () => unsubscribe();
   }, []);
 
+  // Click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -121,11 +131,21 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Crop modal: handle cached images
   useEffect(() => {
-    if (navigator.clipboard && navigator.clipboard.read) {
-      navigator.clipboard.read().catch(() => {});
+    if (cropModalOpen && imageToCrop && imgRef.current) {
+      if (imgRef.current.complete && imgRef.current.naturalWidth !== 0) {
+        setIsImageLoading(false);
+        setCrop({
+          unit: "%",
+          width: 100,
+          height: 100,
+          x: 0,
+          y: 0,
+        });
+      }
     }
-  }, []);
+  }, [cropModalOpen, imageToCrop]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -166,12 +186,21 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
 
   async function getCroppedImg() {
     const image = imgRef.current;
-    if (!image) return null;
-    if (!completedCrop || completedCrop.width === 0 || completedCrop.height === 0) return null;
+    if (!image) {
+      console.warn("getCroppedImg: imgRef.current is null");
+      return null;
+    }
+    if (!completedCrop || completedCrop.width === 0 || completedCrop.height === 0) {
+      console.warn("getCroppedImg: completedCrop is invalid", completedCrop);
+      return null;
+    }
 
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
+    if (!ctx) {
+      console.warn("getCroppedImg: canvas context is null");
+      return null;
+    }
 
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
@@ -202,6 +231,7 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
 
     try {
       const croppedImage = await getCroppedImg();
+
       if (croppedImage) {
         if (cropTarget === "main") {
           setImagePreviews((prev) => [...prev, croppedImage]);
@@ -240,22 +270,23 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
     }
   }, []);
 
+  // Paste handler
   useEffect(() => {
     const handlePaste = async (e: ClipboardEvent) => {
       const activeElement = document.activeElement;
-      const isPasteZone = pasteZoneRef.current?.contains(activeElement) || 
-                          dropZoneRef.current?.contains(activeElement);
-      
+      const isPasteZone = pasteZoneRef.current?.contains(activeElement as Node) || 
+                          dropZoneRef.current?.contains(activeElement as Node);
+
       if (!isPasteZone) return;
 
       e.preventDefault();
-      
+
       const items = e.clipboardData?.items;
       if (!items) return;
 
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        
+
         if (item.type.startsWith("image/")) {
           const file = item.getAsFile();
           if (file) {
@@ -279,21 +310,29 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
     return () => document.removeEventListener("paste", handlePaste);
   }, [handleImageFromUrl]);
 
+  // Context menu with proper cleanup
   useEffect(() => {
+    const pasteZone = pasteZoneRef.current || dropZoneRef.current;
+    if (!pasteZone) return;
+
     const handleContextMenu = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const isPasteZone = pasteZoneRef.current?.contains(target) || 
                           dropZoneRef.current?.contains(target);
-      
+
       if (!isPasteZone) return;
 
       e.preventDefault();
-      
+
+      const existingMenu = document.getElementById('custom-context-menu');
+      if (existingMenu) existingMenu.remove();
+
       const customMenu = document.createElement('div');
+      customMenu.id = 'custom-context-menu';
       customMenu.className = 'fixed bg-white rounded-lg shadow-xl border z-[200] overflow-hidden';
       customMenu.style.top = `${e.clientY}px`;
       customMenu.style.left = `${e.clientX}px`;
-      
+
       const pasteOption = document.createElement('button');
       pasteOption.innerHTML = `
         <div class="flex items-center gap-2 px-4 py-2 hover:bg-purple-50 transition-colors w-full text-right">
@@ -326,33 +365,37 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
           console.error('Failed to paste:', err);
           alert('اضغط Ctrl+V للصق الصورة');
         }
-        document.body.removeChild(customMenu);
-      };
-      
-      customMenu.appendChild(pasteOption);
-      document.body.appendChild(customMenu);
-      
-      const removeMenu = () => {
         if (document.body.contains(customMenu)) {
           document.body.removeChild(customMenu);
+        }
+      };
+
+      customMenu.appendChild(pasteOption);
+      document.body.appendChild(customMenu);
+
+      const removeMenu = () => {
+        const menu = document.getElementById('custom-context-menu');
+        if (menu && document.body.contains(menu)) {
+          document.body.removeChild(menu);
         }
         document.removeEventListener('click', removeMenu);
         document.removeEventListener('contextmenu', removeMenu);
       };
-      
+
       setTimeout(() => {
         document.addEventListener('click', removeMenu);
         document.addEventListener('contextmenu', removeMenu);
       }, 0);
     };
 
-    const pasteZone = pasteZoneRef.current || dropZoneRef.current;
-    if (pasteZone) {
-      pasteZone.addEventListener('contextmenu', handleContextMenu);
-      return () => {
-        pasteZone.removeEventListener('contextmenu', handleContextMenu);
-      };
-    }
+    pasteZone.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      pasteZone.removeEventListener('contextmenu', handleContextMenu);
+      const existingMenu = document.getElementById('custom-context-menu');
+      if (existingMenu && document.body.contains(existingMenu)) {
+        document.body.removeChild(existingMenu);
+      }
+    };
   }, [handleImageFromUrl]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -365,6 +408,8 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
         reader.readAsDataURL(file);
       }
     });
+    // Clear input to allow re-selecting same files
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -418,7 +463,9 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
 
       const uriList = e.dataTransfer.getData("text/uri-list");
       if (uriList) {
-        const urls = uriList.split("\n").filter((url) => url.trim() && !url.startsWith("#"));
+        const urls = uriList
+          .split("\n")
+          .filter((url) => url.trim() && !url.startsWith("#"));
         for (const url of urls) {
           if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) {
             await handleImageFromUrl(url);
@@ -432,7 +479,6 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
   const handleRemoveImage = (index: number) => {
     const newImages = imagePreviews.filter((_, i) => i !== index);
     setImagePreviews(newImages);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const handleSetPrimaryImage = (index: number) => {
@@ -476,17 +522,25 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
       reader.onloadend = () => openCropModal(reader.result as string, "color");
       reader.readAsDataURL(file);
     }
+    if (colorFileInputRef.current) colorFileInputRef.current.value = "";
   };
 
   const handleAddColor = () => {
-    if (!newColorName) {
+    if (!newColorName.trim()) {
       alert("يجب إدخال اسم اللون!");
+      return;
+    }
+    // Name alone is not enough - need either a color selection or an image
+    const hasImage = !!newColorImage;
+    if (!hasImage && !isColorPickerTouched) {
+      alert("يجب اختيار درجة لون أو رفع صورة للون!");
       return;
     }
     setColors([...colors, { name: newColorName, hex: newColorHex, image: newColorImage || "" }]);
     setNewColorName("");
     setNewColorHex("#000000");
     setNewColorImage(null);
+    setIsColorPickerTouched(false);
     if (colorFileInputRef.current) colorFileInputRef.current.value = "";
   };
 
@@ -497,6 +551,10 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
   const handleAddSize = () => {
     if (!newLength || !newWidth || !newSizePrice) {
       alert("يجب إدخال الطول والعرض والسعر!");
+      return;
+    }
+    if (Number(newLength) <= 0 || Number(newWidth) <= 0 || Number(newSizePrice) <= 0) {
+      alert("الطول والعرض والسعر يجب أن تكون قيم موجبة!");
       return;
     }
     setSizes([...sizes, { length: newLength, width: newWidth, price: newSizePrice }]);
@@ -512,7 +570,6 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
   const handleUpdateCategory = async (catId: string) => {
     if (!editingCatName.trim()) return;
     try {
-      const { updateDoc, doc } = await import("firebase/firestore");
       await updateDoc(doc(db, "categories", catId), { name: editingCatName });
       setEditingCatId(null);
       setEditingCatName("");
@@ -525,12 +582,17 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
     const imageUrls: string[] = [];
 
     for (let i = 0; i < imagePreviews.length; i++) {
-      if (imagePreviews[i].startsWith("data:")) {
-        const path = `products/${productId}/image_${i}_${Date.now()}.jpg`;
-        const url = await uploadBase64Image(imagePreviews[i], path);
-        imageUrls.push(url);
-      } else {
-        imageUrls.push(imagePreviews[i]);
+      try {
+        if (imagePreviews[i].startsWith("data:")) {
+          const path = `products/${productId}/image_${i}_${Date.now()}.jpg`;
+          const url = await uploadBase64Image(imagePreviews[i], path);
+          imageUrls.push(url);
+        } else {
+          imageUrls.push(imagePreviews[i]);
+        }
+      } catch (error) {
+        console.error(`Error uploading image ${i}:`, error);
+        throw new Error(`فشل رفع الصورة رقم ${i + 1}`);
       }
     }
 
@@ -543,13 +605,18 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
     const updatedColors: ProductColor[] = [];
 
     for (let i = 0; i < colors.length; i++) {
-      const color = colors[i];
-      if (color.image && color.image.startsWith("data:")) {
-        const path = `products/${productId}/colors/color_${i}_${Date.now()}.jpg`;
-        const url = await uploadBase64Image(color.image, path);
-        updatedColors.push({ ...color, image: url });
-      } else {
-        updatedColors.push(color);
+      try {
+        const color = colors[i];
+        if (color.image && color.image.startsWith("data:")) {
+          const path = `products/${productId}/colors/color_${i}_${Date.now()}.jpg`;
+          const url = await uploadBase64Image(color.image, path);
+          updatedColors.push({ ...color, image: url });
+        } else {
+          updatedColors.push(color);
+        }
+      } catch (error) {
+        console.error(`Error uploading color image ${i}:`, error);
+        throw new Error(`فشل رفع صورة اللون ${colors[i].name || i + 1}`);
       }
     }
 
@@ -561,9 +628,41 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
 
     if (isUploading) return;
 
+    // Validation
+    if (!formData.name.trim()) {
+      setNotification({ type: "error", message: "اسم المنتج مطلوب! ❌" });
+      return;
+    }
+
+    if (!formData.barcode.trim()) {
+      setNotification({ type: "error", message: "الباركود مطلوب! ❌" });
+      return;
+    }
+
+    if (!formData.category) {
+      setNotification({ type: "error", message: "يجب اختيار الفئة! ❌" });
+      return;
+    }
+
+    if (!formData.stock || Number(formData.stock) < 0) {
+      setNotification({ type: "error", message: "الكمية يجب أن تكون قيمة موجبة! ❌" });
+      return;
+    }
+
+    if (hasSizes && sizes.length === 0) {
+      setNotification({ type: "error", message: "لقد اخترت المقاسات المختلفة، يجب إضافة مقاس واحد على الأقل! ❌" });
+      return;
+    }
+
+    if (hasColors && colors.length === 0) {
+      setNotification({ type: "error", message: "لقد اخترت الألوان المتعددة، يجب إضافة لون واحد على الأقل! ❌" });
+      return;
+    }
+
     setIsUploading(true);
 
     try {
+      // Check duplicate name only if changed
       if (formData.name !== product.name) {
         const nameQuery = query(collection(db, "products"), where("name", "==", formData.name.trim()));
         const nameSnapshot = await getDocs(nameQuery);
@@ -574,6 +673,7 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
         }
       }
 
+      // Check duplicate barcode only if changed
       if (formData.barcode !== product.barcode) {
         const barcodeQuery = query(collection(db, "products"), where("barcode", "==", formData.barcode.trim()));
         const barcodeSnapshot = await getDocs(barcodeQuery);
@@ -584,7 +684,7 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
         }
       }
 
-      const productId = product.id || crypto.randomUUID();
+      const productId = product.id || crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const imageUrls = await uploadImagesToStorage(productId);
       const finalColors = await uploadColorImages(productId);
 
@@ -597,7 +697,7 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
         id: productId,
         ...formData,
         price: finalPrice,
-        originalPrice: Number(formData.originalPrice),
+        originalPrice: Number(formData.originalPrice) || 0,
         stock: Number(formData.stock),
         minStock: Number(formData.minStock) || 5,
         countryOfOrigin: formData.countryOfOrigin,
@@ -609,13 +709,14 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
       });
 
       setNotification({ type: "success", message: "تم تحديث المنتج بنجاح! ✅" });
-      
+
       setTimeout(() => {
         onClose();
       }, 1500);
     } catch (error) {
       console.error("Error updating product:", error);
-      setNotification({ type: "error", message: "حدث خطأ أثناء تحديث المنتج! ❌" });
+      setNotification({ type: "error", message: "حدث خطأ أثناء تحديث المنتج! حاول مرة أخرى ❌" });
+      // Data is NOT reset - user keeps everything they typed
     } finally {
       setIsUploading(false);
     }
@@ -666,7 +767,7 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
               {notification.type === "success" ? <Check size={18} /> : <AlertTriangle size={18} />}
               <span className="font-bold text-sm">{notification.message}</span>
             </div>
-            <button onClick={() => setNotification(null)} className="hover:opacity-70"><X size={16} /></button>
+            <button type="button" onClick={() => setNotification(null)} className="hover:opacity-70"><X size={16} /></button>
           </div>
         )}
 
@@ -700,7 +801,7 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
             {imagePreviews.length > 0 && (
               <div className="flex flex-wrap gap-3">
                 {imagePreviews.map((img, idx) => (
-                  <div key={idx} className="relative group w-20 h-20 rounded-xl overflow-hidden border-2 border-purple-500/30">
+                  <div key={`img-${idx}-${img.slice(-20)}`} className="relative group w-20 h-20 rounded-xl overflow-hidden border-2 border-purple-500/30">
                     <img src={img} alt={`preview-${idx}`} className="w-full h-full object-cover" />
                     {idx === 0 && (
                       <div className="absolute top-1 left-1 bg-yellow-400 text-black p-0.5 rounded-full">
@@ -725,7 +826,7 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
         </div>
 
         <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="اسم المنتج *" required className={inputStyle} style={borderConfig} />
-        {!hasSizes && <input type="number" name="price" value={formData.price} onChange={handleChange} placeholder="السعر *" required className={inputStyle} style={borderConfig} />}
+        {!hasSizes && <input type="number" name="price" value={formData.price} onChange={handleChange} placeholder="السعر *" required={!hasSizes} className={inputStyle} style={borderConfig} />}
         <input type="number" name="originalPrice" value={formData.originalPrice} onChange={handleChange} placeholder="السعر قبل الخصم" className={inputStyle} style={borderConfig} />
 
         <div ref={countryDropdownRef} className="relative">
@@ -777,7 +878,7 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
               {sizes.length > 0 && (
                 <div className="flex flex-wrap gap-3 mb-4">
                   {sizes.map((size, index) => (
-                    <div key={index} className="relative group flex flex-col items-center gap-1 bg-slate-800 rounded-lg p-3 border border-slate-700">
+                    <div key={`size-${index}`} className="relative group flex flex-col items-center gap-1 bg-slate-800 rounded-lg p-3 border border-slate-700">
                       <div className="text-xs text-black font-bold">{size.length} × {size.width} سم</div>
                       <div className="text-sm text-purple-400 font-bold">{size.price} جنيه</div>
                       <button type="button" onClick={() => handleRemoveSize(index)} className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition"><X size={10} /></button>
@@ -786,9 +887,9 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
                 </div>
               )}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                <div><label className="block text-xs text-black font-bold mb-1">الطول (سم)</label><input type="number" value={newLength} onChange={(e) => setNewLength(e.target.value)} placeholder="مثال: 100" className={innerInputStyle} style={borderConfig} /></div>
-                <div><label className="block text-xs text-black font-bold mb-1">العرض (سم)</label><input type="number" value={newWidth} onChange={(e) => setNewWidth(e.target.value)} placeholder="مثال: 50" className={innerInputStyle} style={borderConfig} /></div>
-                <div><label className="block text-xs text-black font-bold mb-1">السعر (جنيه)</label><input type="number" value={newSizePrice} onChange={(e) => setNewSizePrice(e.target.value)} placeholder="مثال: 250" className={innerInputStyle} style={borderConfig} /></div>
+                <div><label className="block text-xs text-black font-bold mb-1">الطول (سم)</label><input type="number" value={newLength} onChange={(e) => setNewLength(e.target.value)} placeholder="مثال: 100" min="0" className={innerInputStyle} style={borderConfig} /></div>
+                <div><label className="block text-xs text-black font-bold mb-1">العرض (سم)</label><input type="number" value={newWidth} onChange={(e) => setNewWidth(e.target.value)} placeholder="مثال: 50" min="0" className={innerInputStyle} style={borderConfig} /></div>
+                <div><label className="block text-xs text-black font-bold mb-1">السعر (جنيه)</label><input type="number" value={newSizePrice} onChange={(e) => setNewSizePrice(e.target.value)} placeholder="مثال: 250" min="0" className={innerInputStyle} style={borderConfig} /></div>
                 <button type="button" onClick={handleAddSize} className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition flex items-center justify-center gap-1"><Plus size={14} /> إضافة مقاس</button>
               </div>
             </div>
@@ -808,7 +909,7 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
               {colors.length > 0 && (
                 <div className="flex flex-wrap gap-3 mb-4">
                   {colors.map((color, index) => (
-                    <div key={index} className="relative group flex flex-col items-center gap-1">
+                    <div key={`color-${index}`} className="relative group flex flex-col items-center gap-1">
                       <div className="w-12 h-12 rounded-full border-2 border-slate-600 overflow-hidden">
                         {color.image ? <img src={color.image} alt={color.name} className="w-full h-full object-cover" /> : <div className="w-full h-full" style={{ backgroundColor: color.hex }} />}
                       </div>
@@ -820,7 +921,7 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
               )}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
                 <div><label className="block text-xs text-black font-bold mb-1">اسم اللون</label><input type="text" value={newColorName} onChange={(e) => setNewColorName(e.target.value)} placeholder="مثال: أحمر" className={innerInputStyle} style={borderConfig} /></div>
-                <div><label className="block text-xs text-black font-bold mb-1">كود اللون</label><div className="flex items-center gap-2 h-10 px-2 rounded-lg bg-white border" style={borderConfig}><input type="color" value={newColorHex} onChange={(e) => setNewColorHex(e.target.value)} className="w-6 h-6 bg-transparent cursor-pointer" /><span className="!text-black !font-bold text-xs">{newColorHex}</span></div></div>
+                <div><label className="block text-xs text-black font-bold mb-1">كود اللون</label><div className="flex items-center gap-2 h-10 px-2 rounded-lg bg-white border" style={borderConfig}><input type="color" value={newColorHex} onChange={(e) => { setNewColorHex(e.target.value); setIsColorPickerTouched(true); }} className="w-6 h-6 bg-transparent cursor-pointer" /><span className="!text-black !font-bold text-xs">{newColorHex}</span></div></div>
                 <div><label className="block text-xs text-black font-bold mb-1">صورة اللون (اختياري)</label><div onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsColorDragging(true); }} onDragLeave={() => setIsColorDragging(false)} onDrop={handleColorImageDrop} className={`flex items-center gap-1 h-10 px-2 rounded-lg border transition cursor-pointer ${isColorDragging ? "border-purple-500 bg-purple-50" : "bg-white hover:bg-slate-50"}`} style={borderConfig} onClick={() => colorFileInputRef.current?.click()}><Upload size={14} className="text-purple-400" /><span className="text-xs !text-black !font-bold truncate">{isColorDragging ? "أفلت هنا" : newColorImage ? "تم الاختيار" : "اختياري"}</span><input type="file" accept="image/*" className="hidden" onChange={handleColorImageChange} ref={colorFileInputRef} /></div></div>
                 <button type="button" onClick={handleAddColor} className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold transition flex items-center justify-center gap-1"><Plus size={14} /> إضافة لون</button>
               </div>
@@ -858,24 +959,24 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
         </div>
 
         <input 
-  type="text" 
-  name="barcode" 
-  value={formData.barcode} 
-  onChange={handleChange} 
-  onKeyDown={(e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-    }
-  }}
-  placeholder="الباركود *" 
-  required 
-  className={inputStyle} 
-  style={borderConfig} 
-/>
-        <input type="number" name="stock" value={formData.stock} onChange={handleChange} placeholder="الكمية بالمخزن *" required className={inputStyle} style={borderConfig} />
+          type="text" 
+          name="barcode" 
+          value={formData.barcode} 
+          onChange={handleChange} 
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+            }
+          }}
+          placeholder="الباركود *" 
+          required 
+          className={inputStyle} 
+          style={borderConfig} 
+        />
+        <input type="number" name="stock" value={formData.stock} onChange={handleChange} placeholder="الكمية بالمخزن *" required min="0" className={inputStyle} style={borderConfig} />
 
         <div className="relative">
-          <input type="number" name="minStock" value={formData.minStock} onChange={handleChange} placeholder="الحد الأدنى للتنبيه *" required className={inputStyle} style={borderConfig} />
+          <input type="number" name="minStock" value={formData.minStock} onChange={handleChange} placeholder="الحد الأدنى للتنبيه *" required min="0" className={inputStyle} style={borderConfig} />
           <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-red-400"><AlertTriangle size={14} /><span className="text-[10px] font-bold">تنبيه</span></div>
         </div>
 

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { db } from '@/lib/firebase';
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
+import { db } from "@/lib/firebase";
 import {
   collection,
   getDocs,
@@ -12,15 +12,15 @@ import {
   doc,
   serverTimestamp,
   onSnapshot,
-} from 'firebase/firestore';
-import { Product } from '@/types';
-import AdminProductTable from '@/components/AdminProductTable';
-import AdminProductForm from '@/components/AdminProductForm';
-import AdminPriceEditor from '@/components/AdminPriceEditor';
-import { isAuthenticated } from '@/lib/auth';
-import { Package, Plus, X, Tags, Filter, ImagePlus, Edit2, Check, Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import ReactCrop, { Crop, PixelCrop } from 'react-image-crop';
-import 'react-image-crop/dist/ReactCrop.css';
+} from "firebase/firestore";
+import { Product } from "@/types";
+import AdminProductTable from "@/components/AdminProductTable";
+import AdminProductForm from "@/components/AdminProductForm";
+import AdminPriceEditor from "@/components/AdminPriceEditor";
+import { isAuthenticated } from "@/lib/auth";
+import { Package, Plus, X, Tags, Filter, ImagePlus, Edit2, Check, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import ReactCrop, { Crop, PixelCrop } from "react-image-crop";
+import "react-image-crop/dist/ReactCrop.css";
 
 interface Category {
   id: string;
@@ -48,16 +48,16 @@ export default function ProductsPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortOption, setSortOption] = useState<'name-asc' | 'name-desc' | 'stock-asc' | 'stock-desc' | 'newest'>('newest');
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOption, setSortOption] = useState<"name-asc" | "name-desc" | "stock-asc" | "stock-desc" | "newest">("newest");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const [quickJumpPage, setQuickJumpPage] = useState('');
+  const [quickJumpPage, setQuickJumpPage] = useState("");
 
-  const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
-  const [newCatName, setNewCatName] = useState('');
-  const [newCatIcon, setNewCatIcon] = useState('✏️');
+  const [modalConfig, setModalConfig] = useState({ isOpen: false, title: "", message: "", onConfirm: () => {} });
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatIcon, setNewCatIcon] = useState("✏️");
   const [newCatImage, setNewCatImage] = useState<File | null>(null);
   const [newCatImagePreview, setNewCatImagePreview] = useState<string | null>(null);
   const [isCatImageDragging, setIsCatImageDragging] = useState(false);
@@ -67,36 +67,46 @@ export default function ProductsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
 
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
-  const [editingCatName, setEditingCatName] = useState('');
+  const [editingCatName, setEditingCatName] = useState("");
   const [editCatImagePreview, setEditCatImagePreview] = useState<string | null>(null);
 
   const [catCropModalOpen, setCatCropModalOpen] = useState(false);
   const [catImageToCrop, setCatImageToCrop] = useState<string | null>(null);
-  const [catCropTarget, setCatCropTarget] = useState<'add' | 'edit'>('add');
+  const [catCropTarget, setCatCropTarget] = useState<"add" | "edit">("add");
   const [catCrop, setCatCrop] = useState<Crop>();
   const [catCompletedCrop, setCatCompletedCrop] = useState<PixelCrop>();
   const catImgRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
-    if (!isAuthenticated()) { router.replace('/admin/login'); return; }
+    if (!isAuthenticated()) { router.replace("/admin/login"); return; }
     setAuthChecked(true);
   }, []);
 
+  // Categories listener with error handling - only after auth check
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, 'categories'), (snapshot) => {
-      setCategories(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category)));
-    });
+    if (!authChecked) return;
+
+    const unsubscribe = onSnapshot(
+      collection(db, "categories"),
+      (snapshot) => {
+        setCategories(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Category)));
+      },
+      (error) => {
+        console.error("Categories listener error:", error);
+        // Don't show alert - just log to avoid spamming user
+      }
+    );
     return () => unsubscribe();
-  }, []);
+  }, [authChecked]);
 
   const fetchAllProducts = useCallback(async () => {
     setLoading(true);
     try {
-      const snap = await getDocs(collection(db, 'products'));
+      const snap = await getDocs(collection(db, "products"));
       const prods = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
       setAllProducts(prods);
     } catch (error) {
-      console.error('خطأ في جلب البيانات:', error);
+      console.error("خطأ في جلب البيانات:", error);
     } finally {
       setLoading(false);
     }
@@ -111,17 +121,17 @@ export default function ProductsPage() {
   const filtered = useMemo(() => {
     let result = [...allProducts];
     if (searchTerm) {
-      result = result.filter(p => 
+      result = result.filter((p) => 
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
         p.barcode === searchTerm
       );
     }
     result.sort((a, b) => {
-      if (sortOption === 'newest') return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
-      if (sortOption === 'name-asc') return a.name.localeCompare(b.name, 'ar');
-      if (sortOption === 'name-desc') return b.name.localeCompare(a.name, 'ar');
-      if (sortOption === 'stock-asc') return a.stock - b.stock;
-      if (sortOption === 'stock-desc') return b.stock - a.stock;
+      if (sortOption === "newest") return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+      if (sortOption === "name-asc") return a.name.localeCompare(b.name, "ar");
+      if (sortOption === "name-desc") return b.name.localeCompare(a.name, "ar");
+      if (sortOption === "stock-asc") return a.stock - b.stock;
+      if (sortOption === "stock-desc") return b.stock - a.stock;
       return 0;
     });
     return result;
@@ -135,7 +145,7 @@ export default function ProductsPage() {
   const goToPage = (page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
@@ -143,7 +153,7 @@ export default function ProductsPage() {
     const page = parseInt(quickJumpPage);
     if (!isNaN(page) && page >= 1 && page <= totalPages) {
       goToPage(page);
-      setQuickJumpPage('');
+      setQuickJumpPage("");
     }
   };
 
@@ -162,18 +172,18 @@ export default function ProductsPage() {
     return pages;
   };
 
-  const openCatCropModal = (imageUrl: string, target: 'add' | 'edit') => { 
+  const openCatCropModal = (imageUrl: string, target: "add" | "edit") => { 
     setCatImageToCrop(imageUrl); 
     setCatCropTarget(target); 
-    setCatCrop({ unit: '%', width: 80, height: 80, x: 10, y: 10 }); 
+    setCatCrop({ unit: "%", width: 80, height: 80, x: 10, y: 10 }); 
     setCatCompletedCrop(undefined); 
     setCatCropModalOpen(true); 
   };
-  
+
   const onCatImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => { 
     catImgRef.current = e.currentTarget; 
   };
-  
+
   async function getCatCroppedImg() { 
     const image = catImgRef.current; 
     if (!image || !catCompletedCrop) return null; 
@@ -187,14 +197,14 @@ export default function ProductsPage() {
     ctx.drawImage(image, catCompletedCrop.x * scaleX, catCompletedCrop.y * scaleY, catCompletedCrop.width * scaleX, catCompletedCrop.height * scaleY, 0, 0, canvas.width, canvas.height); 
     return canvas.toDataURL("image/jpeg"); 
   }
-  
+
   const handleSaveCatCrop = async () => { 
     try { 
       const croppedImage = await getCatCroppedImg(); 
       if (croppedImage) { 
-        if (catCropTarget === 'add') { 
+        if (catCropTarget === "add") { 
           setNewCatImagePreview(croppedImage); 
-          setNewCatImage(new File([croppedImage], `category_${Date.now()}.jpg`, { type: 'image/jpeg' })); 
+          setNewCatImage(new File([croppedImage], `category_${Date.now()}.jpg`, { type: "image/jpeg" })); 
         } else { 
           setEditCatImagePreview(croppedImage); 
         } 
@@ -205,35 +215,35 @@ export default function ProductsPage() {
     setCatCropModalOpen(false); 
     setCatImageToCrop(null); 
   };
-  
+
   const handleCatImageFromUrl = useCallback(async (url: string) => { 
     try { 
       const response = await fetch(url); 
       const blob = await response.blob(); 
-      if (!blob.type.startsWith('image/')) { 
-        setModalConfig({ isOpen: true, title: 'خطأ', message: 'الرابط ده مش صورة!', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) }); 
+      if (!blob.type.startsWith("image/")) { 
+        setModalConfig({ isOpen: true, title: "خطأ", message: "الرابط ده مش صورة!", onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })) }); 
         return; 
       } 
       const reader = new FileReader(); 
-      reader.onloadend = () => openCatCropModal(reader.result as string, 'add'); 
+      reader.onloadend = () => openCatCropModal(reader.result as string, "add"); 
       reader.readAsDataURL(blob); 
     } catch (error) { 
       console.error("Error loading image from URL:", error); 
     } 
   }, []);
-  
+
   const handleCatDragOver = useCallback((e: React.DragEvent) => { 
     e.preventDefault(); 
     e.stopPropagation(); 
     setIsCatImageDragging(true); 
   }, []);
-  
+
   const handleCatDragLeave = useCallback((e: React.DragEvent) => { 
     e.preventDefault(); 
     e.stopPropagation(); 
     setIsCatImageDragging(false); 
   }, []);
-  
+
   const handleCatDrop = useCallback(async (e: React.DragEvent) => { 
     e.preventDefault(); 
     e.stopPropagation(); 
@@ -241,9 +251,9 @@ export default function ProductsPage() {
     const files = e.dataTransfer.files; 
     if (files.length > 0) { 
       const file = files[0]; 
-      if (file.type.startsWith('image/')) { 
+      if (file.type.startsWith("image/")) { 
         const reader = new FileReader(); 
-        reader.onloadend = () => openCatCropModal(reader.result as string, 'add'); 
+        reader.onloadend = () => openCatCropModal(reader.result as string, "add"); 
         reader.readAsDataURL(file); 
       } 
       return; 
@@ -252,20 +262,20 @@ export default function ProductsPage() {
     if (items) { 
       for (let i = 0; i < items.length; i++) { 
         const item = items[i]; 
-        if (item.kind === 'string') { 
+        if (item.kind === "string") { 
           item.getAsString(async (url) => { 
-            if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || url.startsWith('http')) 
+            if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || url.startsWith("http")) 
               await handleCatImageFromUrl(url); 
           }); 
         } 
       } 
     } 
-    const textData = e.dataTransfer.getData('text/plain'); 
+    const textData = e.dataTransfer.getData("text/plain"); 
     if (textData && textData.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) 
       await handleCatImageFromUrl(textData); 
-    const uriList = e.dataTransfer.getData('text/uri-list'); 
+    const uriList = e.dataTransfer.getData("text/uri-list"); 
     if (uriList) { 
-      const urls = uriList.split('\n').filter(url => url.trim() && !url.startsWith('#')); 
+      const urls = uriList.split("\n").filter((url) => url.trim() && !url.startsWith("#")); 
       for (const url of urls) { 
         if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) 
           await handleCatImageFromUrl(url); 
@@ -275,8 +285,8 @@ export default function ProductsPage() {
 
   const handleToggleVisibility = async (id: string, currentVisibility: boolean) => { 
     try { 
-      await updateDoc(doc(db, 'products', id), { isActive: !currentVisibility }); 
-      setAllProducts(allProducts.map(p => p.id === id ? { ...p, isActive: !currentVisibility } : p)); 
+      await updateDoc(doc(db, "products", id), { isActive: !currentVisibility }); 
+      setAllProducts(allProducts.map((p) => p.id === id ? { ...p, isActive: !currentVisibility } : p)); 
     } catch (error) { 
       console.error(error); 
     } 
@@ -286,71 +296,71 @@ export default function ProductsPage() {
     try { 
       const { name, price, originalPrice, rating, category, barcode, stock, images, hasColors, colors, hasSizes, sizes, description } = formData; 
       const minStock = Number((formData as any).minStock) || 5; 
-      const countryOfOrigin = (formData as any).countryOfOrigin || ''; 
+      const countryOfOrigin = (formData as any).countryOfOrigin || ""; 
       if (!name || !price || !category || !barcode) { 
-        setModalConfig({ isOpen: true, title: 'خطأ', message: 'الاسم والسعر والفئة والباركود مطلوبة', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) }); 
+        setModalConfig({ isOpen: true, title: "خطأ", message: "الاسم والسعر والفئة والباركود مطلوبة", onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })) }); 
         return; 
       } 
-      const docRef = await addDoc(collection(db, 'products'), { 
-        name, description: description || '', price: Number(price), originalPrice: Number(originalPrice) || 0, rating: Number(rating) || 4.5, category, barcode, stock: Number(stock) || 0, minStock: Number(minStock) || 5, countryOfOrigin, images: images || [], hasColors: hasColors || false, colors: colors || [], hasSizes: hasSizes || false, sizes: sizes || [], createdAt: serverTimestamp(), isActive: true 
+      const docRef = await addDoc(collection(db, "products"), { 
+        name, description: description || "", price: Number(price), originalPrice: Number(originalPrice) || 0, rating: Number(rating) || 4.5, category, barcode, stock: Number(stock) || 0, minStock: Number(minStock) || 5, countryOfOrigin, images: images || [], hasColors: hasColors || false, colors: colors || [], hasSizes: hasSizes || false, sizes: sizes || [], createdAt: serverTimestamp(), isActive: true 
       }); 
       const newProduct: Product = { 
-        id: docRef.id, name: name!, description: description || '', price: Number(price), originalPrice: Number(originalPrice) || 0, rating: Number(rating) || 4.5, category: category!, barcode: barcode!, stock: Number(stock) || 0, minStock: Number(minStock) || 5, countryOfOrigin, images: images || [], hasColors: hasColors || false, colors: colors || [], hasSizes: hasSizes || false, sizes: sizes || [], isActive: true, createdAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } as any 
+        id: docRef.id, name: name!, description: description || "", price: Number(price), originalPrice: Number(originalPrice) || 0, rating: Number(rating) || 4.5, category: category!, barcode: barcode!, stock: Number(stock) || 0, minStock: Number(minStock) || 5, countryOfOrigin, images: images || [], hasColors: hasColors || false, colors: colors || [], hasSizes: hasSizes || false, sizes: sizes || [], isActive: true, createdAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } as any 
       };
       setAllProducts([newProduct, ...allProducts]); 
       setShowAddForm(false); 
-      setModalConfig({ isOpen: true, title: 'نجاح ✓', message: 'تم إضافة المنتج بنجاح', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) }); 
+      setModalConfig({ isOpen: true, title: "نجاح ✓", message: "تم إضافة المنتج بنجاح", onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })) }); 
     } catch (error) { 
       console.error(error); 
     } 
   };
 
   const handleDeleteProduct = (id: string) => { 
-    setModalConfig({ isOpen: true, title: 'حذف المنتج', message: 'هل أنت متأكد من حذف هذا المنتج نهائياً من المتجر؟', onConfirm: () => executeDeleteProduct(id) }); 
+    setModalConfig({ isOpen: true, title: "حذف المنتج", message: "هل أنت متأكد من حذف هذا المنتج نهائياً من المتجر؟", onConfirm: () => executeDeleteProduct(id) }); 
   };
-  
+
   const executeDeleteProduct = async (id: string) => { 
     try { 
-      await deleteDoc(doc(db, 'products', id)); 
+      await deleteDoc(doc(db, "products", id)); 
       setAllProducts(allProducts.filter((p) => p.id !== id)); 
-      setModalConfig(prev => ({ ...prev, isOpen: false })); 
+      setModalConfig((prev) => ({ ...prev, isOpen: false })); 
     } catch (error) { 
       console.error(error); 
     } 
   };
 
-  // ✅ دالة تعديل المنتج الكامل
+  // دالة تعديل المنتج الكامل
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
   };
 
-  // ✅ دالة تحديث المنتج بعد التعديل
+  // دالة تحديث المنتج بعد التعديل
   const handleUpdateProduct = async (updatedData: Partial<Product>) => {
     try {
-      await updateDoc(doc(db, 'products', updatedData.id!), updatedData);
+      await updateDoc(doc(db, "products", updatedData.id!), updatedData);
       setAllProducts(allProducts.map((p) => (p.id === updatedData.id ? { ...p, ...updatedData } : p)));
       setEditingProduct(null);
-      setModalConfig({ isOpen: true, title: 'نجاح ✓', message: 'تم تحديث المنتج بنجاح', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) });
+      setModalConfig({ isOpen: true, title: "نجاح ✓", message: "تم تحديث المنتج بنجاح", onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })) });
     } catch (error) {
       console.error(error);
-      setModalConfig({ isOpen: true, title: 'خطأ', message: 'حدث خطأ أثناء تحديث المنتج', onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) });
+      setModalConfig({ isOpen: true, title: "خطأ", message: "حدث خطأ أثناء تحديث المنتج", onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })) });
     }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { 
     const file = e.target.files?.[0]; 
     if (!file) return; 
-    if (!file.type.startsWith('image/')) return; 
+    if (!file.type.startsWith("image/")) return; 
     const reader = new FileReader(); 
-    reader.onloadend = () => openCatCropModal(reader.result as string, 'add'); 
+    reader.onloadend = () => openCatCropModal(reader.result as string, "add"); 
     reader.readAsDataURL(file); 
   };
-  
+
   const handleEditCatImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { 
     const file = e.target.files?.[0]; 
-    if (!file || !file.type.startsWith('image/')) return; 
+    if (!file || !file.type.startsWith("image/")) return; 
     const reader = new FileReader(); 
-    reader.onloadend = () => openCatCropModal(reader.result as string, 'edit'); 
+    reader.onloadend = () => openCatCropModal(reader.result as string, "edit"); 
     reader.readAsDataURL(file); 
   };
 
@@ -359,55 +369,55 @@ export default function ProductsPage() {
     try { 
       let imageUrl: string | undefined = undefined; 
       if (newCatImage) imageUrl = newCatImagePreview || undefined; 
-      await addDoc(collection(db, 'categories'), { name: newCatName.trim(), icon: imageUrl ? '' : newCatIcon, imageUrl: imageUrl || '' }); 
-      setNewCatName(''); 
-      setNewCatIcon('✏️'); 
+      await addDoc(collection(db, "categories"), { name: newCatName.trim(), icon: imageUrl ? "" : newCatIcon, imageUrl: imageUrl || "" }); 
+      setNewCatName(""); 
+      setNewCatIcon("✏️"); 
       setNewCatImage(null); 
       setNewCatImagePreview(null); 
-      if (fileInputRef.current) fileInputRef.current.value = ''; 
-      setModalConfig({ isOpen: true, title: 'تمت الإضافة ✓', message: `تم إضافة قسم "${newCatName.trim()}" بنجاح`, onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) }); 
+      if (fileInputRef.current) fileInputRef.current.value = ""; 
+      setModalConfig({ isOpen: true, title: "تمت الإضافة ✓", message: `تم إضافة قسم "${newCatName.trim()}" بنجاح`, onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })) }); 
     } catch (error) { 
       console.error(error); 
     } 
   };
-  
+
   const handleStartEditCategory = (cat: Category) => { 
     setEditingCatId(cat.id); 
     setEditingCatName(cat.name); 
     setEditCatImagePreview(cat.imageUrl || null); 
   };
-  
+
   const handleCancelEditCategory = () => { 
     setEditingCatId(null); 
-    setEditingCatName(''); 
+    setEditingCatName(""); 
     setEditCatImagePreview(null); 
   };
-  
+
   const handleUpdateCategory = async (catId: string) => { 
     if (!editingCatName.trim()) return; 
     try { 
-      const catRef = doc(db, 'categories', catId); 
-      await updateDoc(catRef, { name: editingCatName.trim(), imageUrl: editCatImagePreview || '', icon: editCatImagePreview ? '' : (categories.find(c => c.id === catId)?.icon || '📦') }); 
+      const catRef = doc(db, "categories", catId); 
+      await updateDoc(catRef, { name: editingCatName.trim(), imageUrl: editCatImagePreview || "", icon: editCatImagePreview ? "" : (categories.find((c) => c.id === catId)?.icon || "📦") }); 
       handleCancelEditCategory(); 
     } catch (error) { 
       console.error(error); 
     } 
   };
-  
+
   const handleDeleteCategory = (catId: string, catName: string) => { 
-    setModalConfig({ isOpen: true, title: 'حذف القسم', message: `هل أنت متأكد من حذف قسم "${catName}"؟`, onConfirm: () => executeDeleteCategory(catId) }); 
+    setModalConfig({ isOpen: true, title: "حذف القسم", message: `هل أنت متأكد من حذف قسم "${catName}"؟`, onConfirm: () => executeDeleteCategory(catId) }); 
   };
-  
+
   const executeDeleteCategory = async (catId: string) => { 
     try { 
-      await deleteDoc(doc(db, 'categories', catId)); 
-      setModalConfig(prev => ({ ...prev, isOpen: false })); 
+      await deleteDoc(doc(db, "categories", catId)); 
+      setModalConfig((prev) => ({ ...prev, isOpen: false })); 
     } catch (error) { 
-      console.error('خطأ في حذف القسم:', error); 
+      console.error("خطأ في حذف القسم:", error); 
     } 
   };
 
-  const isSuccessModal = modalConfig.title.includes('نجاح') || modalConfig.title.includes('تمت');
+  const isSuccessModal = modalConfig.title.includes("نجاح") || modalConfig.title.includes("تمت");
 
   if (!authChecked) return null;
 
@@ -436,11 +446,11 @@ export default function ProductsPage() {
                   src="/success.png" 
                   alt="Success" 
                   className="w-96 h-96 object-contain"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                 />
               </div>
             )}
-            <h3 className={`text-2xl font-black mb-4 ${isSuccessModal ? 'text-green-600' : 'text-slate-900'}`}>
+            <h3 className={`text-2xl font-black mb-4 ${isSuccessModal ? "text-green-600" : "text-slate-900"}`}>
               {modalConfig.title}
             </h3>
             <p className="text-slate-600 text-base mb-10 leading-relaxed">
@@ -450,12 +460,12 @@ export default function ProductsPage() {
               <button
                 onClick={modalConfig.onConfirm}
                 className={`px-12 py-3.5 rounded-xl font-bold text-white text-sm transition hover:opacity-90 ${
-                  modalConfig.title.includes('حذف') 
-                    ? 'bg-red-500 hover:bg-red-600' 
-                    : 'bg-gradient-to-r from-purple-600 to-pink-500'
+                  modalConfig.title.includes("حذف") 
+                    ? "bg-red-500 hover:bg-red-600" 
+                    : "bg-gradient-to-r from-purple-600 to-pink-500"
                 }`}
               >
-                {modalConfig.title.includes('حذف') ? 'تأكيد الحذف' : 'موافق'}
+                {modalConfig.title.includes("حذف") ? "تأكيد الحذف" : "موافق"}
               </button>
             </div>
           </div>
@@ -463,18 +473,18 @@ export default function ProductsPage() {
       )}
 
       <div className="max-w-7xl mx-auto px-4 py-8">
-      
+
         <div className="bg-white rounded-2xl p-6 mb-8 border border-slate-200 shadow-sm">
           <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 mb-5"><Tags size={20} className="text-purple-600" />إدارة الأقسام</h2>
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-3 flex-wrap">
               <span className="text-slate-600 text-sm font-bold whitespace-nowrap">➕ إضافة قسم:</span>
               {!newCatImagePreview && ( <select value={newCatIcon} onChange={(e) => setNewCatIcon(e.target.value)} className="h-10 px-3 rounded-lg text-slate-900 text-sm outline-none bg-slate-50 border border-slate-300 focus:border-purple-400"> {iconOptions.map((item) => ( <option key={item.icon} value={item.icon}>{item.icon} {item.label}</option> ))} </select> )}
-              <div ref={catDropZoneRef} onDragOver={handleCatDragOver} onDragLeave={handleCatDragLeave} onDrop={handleCatDrop} onClick={() => fileInputRef.current?.click()} className={`flex items-center gap-2 px-3 h-10 rounded-lg cursor-pointer transition border ${isCatImageDragging ? 'bg-purple-50 border-purple-400' : 'bg-slate-50 border-slate-300 hover:border-purple-400'}`}>
+              <div ref={catDropZoneRef} onDragOver={handleCatDragOver} onDragLeave={handleCatDragLeave} onDrop={handleCatDrop} onClick={() => fileInputRef.current?.click()} className={`flex items-center gap-2 px-3 h-10 rounded-lg cursor-pointer transition border ${isCatImageDragging ? "bg-purple-50 border-purple-400" : "bg-slate-50 border-slate-300 hover:border-purple-400"}`}>
                 <ImagePlus size={16} className="text-purple-600" /><span className="text-xs text-slate-700">{isCatImageDragging ? "أفلت الصورة هنا..." : "رفع صورة"}</span>
                 <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} ref={fileInputRef} />
               </div>
-              {newCatImagePreview && ( <div className="relative w-10 h-10 rounded-full overflow-hidden border border-purple-400 flex-shrink-0"> <img src={newCatImagePreview} alt="preview" className="w-full h-full object-cover" /> <button onClick={() => { setNewCatImage(null); setNewCatImagePreview(null); if(fileInputRef.current) fileInputRef.current.value = ''; }} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px]">×</button> </div> )}
+              {newCatImagePreview && ( <div className="relative w-10 h-10 rounded-full overflow-hidden border border-purple-400 flex-shrink-0"> <img src={newCatImagePreview} alt="preview" className="w-full h-full object-cover" /> <button onClick={() => { setNewCatImage(null); setNewCatImagePreview(null); if(fileInputRef.current) fileInputRef.current.value = ""; }} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px]">×</button> </div> )}
               <input type="text" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="اسم القسم الجديد..." className="flex-1 h-10 px-3 rounded-lg text-slate-900 text-sm outline-none placeholder:text-slate-400 min-w-[180px] bg-slate-50 border border-slate-300 focus:border-purple-400" onKeyDown={(e) => e.key === "Enter" && handleAddCategory()} />
               <button onClick={handleAddCategory} className="h-10 px-5 rounded-lg font-bold text-white text-sm transition hover:opacity-90 whitespace-nowrap" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}>إضافة</button>
             </div>
@@ -513,22 +523,22 @@ export default function ProductsPage() {
                    <Filter size={14} /> ترتيب
                  </button>
                  <div className="absolute top-full left-0 mt-2 w-40 rounded-xl overflow-hidden shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-20 bg-white border border-slate-200">
-                    <button onClick={() => setSortOption('newest')} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-50 transition ${sortOption === 'newest' ? 'text-purple-600 font-bold' : 'text-slate-600'}`}>المضاف حديثاً</button>
-                    <button onClick={() => setSortOption('name-asc')} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-50 transition ${sortOption === 'name-asc' ? 'text-purple-600 font-bold' : 'text-slate-600'}`}>الاسم (أ-ي)</button>
-                    <button onClick={() => setSortOption('name-desc')} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-50 transition ${sortOption === 'name-desc' ? 'text-purple-600 font-bold' : 'text-slate-600'}`}>الاسم (ي-أ)</button>
-                    <button onClick={() => setSortOption('stock-desc')} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-50 transition ${sortOption === 'stock-desc' ? 'text-purple-600 font-bold' : 'text-slate-600'}`}>الأكثر مخزوناً</button>
-                    <button onClick={() => setSortOption('stock-asc')} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-50 transition ${sortOption === 'stock-asc' ? 'text-purple-600 font-bold' : 'text-slate-600'}`}>الأقل مخزوناً</button>
+                    <button onClick={() => setSortOption("newest")} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-50 transition ${sortOption === "newest" ? "text-purple-600 font-bold" : "text-slate-600"}`}>المضاف حديثاً</button>
+                    <button onClick={() => setSortOption("name-asc")} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-50 transition ${sortOption === "name-asc" ? "text-purple-600 font-bold" : "text-slate-600"}`}>الاسم (أ-ي)</button>
+                    <button onClick={() => setSortOption("name-desc")} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-50 transition ${sortOption === "name-desc" ? "text-purple-600 font-bold" : "text-slate-600"}`}>الاسم (ي-أ)</button>
+                    <button onClick={() => setSortOption("stock-desc")} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-50 transition ${sortOption === "stock-desc" ? "text-purple-600 font-bold" : "text-slate-600"}`}>الأكثر مخزوناً</button>
+                    <button onClick={() => setSortOption("stock-asc")} className={`w-full text-right px-4 py-2 text-xs hover:bg-purple-50 transition ${sortOption === "stock-asc" ? "text-purple-600 font-bold" : "text-slate-600"}`}>الأقل مخزوناً</button>
                  </div>
               </div>
 
               <button onClick={() => setShowAddForm(!showAddForm)} className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-sm transition whitespace-nowrap shrink-0" style={{ background: showAddForm ? "white" : "linear-gradient(135deg, #7c3aed, #ec4899)", border: showAddForm ? "1px solid #fecaca" : "none", color: showAddForm ? "#ef4444" : "white" }}> 
-                {showAddForm ? <X size={16} /> : <Plus size={16} />} {showAddForm ? 'إلغاء' : 'إضافة'} 
+                {showAddForm ? <X size={16} /> : <Plus size={16} />} {showAddForm ? "إلغاء" : "إضافة"} 
               </button>
             </div>
           </div>
 
           {showAddForm && ( <div className="mb-8 p-6 rounded-xl bg-slate-50 border border-slate-200"> <h3 className="text-lg font-black text-slate-900 mb-5">إضافة منتج جديد</h3> <AdminProductForm onSubmit={handleAddProduct} /> </div> )}
-          
+
           <AdminProductTable 
             products={currentProducts}
             onDelete={handleDeleteProduct} 
@@ -543,7 +553,7 @@ export default function ProductsPage() {
                 onClick={() => goToPage(currentPage - 1)}
                 disabled={currentPage === 1}
                 className={`p-2 rounded-lg transition ${
-                  currentPage === 1 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-purple-50 hover:text-purple-600'
+                  currentPage === 1 ? "text-slate-300 cursor-not-allowed" : "text-slate-600 hover:bg-purple-50 hover:text-purple-600"
                 }`}
               >
                 <ChevronRight size={18} />
@@ -555,8 +565,8 @@ export default function ProductsPage() {
                   onClick={() => goToPage(page)}
                   className={`w-9 h-9 rounded-lg text-sm font-bold transition ${
                     currentPage === page
-                      ? 'bg-purple-600 text-white'
-                      : 'text-slate-600 hover:bg-purple-50 hover:text-purple-600'
+                      ? "bg-purple-600 text-white"
+                      : "text-slate-600 hover:bg-purple-50 hover:text-purple-600"
                   }`}
                 >
                   {page}
@@ -567,7 +577,7 @@ export default function ProductsPage() {
                 onClick={() => goToPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
                 className={`p-2 rounded-lg transition ${
-                  currentPage === totalPages ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-purple-50 hover:text-purple-600'
+                  currentPage === totalPages ? "text-slate-300 cursor-not-allowed" : "text-slate-600 hover:bg-purple-50 hover:text-purple-600"
                 }`}
               >
                 <ChevronLeft size={18} />
@@ -581,7 +591,7 @@ export default function ProductsPage() {
                   max={totalPages}
                   value={quickJumpPage}
                   onChange={(e) => setQuickJumpPage(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleQuickJump(e)}
+                  onKeyDown={(e) => e.key === "Enter" && handleQuickJump(e)}
                   placeholder="#"
                   className="w-14 h-8 text-center text-xs border border-slate-300 rounded-md outline-none focus:border-purple-500 text-black bg-white"
                 />
@@ -601,7 +611,7 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* ✅ مودال تعديل المنتج الكامل */}
+      {/* مودال تعديل المنتج الكامل */}
       {editingProduct && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-auto">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-auto">
