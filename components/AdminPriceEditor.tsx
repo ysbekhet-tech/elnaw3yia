@@ -408,7 +408,6 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
         reader.readAsDataURL(file);
       }
     });
-    // Clear input to allow re-selecting same files
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -530,7 +529,6 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
       alert("يجب إدخال اسم اللون!");
       return;
     }
-    // Name alone is not enough - need either a color selection or an image
     const hasImage = !!newColorImage;
     if (!hasImage && !isColorPickerTouched) {
       alert("يجب اختيار درجة لون أو رفع صورة للون!");
@@ -628,7 +626,6 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
 
     if (isUploading) return;
 
-    // Validation
     if (!formData.name.trim()) {
       setNotification({ type: "error", message: "اسم المنتج مطلوب! ❌" });
       return;
@@ -662,7 +659,6 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
     setIsUploading(true);
 
     try {
-      // Check duplicate name only if changed
       if (formData.name !== product.name) {
         const nameQuery = query(collection(db, "products"), where("name", "==", formData.name.trim()));
         const nameSnapshot = await getDocs(nameQuery);
@@ -673,7 +669,6 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
         }
       }
 
-      // Check duplicate barcode only if changed
       if (formData.barcode !== product.barcode) {
         const barcodeQuery = query(collection(db, "products"), where("barcode", "==", formData.barcode.trim()));
         const barcodeSnapshot = await getDocs(barcodeQuery);
@@ -684,7 +679,9 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
         }
       }
 
-      const productId = product.id || crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      // ✅ التعديل هنا - استخدام product.id مباشرة
+      const productId = product.id!;
+
       const imageUrls = await uploadImagesToStorage(productId);
       const finalColors = await uploadColorImages(productId);
 
@@ -716,7 +713,6 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
     } catch (error) {
       console.error("Error updating product:", error);
       setNotification({ type: "error", message: "حدث خطأ أثناء تحديث المنتج! حاول مرة أخرى ❌" });
-      // Data is NOT reset - user keeps everything they typed
     } finally {
       setIsUploading(false);
     }
@@ -963,11 +959,7 @@ export default function AdminEditProductForm({ product, onUpdate, onClose }: Adm
           name="barcode" 
           value={formData.barcode} 
           onChange={handleChange} 
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-            }
-          }}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); } }}
           placeholder="الباركود *" 
           required 
           className={inputStyle} 

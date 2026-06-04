@@ -334,18 +334,20 @@ export default function ProductsPage() {
     setEditingProduct(product);
   };
 
-  // دالة تحديث المنتج بعد التعديل
-  const handleUpdateProduct = async (updatedData: Partial<Product>) => {
-    try {
-      await updateDoc(doc(db, "products", updatedData.id!), updatedData);
-      setAllProducts(allProducts.map((p) => (p.id === updatedData.id ? { ...p, ...updatedData } : p)));
-      setEditingProduct(null);
-      setModalConfig({ isOpen: true, title: "نجاح ✓", message: "تم تحديث المنتج بنجاح", onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })) });
-    } catch (error) {
-      console.error(error);
-      setModalConfig({ isOpen: true, title: "خطأ", message: "حدث خطأ أثناء تحديث المنتج", onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })) });
-    }
-  };
+  // handleUpdateProduct
+const handleUpdateProduct = async (updatedData: Partial<Product>) => {
+  try {
+    const { id, ...dataToUpdate } = updatedData;
+    if (!id) return;
+    await updateDoc(doc(db, "products", id), dataToUpdate);
+    setAllProducts(allProducts.map((p) => (p.id === id ? { ...p, ...dataToUpdate } : p)));
+    setEditingProduct(null);
+    setModalConfig({ isOpen: true, title: "نجاح ✓", message: "تم تحديث المنتج بنجاح", onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })) });
+  } catch (error) {
+    console.error(error);
+    setModalConfig({ isOpen: true, title: "خطأ", message: "حدث خطأ أثناء تحديث المنتج", onConfirm: () => setModalConfig((prev) => ({ ...prev, isOpen: false })) });
+  }
+};
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => { 
     const file = e.target.files?.[0]; 
@@ -440,16 +442,13 @@ export default function ProductsPage() {
       {modalConfig.isOpen && (
         <div className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-10 max-w-lg w-full text-center shadow-2xl border border-slate-100 animate-in fade-in zoom-in duration-200">
-            {isSuccessModal && (
-              <div className="mb-8 flex justify-center">
-                <img 
-                  src="/success.png" 
-                  alt="Success" 
-                  className="w-96 h-96 object-contain"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                />
-              </div>
-            )}
+           {isSuccessModal && (
+  <div className="mb-8 flex justify-center">
+    <div className="w-24 h-24 rounded-full bg-green-100 flex items-center justify-center">
+      <Check size={48} className="text-green-500" strokeWidth={3} />
+    </div>
+  </div>
+)}
             <h3 className={`text-2xl font-black mb-4 ${isSuccessModal ? "text-green-600" : "text-slate-900"}`}>
               {modalConfig.title}
             </h3>
