@@ -28,8 +28,13 @@ export default function CartDrawer() {
   const [animatedId, setAnimatedId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const triggerAnim = (id: string, color?: string) => {
-    setAnimatedId(id + (color || ""));
+  // ✅ الـ key بيشمل دلوقتي المنتج + اللون + المقاس
+  const getItemKey = (id: string, color?: string, size?: { length: string; width: string }) => {
+    return id + (color || "") + (size ? size.length + "x" + size.width : "");
+  };
+
+  const triggerAnim = (key: string) => {
+    setAnimatedId(key);
     setTimeout(() => setAnimatedId(null), 250);
   };
 
@@ -125,11 +130,13 @@ export default function CartDrawer() {
             cart.map((item) => {
               if (!item.id) return null;
 
+              const itemKey = getItemKey(item.id, item.selectedColor, item.selectedSize);
+
               return (
                 <motion.div
-                  key={item.id + (item.selectedColor || "")}
+                  key={itemKey}
                   animate={
-                    animatedId === item.id + (item.selectedColor || "")
+                    animatedId === itemKey
                       ? {
                           x: [0, -4, 4, -4, 4, 0],
                           scale: [1, 1.02, 1],
@@ -151,21 +158,34 @@ export default function CartDrawer() {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-slate-200 text-sm line-clamp-1">
                       {item.name}
-                      {item.selectedColor && (
-                        <span className="text-purple-400 text-xs mr-1">
-                          ({item.selectedColor})
-                        </span>
-                      )}
                     </h3>
+
+                    {/* ✅ اللون */}
+                    {item.selectedColor && (
+                      <span className="text-purple-400 text-xs">
+                        اللون: {item.selectedColor}
+                      </span>
+                    )}
+
+                    {/* ✅ المقاس - ده الجديد */}
+                    {item.selectedSize && (
+                      <span className="text-blue-400 text-xs block">
+                        المقاس: {item.selectedSize.length} × {item.selectedSize.width} سم
+                      </span>
+                    )}
+
                     <p className="gradient-text font-bold text-sm mt-1">
-                      {item.price} ج
+                      {item.selectedSize?.price
+                        ? item.selectedSize.price
+                        : item.price}{" "}
+                      ج
                     </p>
+
                     <div className="flex items-center gap-2 mt-2">
                       <button
                         onClick={() => {
-                          // ✅ إضافة علامة التعجب ! لـ item.id
-                          removeFromCart(item.id!, item.selectedColor || "");
-                          triggerAnim(item.id!, item.selectedColor || "");
+                          removeFromCart(item.id!, item.selectedColor || "", item.selectedSize);
+                          triggerAnim(itemKey);
                         }}
                         className={`w-7 h-7 flex items-center justify-center rounded-lg transition ${
                           item.quantity === 1
@@ -183,7 +203,7 @@ export default function CartDrawer() {
                       <motion.span
                         key={item.quantity}
                         animate={
-                          animatedId === item.id + (item.selectedColor || "")
+                          animatedId === itemKey
                             ? { scale: [1, 1.4, 1] }
                             : { scale: 1 }
                         }
@@ -197,15 +217,14 @@ export default function CartDrawer() {
                           const success = await addToCart(
                             item,
                             false,
-                            item.selectedColor || ""
+                            item.selectedColor || "",
+                            1,
+                            item.selectedSize
                           );
                           if (success) {
-                            // ✅ إضافة علامة التعجب ! لـ item.id
-                            triggerAnim(item.id!, item.selectedColor || "");
+                            triggerAnim(itemKey);
                           } else {
-                            showError(
-                              `نفذت الكمية المتاحة من ${item.name}`
-                            );
+                            showError(`نفذت الكمية المتاحة من ${item.name}`);
                           }
                         }}
                         className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white/10 transition"
@@ -219,8 +238,7 @@ export default function CartDrawer() {
                   </div>
                   <button
                     onClick={() =>
-                      // ✅ إضافة علامة التعجب ! لـ item.id
-                      deleteFromCart(item.id!, item.selectedColor || "")
+                      deleteFromCart(item.id!, item.selectedColor || "", item.selectedSize)
                     }
                     className="text-slate-600 hover:text-red-400 transition self-start mt-1"
                   >

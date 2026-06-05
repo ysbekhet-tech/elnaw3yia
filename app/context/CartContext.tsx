@@ -265,11 +265,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // ✅ إصلاح مهم: حساب السعر الإجمالي ليشمل سعر المقاس الإضافي
   const cartTotal = cart.reduce((t, i) => {
-    const basePrice = Number(i.price) || 0;
-    const sizeExtraPrice = Number(i.selectedSize?.price) || 0;
-    const finalItemPrice = basePrice + sizeExtraPrice;
-    return t + (finalItemPrice * i.quantity);
-  }, 0);
+  const sizePrice = Number(i.selectedSize?.price) || 0;
+  const finalItemPrice = sizePrice > 0 ? sizePrice : Number(i.price) || 0;
+  return t + (finalItemPrice * i.quantity);
+}, 0);
 
   const cartCount = cart.reduce((t, i) => t + i.quantity, 0);
 
