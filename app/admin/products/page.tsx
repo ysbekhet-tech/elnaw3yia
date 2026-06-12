@@ -17,7 +17,7 @@ import { Product } from "@/types";
 import AdminProductTable from "@/components/AdminProductTable";
 import AdminProductForm from "@/components/AdminProductForm";
 import AdminPriceEditor from "@/components/AdminPriceEditor";
-import { isAuthenticated } from "@/lib/auth";
+import { isAuthenticated, auth } from "@/lib/auth";
 import { Package, Plus, X, Tags, Filter, ImagePlus, Edit2, Check, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import ReactCrop, { Crop, PixelCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
@@ -79,7 +79,11 @@ export default function ProductsPage() {
 
   useEffect(() => {
     if (!isAuthenticated()) { router.replace("/admin/login"); return; }
-    setAuthChecked(true);
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+      if (!user) return;
+      setAuthChecked(true);
+    });
+    return () => unsubscribeAuth();
   }, []);
 
   // Categories listener with error handling - only after auth check

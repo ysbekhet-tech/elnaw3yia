@@ -23,7 +23,7 @@ export default function AdminLogin() {
     setError('');
     setLoading(true);
 
-    if (authenticateAdmin(code)) {
+    if (await authenticateAdmin(code)) {
       setAuthToken();
       window.location.replace('/admin');
       return;

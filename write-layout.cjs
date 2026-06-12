@@ -1,4 +1,6 @@
-'use client';
+const { writeFileSync } = require('fs');
+
+const content = `'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -111,4 +113,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </main>
     </div>
   );
-}
+}`;
+
+writeFileSync('D:/projects/stationery-store/app/admin/layout.tsx', content, 'utf8');
+console.log('Done!');

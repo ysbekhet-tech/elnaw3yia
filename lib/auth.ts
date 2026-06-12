@@ -1,33 +1,54 @@
-// lib/auth.ts
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
+import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 
-export const authenticateAdmin = (enteredCode: string): boolean => {
-  // تأكد أنك تستخدم NEXT_PUBLIC_ في ملف .env
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+};
+
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+
+export const db = getFirestore(app);
+export const storage = getStorage(app);
+export const auth = getAuth(app);
+
+export const authenticateAdmin = async (enteredCode: string): Promise<boolean> => {
   const secretCode = process.env.NEXT_PUBLIC_ADMIN_SECRET || 'admin123';
-  return enteredCode === secretCode;
+  if (enteredCode !== secretCode) return false;
+
+  try {
+    const email = process.env.NEXT_PUBLIC_ADMIN_EMAIL!;
+    const password = process.env.NEXT_PUBLIC_ADMIN_PASSWORD!;
+    await signInWithEmailAndPassword(auth, email, password);
+    setAuthToken();
+    return true;
+  } catch (error) {
+    console.error('Firebase login error:', error);
+    return false;
+  }
 };
 
 export const setAuthToken = () => {
   const token = btoa(JSON.stringify({ authenticated: true, timestamp: Date.now() }));
-  
-  // ✅ التعديل 1: استخدام encodeURIComponent لضمان حفظ الرموز الخاصة بشكل آمن
   const encodedToken = encodeURIComponent(token);
-
-  // ✅ التعديل 2: إضافة SameSite=Lax لضمان عمل الكوكي في جميع المتصفحات
   document.cookie = `admin_token=${encodedToken}; path=/; max-age=86400; SameSite=Lax`;
 };
 
 export const clearAuthToken = () => {
-  // يجب مسح الكوكي بنفس الخصائص التي تم إنشاؤها بها (يفضل إضافة SameSite هنا أيضاً)
   document.cookie = 'admin_token=; path=/; max-age=0; SameSite=Lax';
+  signOut(auth);
 };
 
 export const getAuthToken = (): string | null => {
   if (typeof document === 'undefined') return null;
-  
   const match = document.cookie.match(/admin_token=([^;]*)/);
   if (!match) return null;
-
-  // ✅ التعديل 3: استخدام decodeURIComponent عند القراءة
   try {
     return decodeURIComponent(match[1]);
   } catch {
@@ -38,12 +59,10 @@ export const getAuthToken = (): string | null => {
 export const isAuthenticated = (): boolean => {
   const token = getAuthToken();
   if (!token) return false;
-  
   try {
     const decoded = JSON.parse(atob(token));
     return decoded.authenticated === true;
-  } catch (e) {
-    // في حالة وجود أي خطأ في فك التشفير، نعتبر المستخدم غير مسجل
+  } catch {
     return false;
   }
 };
