@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -73,11 +73,22 @@ export default function ProductDetails() {
     setSelectedSizeIndex(0);
   }, [id]);
 
-  const allImages = product?.images && product.images.length > 0
-    ? product.images
-    : product?.image
-      ? [product.image]
-      : [];
+  const selectedColor = useMemo(() => {
+    return product?.colors && product.colors.length > 0
+      ? product.colors[selectedColorIndex]
+      : null;
+  }, [product, selectedColorIndex]);
+
+  const displayImages = useMemo(() => {
+    if (selectedColor?.image && selectedColor.image.trim()) {
+      return [selectedColor.image];
+    }
+    return product?.images && product.images.length > 0
+      ? product.images
+      : product?.image
+        ? [product.image]
+        : [];
+  }, [selectedColor, product]);
 
   const selectedColorName = useMemo(() => {
     return product?.colors && product.colors.length > 0
@@ -129,12 +140,12 @@ export default function ProductDetails() {
 
   const nextImage = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setCurrentImageIndex((prev) => (prev + 1) % allImages.length);
+    setCurrentImageIndex((prev) => (prev + 1) % displayImages.length);
   };
 
   const prevImage = (e?: React.MouseEvent) => {
     e?.stopPropagation();
-    setCurrentImageIndex((prev) => (prev - 1 + allImages.length) % allImages.length);
+    setCurrentImageIndex((prev) => (prev - 1 + displayImages.length) % displayImages.length);
   };
 
   const handleAddToCart = async () => {
@@ -212,9 +223,9 @@ export default function ProductDetails() {
                 className="relative h-full cursor-pointer overflow-hidden"
                 onClick={() => setShowFullImage(true)}
               >
-                {allImages.length > 0 ? (
+                {displayImages.length > 0 ? (
                   <Image
-                    src={allImages[currentImageIndex]}
+                    src={displayImages[currentImageIndex]}
                     alt={product.name}
                     fill
                     sizes="(max-width: 768px) 100vw, 50vw"
@@ -233,7 +244,7 @@ export default function ProductDetails() {
                   </span>
                 </div>
 
-                {allImages.length > 1 && (
+                {displayImages.length > 1 && (
                   <>
                     <button
                       onClick={(e) => { e.stopPropagation(); prevImage(); }}
@@ -251,9 +262,9 @@ export default function ProductDetails() {
                 )}
               </div>
 
-              {allImages.length > 1 && (
+              {displayImages.length > 1 && (
                 <div className="absolute bottom-3 start-0 end-0 flex justify-center gap-2 z-10">
-                  {allImages.map((_, idx) => (
+                  {displayImages.map((_, idx) => (
                     <button
                       key={idx}
                       onClick={(e) => { e.stopPropagation(); setCurrentImageIndex(idx); }}
@@ -423,7 +434,7 @@ export default function ProductDetails() {
             <X size={28} />
           </button>
 
-          {allImages.length > 1 && (
+          {displayImages.length > 1 && (
             <>
               <button
                 onClick={(e) => { e.stopPropagation(); prevImage(); }}
@@ -440,9 +451,9 @@ export default function ProductDetails() {
             </>
           )}
 
-          {allImages.length > 0 && (
+          {displayImages.length > 0 && (
             <Image
-              src={allImages[currentImageIndex]}
+              src={displayImages[currentImageIndex]}
               alt={product.name}
               width={1200}
               height={800}
@@ -452,9 +463,9 @@ export default function ProductDetails() {
             />
           )}
 
-          {allImages.length > 1 && (
+          {displayImages.length > 1 && (
             <div className="absolute bottom-5 text-white/50 text-sm font-bold">
-              {currentImageIndex + 1} / {allImages.length}
+              {currentImageIndex + 1} / {displayImages.length}
             </div>
           )}
         </div>
