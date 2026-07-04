@@ -43,10 +43,9 @@ export default function CategoriesSection() {
       
       <div className="relative group">
         
-        {/* تأثير التلاشي - تم تغيير from-black إلى from-slate-900 */}
-        {/* ⚠️ لو خلفية الموقع مش slate-900، غير اللون ده عشان يطابق الخلفية */}
-        <div className="absolute start-0 top-0 bottom-0 w-12 bg-gradient-to-e from-slate-900 to-transparent z-10 pointer-events-none rounded-s-xl"></div>
-        <div className="absolute end-0 top-0 bottom-0 w-12 bg-gradient-to-s from-slate-900 to-transparent z-10 pointer-events-none rounded-e-xl"></div>
+        {/* تأثير التلاشي */}
+        <div className="absolute start-0 top-0 bottom-0 w-12 z-10 pointer-events-none rounded-s-xl bg-gradient-to-l from-[#050510] to-transparent"></div>
+        <div className="absolute end-0 top-0 bottom-0 w-12 z-10 pointer-events-none rounded-e-xl bg-gradient-to-r from-[#050510] to-transparent"></div>
         
         {/* زرار الرجوع لليمين - يظهر على اليمين في RTL */}
         <button 

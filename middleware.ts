@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   
   // قراءة الكوكي
@@ -12,10 +12,36 @@ export function middleware(request: NextRequest) {
   // التحقق من التوكن
   if (authToken) {
     try {
-      // فك التشفير
-      const decoded = JSON.parse(atob(authToken));
-      if (decoded.authenticated === true) {
-        isAuthenticated = true;
+      const parts = authToken.split('.');
+      if (parts.length === 2) {
+        const tokenString = parts[0];
+        const signatureBase64 = parts[1];
+        
+        const secret = process.env.ADMIN_SECRET || process.env.NEXT_PUBLIC_ADMIN_SECRET || 'admin123';
+        const encoder = new TextEncoder();
+        const key = await crypto.subtle.importKey(
+          'raw',
+          encoder.encode(secret),
+          { name: 'HMAC', hash: 'SHA-256' },
+          false,
+          ['verify']
+        );
+        
+        const signatureBytes = Uint8Array.from(atob(signatureBase64), c => c.charCodeAt(0));
+        
+        const isValid = await crypto.subtle.verify(
+          'HMAC',
+          key,
+          signatureBytes,
+          encoder.encode(tokenString)
+        );
+        
+        if (isValid) {
+          const decoded = JSON.parse(atob(tokenString));
+          if (decoded.authenticated === true) {
+            isAuthenticated = true;
+          }
+        }
       }
     } catch (error) {
       isAuthenticated = false;

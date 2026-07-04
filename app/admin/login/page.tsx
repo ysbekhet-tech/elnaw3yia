@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { authenticateAdmin, setAuthToken, isAuthenticated } from '@/lib/auth';
+import { authenticateAdmin, isAuthenticated } from '@/lib/auth';
 import { Lock, Eye, EyeOff, Shield } from 'lucide-react';
 
 export default function AdminLogin() {
@@ -24,7 +24,6 @@ export default function AdminLogin() {
     setLoading(true);
 
     if (await authenticateAdmin(code)) {
-      setAuthToken();
       window.location.replace('/admin');
       return;
     } else {

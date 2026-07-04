@@ -11,7 +11,8 @@ import {
   onSnapshot,
   setDoc,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { ref, uploadString, getDownloadURL } from "firebase/storage";
+import { db, storage } from "@/lib/firebase";
 import { Megaphone, Upload, Plus, Trash2, X, Image as ImageIcon, Pencil, RotateCcw, Eye, EyeOff, Power, ArrowRight } from "lucide-react";
 
 type Ad = {
@@ -101,10 +102,17 @@ export default function AdminAdsPage() {
     try {
       setUploading(true);
 
+      let finalImageUrl = imageBase64;
+      if (imageBase64 && imageBase64.startsWith('data:image')) {
+        const imageRef = ref(storage, `ads/${Date.now()}_ad.jpg`);
+        await uploadString(imageRef, imageBase64, 'data_url');
+        finalImageUrl = await getDownloadURL(imageRef);
+      }
+
       const adData = {
         title,
         description,
-        image: imageBase64,
+        image: finalImageUrl,
         showImage,
         duration: Number(duration) || 10,
         isActive,

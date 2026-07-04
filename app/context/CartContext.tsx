@@ -11,6 +11,7 @@ import React, {
 import { Product, CartItem, ProductSize } from "@/types";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, onSnapshot } from "firebase/firestore";
+import toast from "react-hot-toast";
 
 type CartContextType = {
   cart: CartItem[];
@@ -67,11 +68,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("stationery-cart", JSON.stringify(cart));
   }, [cart]);
 
-  useEffect(() => {
-    if (cart.length === 0) return;
+  // استخدام IDs المنتجات الفريدة فقط لتجنب إنشاء snapshots متعددة لنفس المنتج
+  const uniqueProductIds = [...new Set(cart.map((i) => i.id).filter(Boolean))];
 
-    const unsubscribes = cart.map((item) => {
-      const itemId = item.id;
+  useEffect(() => {
+    if (uniqueProductIds.length === 0) return;
+
+    const unsubscribes = uniqueProductIds.map((itemId) => {
       if (!itemId) return () => {};
       return onSnapshot(doc(db, "products", itemId), (snap) => {
         if (snap.exists()) {
@@ -87,7 +90,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => unsubscribes.forEach((unsub) => unsub());
-  }, [cart.map((i) => i.id).join(",")]);
+  }, [uniqueProductIds.join(",")]);
 
   useEffect(() => {
     intervalRef.current = setInterval(() => {
@@ -193,7 +196,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         
         const reserved = await reserveStock(product.id, newTotalQty, existingItem.quantity);
         if (!reserved) {
-          alert("نفذت الكمية المتاحة من هذا المنتج");
+          toast.error("نفذت الكمية المتاحة من هذا المنتج");
           return false;
         }
 
@@ -207,7 +210,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       } else {
         const reserved = await reserveStock(product.id, qty, 0);
         if (!reserved) {
-          alert("نفذت الكمية المتاحة من هذا المنتج");
+          toast.error("نفذت الكمية المتاحة من هذا المنتج");
           return false;
         }
 

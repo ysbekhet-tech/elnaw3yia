@@ -44,17 +44,19 @@ export default function OrderDetailsPage() {
   useEffect(() => { if (id) fetchOrder(); }, [id]);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const snap = await getDocs(collection(db, 'products'));
-        const prods = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
-        setAllProducts(prods);
-      } catch (error) {
-        console.error('خطأ في جلب المنتجات:', error);
-      }
-    };
-    fetchProducts();
-  }, []);
+    if (showAddProductModal && allProducts.length === 0) {
+      const fetchProducts = async () => {
+        try {
+          const snap = await getDocs(collection(db, 'products'));
+          const prods = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
+          setAllProducts(prods);
+        } catch (error) {
+          console.error('خطأ في جلب المنتجات:', error);
+        }
+      };
+      fetchProducts();
+    }
+  }, [showAddProductModal, allProducts.length]);
 
   useEffect(() => {
     if (!searchQuery.trim()) {

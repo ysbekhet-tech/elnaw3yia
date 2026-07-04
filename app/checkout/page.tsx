@@ -487,7 +487,7 @@ export default function CheckoutPage() {
                 </p>
                 <div className="flex justify-center gap-2 mb-4" dir="ltr">
                   {otp.map((data, index) => (
-                    <input key={index} type="text" inputMode="numeric" maxLength={1} ref={(el) => { otpRefs.current[index] = el; }} value={data} onChange={(e) => handleOtpChange(e.target, index)} onKeyDown={(e) => handleOtpKeyDown(e, index)} onFocus={(e) => e.target.select()} className="w-12 h-14 bg-slate-700 border-2 border-slate-600 rounded-xl text-center text-white text-xl font-black outline-none focus:border-purple-400 transition" />
+                    <input key={index} type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={1} ref={(el) => { otpRefs.current[index] = el; }} value={data} onChange={(e) => handleOtpChange(e.target, index)} onKeyDown={(e) => handleOtpKeyDown(e, index)} onFocus={(e) => e.target.select()} className="w-12 h-14 bg-slate-700 border-2 border-slate-600 rounded-xl text-center text-white text-xl font-black outline-none focus:border-purple-400 transition" />
                   ))}
                 </div>
                 {otpError && <p className="text-red-400 text-sm text-center mb-2">{otpError}</p>}

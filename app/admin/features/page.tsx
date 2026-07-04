@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { Product } from '@/types';
 import { isAuthenticated } from '@/lib/auth';
 import { Loader2, Tag, Sparkles, Search, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -22,19 +22,29 @@ export default function FeaturesPage() {
     if (!isAuthenticated()) { router.replace('/admin/login'); return; }
     setAuthChecked(true);
 
-    const unsubscribe = onSnapshot(collection(db, 'products'), (snapshot) => {
-      const prodsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
-      setProducts(prodsList);
-      setLoading(false);
-    });
+    const fetchProducts = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, 'products'));
+        const prodsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+        setProducts(prodsList);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    return () => unsubscribe();
+    fetchProducts();
   }, []);
 
   const handleToggle = async (productId: string, field: 'isOffer' | 'isNew', currentValue: boolean) => {
     try {
       const productRef = doc(db, 'products', productId);
       await updateDoc(productRef, { [field]: !currentValue });
+      
+      setProducts(prev => prev.map(p => 
+        p.id === productId ? { ...p, [field]: !currentValue } : p
+      ));
     } catch (error) {
       console.error('خطأ في تحديث المنتج:', error);
     }

@@ -137,13 +137,14 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
               <div className="flex items-center gap-2">
                 {!needsModal && (
                   <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5 border border-purple-500/20">
-                    <button onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.max(1, q - 1)); }} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-purple-500/20"><Minus size={11} className="text-slate-300" /></button>
+                    <button aria-label="تقليل الكمية" onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.max(1, q - 1)); }} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-purple-500/20"><Minus size={11} className="text-slate-300" /></button>
                     <span className="text-xs font-black text-white min-w-[16px] text-center">{quantity}</span>
-                    <button onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.min(q + 1, stockAvailable)); }} disabled={quantity >= stockAvailable} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-purple-500/20"><Plus size={11} className="text-slate-300" /></button>
+                    <button aria-label="زيادة الكمية" onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.min(q + 1, stockAvailable)); }} disabled={quantity >= stockAvailable} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-purple-500/20"><Plus size={11} className="text-slate-300" /></button>
                   </div>
                 )}
 
                 <button
+                  aria-label={stockAvailable === 0 ? `${product.name} غير متاح` : `إضافة ${product.name} للسلة`}
                   onClick={handleAddToCart}
                   disabled={stockAvailable === 0}
                   className={`h-8 px-4 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
@@ -166,10 +167,8 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
 
   return (
     <>
-      <motion.div
-        whileHover={{ y: isCompact ? -3 : -5 }}
-        transition={{ duration: 0.3 }}
-        className="rounded-2xl overflow-hidden flex flex-col h-full relative"
+      <div
+        className={`rounded-2xl overflow-hidden flex flex-col h-full relative transition-transform duration-300 ${isCompact ? "lg:hover:-translate-y-1" : "lg:hover:-translate-y-1.5"}`}
         style={{
           background: "rgba(255,255,255,0.04)",
           border: "1px solid rgba(124,58,237,0.2)",
@@ -269,11 +268,11 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
             {/* ✅ اظهر عداد الكمية بس لو مش محتاج modal */}
             {!needsModal && !isCompact ? (
               <div className="flex items-center gap-2 mb-2">
-                <button onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.max(1, q - 1)); }} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-purple-500/20 transition" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(124,58,237,0.25)" }}>
+                <button aria-label="تقليل الكمية" onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.max(1, q - 1)); }} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-purple-500/20 transition" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(124,58,237,0.25)" }}>
                   <Minus size={11} className="text-slate-300" />
                 </button>
                 <span className="text-sm font-black text-white min-w-[20px] text-center">{quantity}</span>
-                <button onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.min(q + 1, stockAvailable)); }} disabled={quantity >= stockAvailable} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-purple-500/20 transition disabled:opacity-50" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(124,58,237,0.25)" }}>
+                <button aria-label="زيادة الكمية" onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.min(q + 1, stockAvailable)); }} disabled={quantity >= stockAvailable} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-purple-500/20 transition disabled:opacity-50" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(124,58,237,0.25)" }}>
                   <Plus size={11} className="text-slate-300" />
                 </button>
                 <span className="text-[10px] text-slate-500">= <span className="font-bold gradient-text">{product.price * quantity} ج</span></span>
@@ -281,6 +280,7 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
             ) : !isCompact && <div className="h-[28px] mb-2"></div>}
 
             <button
+              aria-label={stockAvailable === 0 ? `${product.name} غير متاح` : `إضافة ${product.name} للسلة`}
               onClick={handleAddToCart}
               disabled={stockAvailable === 0}
               className={`w-full ${isCompact ? "h-8 rounded-lg text-xs" : "h-9 rounded-xl text-sm"} font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
@@ -296,7 +296,7 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
             </button>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       <ColorPickerModal product={product} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </>

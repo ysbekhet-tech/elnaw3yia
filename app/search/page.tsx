@@ -28,18 +28,16 @@ function SearchContent() {
   const fetchResults = async () => {
     setLoading(true);
     try {
-      const snap = await getDocs(collection(db, "products"));
-      const allProducts = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Product));
-
-      const filtered = allProducts.filter((p) =>
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
-        p.category.toLowerCase().includes(query.toLowerCase()) ||
-        p.description?.toLowerCase().includes(query.toLowerCase())
-      );
-
-      setResults(filtered);
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setResults(data);
+      } else {
+        setResults([]);
+      }
     } catch (error) {
       console.error("Error searching:", error);
+      setResults([]);
     } finally {
       setLoading(false);
     }

@@ -26,18 +26,18 @@ export const authenticateAdmin = async (enteredCode: string): Promise<boolean> =
     const email = process.env.NEXT_PUBLIC_ADMIN_EMAIL!;
     const password = process.env.NEXT_PUBLIC_ADMIN_PASSWORD!;
     await signInWithEmailAndPassword(auth, email, password);
-    setAuthToken();
-    return true;
+    
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: enteredCode })
+    });
+    
+    return res.ok;
   } catch (error) {
     console.error('Firebase login error:', error);
     return false;
   }
-};
-
-export const setAuthToken = () => {
-  const token = btoa(JSON.stringify({ authenticated: true, timestamp: Date.now() }));
-  const encodedToken = encodeURIComponent(token);
-  document.cookie = `admin_token=${encodedToken}; path=/; max-age=86400; SameSite=Lax`;
 };
 
 export const clearAuthToken = () => {
@@ -60,7 +60,8 @@ export const isAuthenticated = (): boolean => {
   const token = getAuthToken();
   if (!token) return false;
   try {
-    const decoded = JSON.parse(atob(token));
+    const parts = token.split('.');
+    const decoded = JSON.parse(atob(parts[0]));
     return decoded.authenticated === true;
   } catch {
     return false;

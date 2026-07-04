@@ -52,7 +52,7 @@ export default function HeroSection() {
             <div className="flex gap-4 mt-8">
               <Link
                 href="/products"
-                className="gradient-bg hover:opacity-90 transition text-white px-8 py-4 rounded-2xl font-bold glow-purple hover:scale-105 active:scale-95"
+                className="gradient-bg hover:opacity-90 transition text-white px-8 py-4 rounded-2xl font-bold glow-purple hover:scale-105 active:scale-95 text-base"
                 style={{ display: "inline-block", transition: "all 0.2s" }}
               >
                 تسوق الآن

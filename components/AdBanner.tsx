@@ -96,10 +96,10 @@ export default function AdBanner() {
         }}
       >
         {/* النص */}
-        <div className={`flex flex-col gap-3 z-10 ${hasImage ? "max-w-[70%]" : "max-w-[90%]"}`}>
+        <div className={`flex flex-col gap-2 md:gap-3 z-10 ${hasImage ? "max-w-[80%] md:max-w-[70%]" : "max-w-[95%] md:max-w-[90%]"}`}>
           <h2
             className={`font-extrabold leading-tight tracking-tight ${
-              hasImage ? "text-xl md:text-4xl" : "text-2xl md:text-5xl"
+              hasImage ? "text-lg sm:text-xl md:text-4xl" : "text-xl sm:text-2xl md:text-5xl"
             }`}
           >
             {ad.title}
@@ -108,7 +108,7 @@ export default function AdBanner() {
           {ad.description && (
             <p
               className={`font-semibold opacity-95 ${
-                hasImage ? "text-lg md:text-2xl" : "text-xl md:text-3xl"
+                hasImage ? "text-sm sm:text-base md:text-2xl" : "text-base sm:text-lg md:text-3xl"
               }`}
             >
               {ad.description}

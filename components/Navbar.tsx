@@ -125,7 +125,7 @@ export default function Navbar() {
 
           <div className="flex items-center gap-3">
             <button
-              className="w-11 h-11 rounded-2xl flex items-center justify-center transition hover:scale-110"
+              className="hidden sm:flex w-11 h-11 rounded-2xl items-center justify-center transition hover:scale-110"
               style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
             >
               <Heart size={19} className="text-slate-300" />
@@ -145,7 +145,7 @@ export default function Navbar() {
             </button>
 
             <button
-              className="w-11 h-11 rounded-2xl flex items-center justify-center transition hover:scale-110"
+              className="hidden sm:flex w-11 h-11 rounded-2xl items-center justify-center transition hover:scale-110"
               style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
             >
               <User size={19} className="text-slate-300" />
