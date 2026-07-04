@@ -144,13 +144,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return false;
       }
 
-      const qtyDiff = newQty - oldQty;
-      await updateDoc(ref, {
-        reserved: currentReserved + qtyDiff,
-      });
+      try {
+        const qtyDiff = newQty - oldQty;
+        await updateDoc(ref, {
+          reserved: currentReserved + qtyDiff,
+        });
+      } catch (err) {
+        console.warn("Could not reserve stock in Firestore (possibly due to permissions), but adding to cart anyway.", err);
+      }
+      
       return true;
-    } catch {
-      return false;
+    } catch (error) {
+      console.error("Error checking stock:", error);
+      return true; // الفشل في قراءة المخزون لا يمنع إضافة المنتج لتجنب حظر المستخدم
     }
   };
 
