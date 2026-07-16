@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { clearAuthToken, isAuthenticated, auth } from '@/lib/auth';
-import { LogOut, ShieldCheck, Package, ShoppingCart, Megaphone, Bell, X, Truck, Tags, Home, Menu, ExternalLink } from 'lucide-react';
+import { LogOut, ShieldCheck, Package, ShoppingCart, Megaphone, Bell, X, Truck, Tags, Home, Menu, ExternalLink, GalleryHorizontalEnd } from 'lucide-react';
 import LowStockNotification from '@/components/admin/LowStockNotification';
 
 interface Order { id: string; status: string; }
@@ -55,6 +55,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { title: 'إدارة المنتجات', icon: Package, href: '/admin/products' },
     { title: 'إدارة الطلبات', icon: ShoppingCart, href: '/admin/orders' },
     { title: 'الإعلانات', icon: Megaphone, href: '/admin/ads' },
+    { title: 'سلايدر الرئيسية', icon: GalleryHorizontalEnd, href: '/admin/hero-slides' },
     { title: 'إدارة الشحن', icon: Truck, href: '/admin/shipping' },
     { title: 'العروض والجديد', icon: Tags, href: '/admin/features' },
   ];
