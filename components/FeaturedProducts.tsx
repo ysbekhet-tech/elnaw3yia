@@ -3,31 +3,36 @@
 import { useState, useEffect } from "react";
 import ProductCard from "./ProductCard";
 import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where, limit, orderBy } from "firebase/firestore";
 import { Product } from "@/types";
 import Link from "next/link";
-import { ArrowLeft, LayoutGrid, Grid2x2, List } from "lucide-react"; // ✅ استيراد أيقونات العرض
+import { ArrowLeft, LayoutGrid, Grid2x2, List } from "lucide-react";
 
 export default function FeaturedProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"grid" | "compact" | "list">("grid"); // ✅ حالة عرض المنتجات
+  const [viewMode, setViewMode] = useState<"grid" | "compact" | "list">("grid");
 
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const productsCollection = collection(db, "products");
-        const productSnapshot = await getDocs(productsCollection);
+        // ✅ التحسين الرئيسي:
+        // 1. where("isActive", "!=", false) → نفلتر في Firestore مش في JS
+        // 2. limit(12) → نجيب 12 فقط من الـ DB مش كل المنتجات
+        // النتيجة: قدر من الـ reads بيتوفر بشكل كبير
+        const q = query(
+          collection(db, "products"),
+          where("isActive", "!=", false),
+          limit(12)
+        );
+        const productSnapshot = await getDocs(q);
 
-        const productList = productSnapshot.docs.map(doc => ({
+        const productList = productSnapshot.docs.map((doc) => ({
           id: doc.id,
-          ...doc.data()
+          ...doc.data(),
         })) as Product[];
 
-        // ✅ تعديل إخفاء المنتج: بنفلتر النتيجة عشان نشيل اللي الـ active بتاعها false
-        const visibleProducts = productList.filter(p => p.isActive !== false);
-
-        setProducts(visibleProducts);
+        setProducts(productList);
       } catch (error) {
         console.error("حصل خطأ في جلب المنتجات:", error);
       } finally {
@@ -49,10 +54,6 @@ export default function FeaturedProducts() {
     );
   }
 
-  // عرض أول 12 منتج بس (3 صفوف في الشاشات الكبيرة)
-  const displayedProducts = products.slice(0, 12);
-  const hasMore = products.length > 12;
-
   return (
     <section className="max-w-7xl mx-auto px-5 py-16">
 
@@ -66,24 +67,24 @@ export default function FeaturedProducts() {
           <div className="w-16 h-1 rounded-full gradient-bg mt-3" />
         </div>
 
-        {/* ✅ زرارات تغيير العرض */}
+        {/* زرارات تغيير العرض */}
         <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl p-1.5">
-          <button 
-            onClick={() => setViewMode("grid")} 
+          <button
+            onClick={() => setViewMode("grid")}
             className={`p-2.5 rounded-xl transition ${viewMode === "grid" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
             title="عرض كروت كبيرة"
           >
             <LayoutGrid size={18} />
           </button>
-          <button 
-            onClick={() => setViewMode("compact")} 
+          <button
+            onClick={() => setViewMode("compact")}
             className={`p-2.5 rounded-xl transition ${viewMode === "compact" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
             title="عرض كروت صغيرة"
           >
             <Grid2x2 size={18} />
           </button>
-          <button 
-            onClick={() => setViewMode("list")} 
+          <button
+            onClick={() => setViewMode("list")}
             className={`p-2.5 rounded-xl transition ${viewMode === "list" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
             title="عرض قايمة"
           >
@@ -92,18 +93,18 @@ export default function FeaturedProducts() {
         </div>
       </div>
 
-      {/* ✅ تعديل الـ Grid بناءً على نوع العرض */}
+      {/* Grid المنتجات */}
       <div className={`grid gap-6 ${
-        viewMode === "list" ? "grid-cols-1" : 
-        viewMode === "compact" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6" : 
+        viewMode === "list" ? "grid-cols-1" :
+        viewMode === "compact" ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6" :
         "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
       }`}>
-        {displayedProducts.length > 0 ? (
-          displayedProducts.map((product) => (
+        {products.length > 0 ? (
+          products.map((product) => (
             <ProductCard
               key={product.id}
               product={product}
-              viewMode={viewMode} // ✅ تمرير نوع العرض للكارت
+              viewMode={viewMode}
             />
           ))
         ) : (
@@ -115,18 +116,16 @@ export default function FeaturedProducts() {
       </div>
 
       {/* زرار عرض باقي المنتجات */}
-      {hasMore && (
-        <div className="mt-12 text-center">
-          <Link 
-            href="/products"
-            className="inline-flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-white transition hover:opacity-90"
-            style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}
-          >
-            عرض جميع المنتجات
-            <ArrowLeft size={18} />
-          </Link>
-        </div>
-      )}
+      <div className="mt-12 text-center">
+        <Link
+          href="/products"
+          className="inline-flex items-center gap-2 px-8 py-3 rounded-xl font-bold text-white transition hover:opacity-90"
+          style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}
+        >
+          عرض جميع المنتجات
+          <ArrowLeft size={18} />
+        </Link>
+      </div>
 
     </section>
   );

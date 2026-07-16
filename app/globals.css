@@ -1,4 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
 @import "tailwindcss";
 
 html {
@@ -10,7 +9,8 @@ body {
   background: #050510;
   color: #f1f5f9;
   overflow-x: hidden;
-  font-family: 'Cairo', sans-serif;
+  /* ✅ يستخدم CSS variable من next/font/google بدل @import المباشر */
+  font-family: var(--font-cairo), sans-serif;
 }
 
 * {

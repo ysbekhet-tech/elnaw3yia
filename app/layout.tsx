@@ -1,9 +1,19 @@
 import type { Metadata } from "next";
+import { Cairo } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import Providers from "./Providers";
 import LayoutShell from "@/components/LayoutShell";
 import { Toaster } from "react-hot-toast";
+
+// ✅ next/font/google: يحمّل الخط مع الـ build ويعمله self-hosting تلقائي
+// بدل الـ CSS @import اللي كان يعمل blocking request في وقت التحميل
+const cairo = Cairo({
+  subsets: ["arabic"],
+  weight: ["400", "600", "700", "800", "900"],
+  display: "swap",
+  variable: "--font-cairo",
+});
 
 export const metadata: Metadata = {
   title: "STATIONERY STORE",
@@ -16,8 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ar" dir="rtl" data-scroll-behavior="smooth">
-      <body>
+    <html lang="ar" dir="rtl" data-scroll-behavior="smooth" className={cairo.variable}>
+      <body className={cairo.className}>
         <Providers>
           <LayoutShell>
             {children}
@@ -26,7 +36,7 @@ export default function RootLayout({
             position="top-right"
             toastOptions={{
               style: {
-                fontFamily: "'Cairo', sans-serif",
+                fontFamily: "var(--font-cairo), sans-serif",
                 fontSize: "14px",
                 background: "rgba(15, 15, 35, 0.95)",
                 border: "1px solid rgba(124, 58, 237, 0.3)",

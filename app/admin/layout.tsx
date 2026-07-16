@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
 import { clearAuthToken, isAuthenticated, auth } from '@/lib/auth';
 import { LogOut, ShieldCheck, Package, ShoppingCart, Megaphone, Bell, X, Truck, Tags, Home, Menu, ExternalLink } from 'lucide-react';
+import LowStockNotification from '@/components/admin/LowStockNotification';
 
 interface Order { id: string; status: string; }
 
@@ -105,7 +106,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
       {sidebarOpen && <div className="fixed inset-0 z-40 bg-black/30 md:hidden" onClick={() => setSidebarOpen(false)}></div>}
       <main className="md:pr-72 min-h-screen transition-all duration-300">
-        <div className="p-6 md:p-10">
+        <div className="flex justify-end items-center px-6 py-4 md:px-10">
+          <LowStockNotification />
+        </div>
+        <div className="px-6 pb-6 md:px-10 md:pb-10">
           {children}
         </div>
       </main>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 
 export default function HeroSection() {
@@ -8,11 +9,17 @@ export default function HeroSection() {
     <section className="max-w-7xl mx-auto px-4 py-6">
       <div className="relative overflow-hidden rounded-[40px] min-h-[540px]">
 
-        {/* Background */}
-        <img
+        {/* ✅ Background — استبدلنا <img> بـ Next.js <Image> مع priority
+            priority: يحمّل الصورة دي أولًا (LCP element) بدل ما ينتظر
+            fill: بدل width/height ثابتة عشان تناسب أي حجم شاشة
+        */}
+        <Image
           src="/images/hero-bg.jpg"
-          className="absolute inset-0 w-full h-full object-cover"
           alt="Background"
+          fill
+          priority
+          className="object-cover"
+          sizes="100vw"
         />
 
         {/* Overlays */}
@@ -24,7 +31,7 @@ export default function HeroSection() {
         <div className="absolute inset-0 opacity-20"
           style={{ backgroundImage: "radial-gradient(circle, rgba(124,58,237,0.6) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
 
-        {/* Content - تم تعديل الهيكل عشان العنوان يبقى فوق في النص والباقي تحت */}
+        {/* Content */}
         <div className="relative z-10 flex flex-col justify-between h-full p-10 pb-16 min-h-[540px]">
 
           {/* 1. العنوان في النص من الأعلى */}

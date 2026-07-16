@@ -1,19 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Search, ShoppingCart, Heart, User, Menu, ChevronDown, X, LayoutGrid } from "lucide-react"; // ضفنا LayoutGrid
+import { Search, ShoppingCart, Heart, User, Menu, ChevronDown, X, LayoutGrid } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/app/context/CartContext";
-import { db } from "@/lib/firebase";
-import { collection, onSnapshot } from "firebase/firestore";
-
-interface Category {
-  id: string;
-  name: string;
-  icon: string;
-  imageUrl?: string;
-}
+// ✅ استخدام CategoriesContext المشترك بدل onSnapshot منفصل
+import { useCategories } from "@/app/context/CategoriesContext";
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -22,20 +15,13 @@ export default function Navbar() {
   const router = useRouter();
   const { cartCount, openCart } = useCart();
 
-  const [categories, setCategories] = useState<Category[]>([]);
+  // ✅ البيانات جاية من CategoriesContext — مش بيفتح listener جديد
+  const { categories } = useCategories();
 
   const categoriesRef = useRef<HTMLDivElement>(null);
   const categoriesBtnRef = useRef<HTMLButtonElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const menuBtnRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "categories"), (snapshot) => {
-      const catsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
-      setCategories(catsList);
-    });
-    return () => unsubscribe();
-  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,11 +66,13 @@ export default function Navbar() {
   }, [open]);
 
   useEffect(() => {
+    // ✅ بيغلق القوائم عند الـ scroll بس لو حاجة منهم مفتوحة
+    if (!categoriesOpen && !open) return;
     function handleScroll() {
       if (categoriesOpen) setCategoriesOpen(false);
       if (open) setOpen(false);
     }
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [categoriesOpen, open]);
 
@@ -106,8 +94,8 @@ export default function Navbar() {
             <span className="text-2xl font-black gradient-text">النوعية</span>
           </Link>
 
-          <form 
-            onSubmit={handleSearch} 
+          <form
+            onSubmit={handleSearch}
             className="hidden md:flex flex-1 items-center rounded-2xl overflow-hidden border"
             style={{ background: "rgba(255,255,255,0.05)", borderColor: "rgba(124,58,237,0.3)" }}
           >
@@ -184,7 +172,6 @@ export default function Navbar() {
                     boxShadow: "0 25px 50px rgba(124,58,237,0.2)"
                   }}
                 >
-                  {/* لينك جميع المنتجات المضاف هنا */}
                   <Link
                     href="/products"
                     onClick={() => setCategoriesOpen(false)}
@@ -218,7 +205,6 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* تم حذف "المنتجات" من هنا */}
             {[{ name: "الرئيسية", href: "/" },
               { name: "العروض", href: "/offers" },
               { name: "الجديد", href: "/new" },
@@ -255,7 +241,6 @@ export default function Navbar() {
                 </div>
               </form>
 
-              {/* لينك جميع المنتجات في الموبايل */}
               <Link
                 href="/products"
                 onClick={() => setOpen(false)}

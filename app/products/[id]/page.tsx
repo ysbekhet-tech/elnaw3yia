@@ -1,10 +1,12 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { db } from "@/lib/firebase";
-import { doc, onSnapshot } from "firebase/firestore";
+// ✅ استبدلنا onSnapshot بـ getDoc لأن بيانات المنتج مش محتاجة real-time
+// المخزون real-time جاي من useProductStock اللي عنده listener منفصل
+import { doc, getDoc } from "firebase/firestore";
 import { Product, ProductColor } from "@/types";
 import {
   ShoppingCart,
@@ -50,20 +52,23 @@ export default function ProductDetails() {
 
   useEffect(() => {
     if (!id) return;
-    const unsub = onSnapshot(
-      doc(db, "products", id as string),
-      (snap) => {
+
+    // ✅ getDoc بدل onSnapshot: one-time read بدل persistent connection
+    // المخزون real-time جاي من useProductStock — مش محتاجين listener هنا
+    const fetchProduct = async () => {
+      try {
+        const snap = await getDoc(doc(db, "products", id as string));
         if (snap.exists()) {
           setProduct({ id: snap.id, ...snap.data() } as Product);
         }
-        setLoading(false);
-      },
-      (error) => {
+      } catch (error) {
         console.error("Error fetching product:", error);
+      } finally {
         setLoading(false);
       }
-    );
-    return () => unsub();
+    };
+
+    fetchProduct();
   }, [id]);
 
   useEffect(() => {

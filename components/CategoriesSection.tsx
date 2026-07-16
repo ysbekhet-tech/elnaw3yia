@@ -1,29 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, useRef } from "react";
-import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-
-interface Category {
-  id: string;
-  name: string;
-  icon: string;
-  imageUrl?: string;
-}
+// ✅ استخدام CategoriesContext المشترك بدل onSnapshot منفصل
+import { useCategories } from "@/app/context/CategoriesContext";
 
 export default function CategoriesSection() {
-  const [categories, setCategories] = useState<Category[]>([]);
+  // ✅ البيانات جاية من CategoriesProvider — مفيش listener جديد بيتفتح هنا
+  const { categories } = useCategories();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "categories"), (snapshot) => {
-      const catsList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
-      setCategories(catsList);
-    });
-    return () => unsubscribe();
-  }, []);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollContainerRef.current) {
@@ -47,7 +33,7 @@ export default function CategoriesSection() {
         <div className="absolute start-0 top-0 bottom-0 w-12 z-10 pointer-events-none rounded-s-xl bg-gradient-to-l from-[#050510] to-transparent"></div>
         <div className="absolute end-0 top-0 bottom-0 w-12 z-10 pointer-events-none rounded-e-xl bg-gradient-to-r from-[#050510] to-transparent"></div>
         
-        {/* زرار الرجوع لليمين - يظهر على اليمين في RTL */}
+        {/* زرار الرجوع لليمين */}
         <button 
           onClick={() => scroll("right")}
           className="absolute start-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/10 backdrop-blur-md text-white/70 flex items-center justify-center hover:bg-purple-500 hover:text-white hover:scale-110 transition-all duration-300 shadow-lg border border-white/5"
@@ -56,7 +42,7 @@ export default function CategoriesSection() {
           <ChevronRight size={18} strokeWidth={2.5} />
         </button>
 
-        {/* زرار التقدم لليسار - يظهر على الشمال في RTL */}
+        {/* زرار التقدم لليسار */}
         <button 
           onClick={() => scroll("left")}
           className="absolute end-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/10 backdrop-blur-md text-white/70 flex items-center justify-center hover:bg-purple-500 hover:text-white hover:scale-110 transition-all duration-300 shadow-lg border border-white/5"
@@ -65,7 +51,7 @@ export default function CategoriesSection() {
           <ChevronLeft size={18} strokeWidth={2.5} />
         </button>
 
-        {/* صف الأقسام - إضافة justify-center لو الأقسام قليلة */}
+        {/* صف الأقسام */}
         <div 
           ref={scrollContainerRef}
           className={`flex items-center gap-4 overflow-x-auto scroll-smooth py-2 px-1 ${categories.length <= 5 ? 'justify-center' : ''}`}

@@ -48,6 +48,8 @@ export default function ProductsPage() {
   const [authChecked, setAuthChecked] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [catSearchTerm, setCatSearchTerm] = useState("");
 
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOption, setSortOption] = useState<"name-asc" | "name-desc" | "stock-asc" | "stock-desc" | "newest">("newest");
@@ -220,7 +222,7 @@ export default function ProductsPage() {
     setCatImageToCrop(null); 
   };
 
-  const handleCatImageFromUrl = useCallback(async (url: string) => { 
+  const handleCatImageFromUrl = useCallback(async (url: string, target: "add" | "edit" = "add") => { 
     try { 
       const response = await fetch(url); 
       const blob = await response.blob(); 
@@ -229,7 +231,7 @@ export default function ProductsPage() {
         return; 
       } 
       const reader = new FileReader(); 
-      reader.onloadend = () => openCatCropModal(reader.result as string, "add"); 
+      reader.onloadend = () => openCatCropModal(reader.result as string, target); 
       reader.readAsDataURL(blob); 
     } catch (error) { 
       console.error("Error loading image from URL:", error); 
@@ -286,6 +288,168 @@ export default function ProductsPage() {
       } 
     } 
   }, [handleCatImageFromUrl]);
+
+  const handleEditCatDrop = useCallback(async (e: React.DragEvent) => { 
+    e.preventDefault(); 
+    e.stopPropagation(); 
+    const files = e.dataTransfer.files; 
+    if (files.length > 0) { 
+      const file = files[0]; 
+      if (file.type.startsWith("image/")) { 
+        const reader = new FileReader(); 
+        reader.onloadend = () => openCatCropModal(reader.result as string, "edit"); 
+        reader.readAsDataURL(file); 
+      } 
+      return; 
+    } 
+    const items = e.dataTransfer.items; 
+    if (items) { 
+      for (let i = 0; i < items.length; i++) { 
+        const item = items[i]; 
+        if (item.kind === "string") { 
+          item.getAsString(async (url) => { 
+            if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || url.startsWith("http")) 
+              await handleCatImageFromUrl(url, "edit"); 
+          }); 
+        } 
+      } 
+    } 
+    const textData = e.dataTransfer.getData("text/plain"); 
+    if (textData && textData.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) 
+      await handleCatImageFromUrl(textData, "edit"); 
+    const uriList = e.dataTransfer.getData("text/uri-list"); 
+    if (uriList) { 
+      const urls = uriList.split("\n").filter((url) => url.trim() && !url.startsWith("#")); 
+      for (const url of urls) { 
+        if (url.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i)) 
+          await handleCatImageFromUrl(url, "edit"); 
+      } 
+    } 
+  }, [handleCatImageFromUrl]);
+
+  // Paste handler for Categories Modal
+  useEffect(() => {
+    if (!showCategoryModal) return;
+    const handlePaste = async (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' && target.getAttribute('type') === 'text') return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const cropTarget = editingCatId ? "edit" : "add";
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => openCatCropModal(reader.result as string, cropTarget);
+            reader.readAsDataURL(file);
+          }
+        }
+        else if (item.type === "text/plain") {
+          item.getAsString(async (text) => {
+            if (text.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || (text.startsWith("http") && (text.includes(".jpg") || text.includes(".png") || text.includes(".jpeg")))) {
+              e.preventDefault();
+              await handleCatImageFromUrl(text, cropTarget);
+            }
+          });
+        }
+      }
+    };
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [showCategoryModal, editingCatId, handleCatImageFromUrl]);
+
+  // Context menu for Categories Modal (Right Click -> Paste)
+  useEffect(() => {
+    if (!showCategoryModal) return;
+
+    const handleContextMenu = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      
+      const modalContent = document.getElementById("category-modal-content");
+      if (!modalContent || !modalContent.contains(target)) return;
+
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      e.preventDefault();
+
+      const existingMenu = document.getElementById('cat-context-menu');
+      if (existingMenu) existingMenu.remove();
+
+      const customMenu = document.createElement('div');
+      customMenu.id = 'cat-context-menu';
+      customMenu.className = 'fixed bg-white rounded-lg shadow-xl border z-[250] overflow-hidden';
+      customMenu.style.top = `${e.clientY}px`;
+      customMenu.style.left = `${e.clientX}px`;
+
+      const pasteOption = document.createElement('button');
+      pasteOption.innerHTML = `
+        <div class="flex items-center gap-2 px-4 py-2 hover:bg-purple-50 transition-colors w-full text-right">
+          <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+          </svg>
+          <span class="text-sm font-bold text-gray-700">لصق الصورة</span>
+          <span class="text-xs text-gray-400 mr-auto">Ctrl+V</span>
+        </div>
+      `;
+      pasteOption.className = 'w-full text-right';
+      
+      pasteOption.onclick = async () => {
+        try {
+          const cropTarget = editingCatId ? "edit" : "add";
+          const clipboardText = await navigator.clipboard.readText();
+          if (clipboardText && (clipboardText.match(/\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i) || clipboardText.startsWith('http'))) {
+            await handleCatImageFromUrl(clipboardText, cropTarget);
+          } else {
+            const clipboardItems = await navigator.clipboard.read();
+            for (const clipboardItem of clipboardItems) {
+              const imageTypes = clipboardItem.types.filter(type => type.startsWith('image/'));
+              for (const type of imageTypes) {
+                const blob = await clipboardItem.getType(type);
+                const reader = new FileReader();
+                reader.onloadend = () => openCatCropModal(reader.result as string, cropTarget);
+                reader.readAsDataURL(blob);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Failed to paste:', err);
+          setModalConfig({ isOpen: true, title: "تنبيه", message: "يرجى الضغط على Ctrl+V للصق الصورة لأن المتصفح يمنع القراءة المباشرة.", onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false })) });
+        }
+        if (document.body.contains(customMenu)) {
+          document.body.removeChild(customMenu);
+        }
+      };
+
+      customMenu.appendChild(pasteOption);
+      document.body.appendChild(customMenu);
+
+      const removeMenu = () => {
+        const menu = document.getElementById('cat-context-menu');
+        if (menu && document.body.contains(menu)) {
+          document.body.removeChild(menu);
+        }
+        document.removeEventListener('click', removeMenu);
+        document.removeEventListener('contextmenu', removeMenu);
+      };
+
+      setTimeout(() => {
+        document.addEventListener('click', removeMenu);
+        document.addEventListener('contextmenu', removeMenu);
+      }, 0);
+    };
+
+    document.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+      const existingMenu = document.getElementById('cat-context-menu');
+      if (existingMenu && document.body.contains(existingMenu)) {
+        document.body.removeChild(existingMenu);
+      }
+    };
+  }, [showCategoryModal, editingCatId, handleCatImageFromUrl]);
 
   const handleToggleVisibility = async (id: string, currentVisibility: boolean) => { 
     try { 
@@ -477,25 +641,150 @@ const handleUpdateProduct = async (updatedData: Partial<Product>) => {
 
       <div className="max-w-7xl mx-auto px-4 py-8">
 
-        <div className="bg-white rounded-2xl p-6 mb-8 border border-slate-200 shadow-sm">
-          <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 mb-5"><Tags size={20} className="text-purple-600" />إدارة الأقسام</h2>
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-slate-600 text-sm font-bold whitespace-nowrap">➕ إضافة قسم:</span>
-              {!newCatImagePreview && ( <select value={newCatIcon} onChange={(e) => setNewCatIcon(e.target.value)} className="h-10 px-3 rounded-lg text-slate-900 text-sm outline-none bg-slate-50 border border-slate-300 focus:border-purple-400"> {iconOptions.map((item) => ( <option key={item.icon} value={item.icon}>{item.icon} {item.label}</option> ))} </select> )}
-              <div ref={catDropZoneRef} onDragOver={handleCatDragOver} onDragLeave={handleCatDragLeave} onDrop={handleCatDrop} onClick={() => fileInputRef.current?.click()} className={`flex items-center gap-2 px-3 h-10 rounded-lg cursor-pointer transition border ${isCatImageDragging ? "bg-purple-50 border-purple-400" : "bg-slate-50 border-slate-300 hover:border-purple-400"}`}>
-                <ImagePlus size={16} className="text-purple-600" /><span className="text-xs text-slate-700">{isCatImageDragging ? "أفلت الصورة هنا..." : "رفع صورة"}</span>
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} ref={fileInputRef} />
+        <div className="bg-white rounded-2xl p-6 mb-8 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 mb-1">
+              <Tags size={20} className="text-purple-600" />
+              إدارة الأقسام
+            </h2>
+            <p className="text-sm font-medium text-slate-500">
+              يوجد حالياً <span className="font-bold text-purple-600">{categories.length}</span> قسم في المكتبة.
+            </p>
+          </div>
+          
+          <button 
+            onClick={() => setShowCategoryModal(true)}
+            className="px-8 py-3 rounded-xl font-black text-white transition hover:opacity-90 hover:scale-105 active:scale-95 shadow-md shadow-purple-200 flex items-center gap-2"
+            style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}
+          >
+            <Tags size={18} />
+            فتح إدارة الأقسام
+          </button>
+        </div>
+
+        {/* ✅ نافذة إدارة الأقسام (Modal) */}
+        {showCategoryModal && (
+          <div className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-slate-50 rounded-3xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in duration-200">
+              
+              {/* هيدر المودال */}
+              <div className="p-5 border-b border-slate-200 bg-white flex justify-between items-center sticky top-0 z-10">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
+                    <Tags size={26} className="text-purple-600" />
+                    إدارة الأقسام المتقدمة
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-1">يمكنك إضافة، تعديل، أو حذف الأقسام من هنا.</p>
+                </div>
+                <button 
+                  onClick={() => setShowCategoryModal(false)} 
+                  className="p-2 hover:bg-red-50 bg-slate-50 border border-slate-100 text-slate-400 hover:text-red-500 rounded-xl transition"
+                >
+                  <X size={24} />
+                </button>
               </div>
-              {newCatImagePreview && ( <div className="relative w-10 h-10 rounded-full overflow-hidden border border-purple-400 flex-shrink-0"> <img src={newCatImagePreview} alt="preview" className="w-full h-full object-cover" /> <button onClick={() => { setNewCatImage(null); setNewCatImagePreview(null); if(fileInputRef.current) fileInputRef.current.value = ""; }} className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px]">×</button> </div> )}
-              <input type="text" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="اسم القسم الجديد..." className="flex-1 h-10 px-3 rounded-lg text-slate-900 text-sm outline-none placeholder:text-slate-400 min-w-[180px] bg-slate-50 border border-slate-300 focus:border-purple-400" onKeyDown={(e) => e.key === "Enter" && handleAddCategory()} />
-              <button onClick={handleAddCategory} className="h-10 px-5 rounded-lg font-bold text-white text-sm transition hover:opacity-90 whitespace-nowrap" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}>إضافة</button>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {categories.length === 0 ? ( <span className="text-xs text-slate-400">لا توجد أقسام بعد...</span> ) : ( categories.map((cat) => ( <div key={cat.id} className="flex items-center gap-2 px-3 py-1.5 rounded-full group transition bg-purple-50 border border-purple-200"> {editingCatId === cat.id ? ( <> <div className="relative w-6 h-6 rounded-full overflow-hidden border border-purple-300 cursor-pointer flex-shrink-0 flex items-center justify-center bg-white" onClick={() => editCatFileInputRef.current?.click()}> {(editCatImagePreview || cat.imageUrl) ? <img src={editCatImagePreview || cat.imageUrl} alt="" className="w-full h-full object-cover" /> : <span className="text-[10px]">{cat.icon}</span>} <input type="file" accept="image/*" className="hidden" onChange={handleEditCatImageUpload} ref={editCatFileInputRef} /> </div> <input type="text" value={editingCatName} onChange={(e) => setEditingCatName(e.target.value)} className="w-24 px-2 py-0.5 text-xs border rounded outline-none focus:border-purple-400 !text-black bg-white" /> <button onClick={() => handleUpdateCategory(cat.id)} className="text-green-600 hover:text-green-800"><Check size={14}/></button> <button onClick={() => handleCancelEditCategory()} className="text-red-500 hover:text-red-700"><X size={14}/></button> </> ) : ( <> {cat.imageUrl ? <img src={cat.imageUrl} alt={cat.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" /> : <span className="text-sm">{cat.icon}</span>} <span className="text-xs font-bold text-purple-700">{cat.name}</span> <button onClick={() => handleStartEditCategory(cat)} className="text-slate-400 hover:text-blue-500 transition opacity-0 group-hover:opacity-100" title="تعديل القسم"><Edit2 size={14} /></button> <button onClick={() => handleDeleteCategory(cat.id, cat.name)} className="text-slate-400 hover:text-red-500 transition opacity-0 group-hover:opacity-100" title="حذف القسم"><X size={14} /></button> </> )} </div> )) )}
+
+              {/* محتوى المودال */}
+              <div id="category-modal-content" className="p-6 overflow-y-auto custom-scrollbar flex-1">
+                
+                {/* نموذج إضافة قسم جديد */}
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6">
+                  <h3 className="text-sm font-black text-slate-800 mb-4 flex items-center gap-2">
+                    <Plus size={16} className="text-purple-600" />
+                    إضافة قسم جديد
+                  </h3>
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    {!newCatImagePreview && (
+                      <select value={newCatIcon} onChange={(e) => setNewCatIcon(e.target.value)} className="h-11 px-3 rounded-xl text-slate-900 text-sm font-bold outline-none bg-slate-50 border border-slate-300 focus:border-purple-400 w-full sm:w-auto">
+                        {iconOptions.map((item) => ( <option key={item.icon} value={item.icon}>{item.icon} {item.label}</option> ))}
+                      </select>
+                    )}
+                    <div ref={catDropZoneRef} onDragOver={handleCatDragOver} onDragLeave={handleCatDragLeave} onDrop={handleCatDrop} onClick={() => fileInputRef.current?.click()} className={`flex items-center justify-center gap-2 px-4 h-11 rounded-xl cursor-pointer transition border w-full sm:w-auto ${isCatImageDragging ? "bg-purple-50 border-purple-400" : "bg-slate-50 border-slate-300 hover:border-purple-400"}`}>
+                      <ImagePlus size={18} className="text-purple-600" />
+                      <span className="text-sm font-bold text-slate-700">{isCatImageDragging ? "أفلت الصورة هنا..." : "رفع صورة"}</span>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} ref={fileInputRef} />
+                    </div>
+                    {newCatImagePreview && (
+                      <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-purple-400 flex-shrink-0 shadow-sm">
+                        <img src={newCatImagePreview} alt="preview" className="w-full h-full object-cover" />
+                        <button onClick={() => { setNewCatImage(null); setNewCatImagePreview(null); if(fileInputRef.current) fileInputRef.current.value = ""; }} className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs border border-white">×</button>
+                      </div>
+                    )}
+                    <input type="text" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="اكتب اسم القسم هنا..." className="flex-1 h-11 px-4 rounded-xl font-bold text-slate-900 text-sm outline-none placeholder:text-slate-400 placeholder:font-normal bg-slate-50 border border-slate-300 focus:border-purple-400 w-full" onKeyDown={(e) => e.key === "Enter" && handleAddCategory()} />
+                    <button onClick={handleAddCategory} className="h-11 px-8 rounded-xl font-black text-white text-sm transition hover:opacity-90 w-full sm:w-auto shadow-sm" style={{ background: "linear-gradient(135deg, #7c3aed, #ec4899)" }}>
+                      حفظ القسم
+                    </button>
+                  </div>
+                </div>
+
+                {/* رأس قسم الأقسام الحالية وشريط البحث */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                  <h3 className="text-sm font-black text-slate-800">الأقسام الحالية ({categories.length})</h3>
+                  <div className="relative w-full sm:w-64">
+                    <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input 
+                      type="text" 
+                      placeholder="ابحث عن قسم..." 
+                      value={catSearchTerm}
+                      onChange={(e) => setCatSearchTerm(e.target.value)}
+                      className="w-full h-10 pr-9 pl-3 rounded-lg text-sm outline-none bg-white border border-slate-200 focus:border-purple-400 text-black shadow-sm"
+                    />
+                  </div>
+                </div>
+
+                {categories.length === 0 ? (
+                  <div className="text-center py-10 bg-white rounded-2xl border border-slate-200 border-dashed">
+                    <span className="text-sm font-bold text-slate-400">لا توجد أقسام مسجلة حتى الآن.</span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                    {categories.filter(c => c.name.toLowerCase().includes(catSearchTerm.toLowerCase())).map((cat) => (
+                      <div key={cat.id} className="relative group bg-white border border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center gap-3 hover:border-purple-300 hover:shadow-md transition-all h-[130px]">
+                        
+                        {/* أزرار التعديل والحذف (تظهر عند الـ Hover) */}
+                        {editingCatId !== cat.id && (
+                          <div className="absolute top-2 left-2 right-2 flex justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onClick={() => handleDeleteCategory(cat.id, cat.name)} className="w-7 h-7 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg flex items-center justify-center transition border border-red-100" title="حذف">
+                              <X size={14} />
+                            </button>
+                            <button onClick={() => handleStartEditCategory(cat)} className="w-7 h-7 bg-blue-50 hover:bg-blue-100 text-blue-500 rounded-lg flex items-center justify-center transition border border-blue-100" title="تعديل">
+                              <Edit2 size={14} />
+                            </button>
+                          </div>
+                        )}
+
+                        {editingCatId === cat.id ? (
+                          <div className="flex flex-col items-center gap-2 w-full">
+                            <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-purple-300 cursor-pointer flex-shrink-0 flex items-center justify-center bg-slate-50 hover:border-purple-500 transition-colors" 
+                              onClick={() => editCatFileInputRef.current?.click()}
+                              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                              onDrop={handleEditCatDrop}
+                            >
+                              {(editCatImagePreview || cat.imageUrl) ? <img src={editCatImagePreview || cat.imageUrl} alt="" className="w-full h-full object-cover" /> : <span className="text-lg">{cat.icon}</span>}
+                              <input type="file" accept="image/*" className="hidden" onChange={handleEditCatImageUpload} ref={editCatFileInputRef} />
+                            </div>
+                            <input type="text" value={editingCatName} onChange={(e) => setEditingCatName(e.target.value)} className="w-full px-2 py-1.5 text-xs font-bold text-center border border-purple-300 rounded-lg outline-none bg-white text-black" />
+                            <div className="flex items-center justify-center gap-2 w-full mt-1">
+                              <button onClick={() => handleUpdateCategory(cat.id)} className="flex-1 bg-green-500 text-white rounded-lg py-1.5 flex items-center justify-center hover:bg-green-600 transition"><Check size={14}/></button>
+                              <button onClick={() => handleCancelEditCategory()} className="flex-1 bg-slate-200 text-slate-700 rounded-lg py-1.5 flex items-center justify-center hover:bg-slate-300 transition"><X size={14}/></button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-100 group-hover:border-purple-200 transition-colors flex items-center justify-center bg-slate-50 mt-2">
+                              {cat.imageUrl ? <img src={cat.imageUrl} alt={cat.name} className="w-full h-full object-cover" /> : <span className="text-2xl">{cat.icon}</span>}
+                            </div>
+                            <span className="text-sm font-black text-slate-800 text-center line-clamp-1 w-full px-1">{cat.name}</span>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
