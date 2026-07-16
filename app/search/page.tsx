@@ -4,43 +4,90 @@ import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { Product } from "@/types";
 import ProductCard from "@/components/ProductCard";
-import { Search, PackageOpen, ArrowRight } from "lucide-react";
+import { Search, PackageOpen, ArrowRight, ChevronRight, ChevronLeft } from "lucide-react";
+
+const RESULTS_PER_PAGE = 30;
 
 function SearchContent() {
   const searchParams = useSearchParams();
-  const query = searchParams.get("q") || "";
+  const query_ = searchParams.get("q") || "";
 
-  const [results, setResults] = useState<Product[]>([]);
+  const [allResults, setAllResults] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
-    if (query) {
-      fetchResults();
+    if (query_.trim()) {
+      fetchResults(query_.trim());
     } else {
-      setResults([]);
+      setAllResults([]);
       setLoading(false);
     }
-  }, [query]);
+    setCurrentPage(1);
+  }, [query_]);
 
-  const fetchResults = async () => {
+  const fetchResults = async (searchTerm: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setResults(data);
-      } else {
-        setResults([]);
-      }
+      const q = query(
+        collection(db, "products"),
+        where("isActive", "!=", false)
+      );
+      const snapshot = await getDocs(q);
+
+      const allProducts = snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as Product)
+      );
+
+      const lowerSearch = searchTerm.toLowerCase();
+      const filtered = allProducts.filter((p) =>
+        p.name?.toLowerCase().includes(lowerSearch) ||
+        p.category?.toLowerCase().includes(lowerSearch) ||
+        p.description?.toLowerCase().includes(lowerSearch)
+      );
+
+      setAllResults(filtered);
     } catch (error) {
       console.error("Error searching:", error);
-      setResults([]);
+      setAllResults([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const totalPages = Math.ceil(allResults.length / RESULTS_PER_PAGE);
+  const currentResults = allResults.slice(
+    (currentPage - 1) * RESULTS_PER_PAGE,
+    currentPage * RESULTS_PER_PAGE
+  );
+
+  const goToPage = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const getPageNumbers = () => {
+    const maxVisible = 5;
+    const pages = [];
+
+    if (totalPages <= maxVisible) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+      return pages;
+    }
+
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let endPage = startPage + maxVisible - 1;
+
+    if (endPage > totalPages) {
+      endPage = totalPages;
+      startPage = endPage - maxVisible + 1;
+    }
+
+    for (let i = startPage; i <= endPage; i++) pages.push(i);
+    return pages;
   };
 
   return (
@@ -51,10 +98,10 @@ function SearchContent() {
         <div className="mb-10">
           <h1 className="text-3xl font-black text-white flex items-center gap-3">
             <Search size={28} className="text-purple-400" />
-            نتائج البحث عن: <span className="gradient-text">&quot;{query}&quot;</span>
+            نتائج البحث عن: <span className="gradient-text">&quot;{query_}&quot;</span>
           </h1>
           <p className="text-slate-500 mt-2">
-            {loading ? "جاري البحث..." : `تم العثور على ${results.length} منتج`}
+            {loading ? "جاري البحث..." : `تم العثور على ${allResults.length} منتج`}
           </p>
         </div>
 
@@ -66,13 +113,13 @@ function SearchContent() {
               style={{ border: "3px solid rgba(124,58,237,0.2)", borderTop: "3px solid #7c3aed" }}
             />
           </div>
-        ) : !query.trim() ? (
+        ) : !query_.trim() ? (
           <div className="text-center py-20">
             <Search size={64} className="mx-auto text-slate-700 mb-4" />
             <h2 className="text-2xl font-black text-white mb-2">ابحث عن منتجاتك المفضلة</h2>
             <p className="text-slate-500">استخدم شريط البحث أعلاه للعثور على ما تريد</p>
           </div>
-        ) : results.length === 0 ? (
+        ) : allResults.length === 0 ? (
           <div className="text-center py-20">
             <PackageOpen size={64} className="mx-auto text-slate-700 mb-4" />
             <h2 className="text-2xl font-black text-white mb-2">مفيش نتائج</h2>
@@ -86,22 +133,71 @@ function SearchContent() {
             </Link>
           </div>
         ) : (
-          /* عرض النتائج باستخدام ProductCard */
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {results.map((product) => {
-              const available = (product.stock || 0) - ((product as any).reserved || 0);
-              return (
-                <div key={product.id} className="relative">
-                  {available <= 0 && (
-                    <div className="absolute inset-0 z-10 bg-black/60 rounded-xl flex items-center justify-center pointer-events-none">
-                      <span className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-bold">نفذت الكمية</span>
-                    </div>
-                  )}
-                  <ProductCard product={product} viewMode="grid" />
-                </div>
-              );
-            })}
-          </div>
+          <>
+            {/* عرض النتائج باستخدام ProductCard */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {currentResults.map((product) => {
+                const available = (product.stock || 0) - ((product as any).reserved || 0);
+                return (
+                  <div key={product.id} className="relative">
+                    {available <= 0 && (
+                      <div className="absolute inset-0 z-10 bg-black/60 rounded-xl flex items-center justify-center pointer-events-none">
+                        <span className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-bold">نفذت الكمية</span>
+                      </div>
+                    )}
+                    <ProductCard product={product} viewMode="grid" />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* الترقيم (Pagination) */}
+            {totalPages > 1 && (
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-10">
+                <button
+                  onClick={() => goToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className={`p-2 rounded-lg transition ${
+                    currentPage === 1
+                      ? "text-slate-700 cursor-not-allowed"
+                      : "text-slate-300 hover:bg-purple-500/10 hover:text-purple-400"
+                  }`}
+                >
+                  <ChevronRight size={18} />
+                </button>
+
+                {getPageNumbers().map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => goToPage(page)}
+                    className={`w-9 h-9 rounded-lg text-sm font-bold transition ${
+                      currentPage === page
+                        ? "gradient-bg text-white"
+                        : "text-slate-300 hover:bg-purple-500/10 hover:text-purple-400"
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => goToPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className={`p-2 rounded-lg transition ${
+                    currentPage === totalPages
+                      ? "text-slate-700 cursor-not-allowed"
+                      : "text-slate-300 hover:bg-purple-500/10 hover:text-purple-400"
+                  }`}
+                >
+                  <ChevronLeft size={18} />
+                </button>
+
+                <span className="text-xs text-slate-500 font-bold mr-2 w-full text-center sm:w-auto sm:text-start mt-2 sm:mt-0">
+                  {allResults.length} منتج - صفحة {currentPage} من {totalPages}
+                </span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

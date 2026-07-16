@@ -16,7 +16,6 @@ export async function GET(request: Request) {
 
   try {
     const now = Date.now();
-    // Cache the products in memory for 5 minutes to avoid excessive Firestore reads
     if (cachedProducts.length === 0 || now - lastFetchTime > CACHE_DURATION) {
       const snap = await getDocs(collection(db, 'products'));
       cachedProducts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -29,7 +28,6 @@ export async function GET(request: Request) {
       p.description?.toLowerCase().includes(query)
     );
 
-    // Limit the results to 50 items to avoid large payloads
     return NextResponse.json(filtered.slice(0, 50));
   } catch (error) {
     console.error('Search API Error:', error);
