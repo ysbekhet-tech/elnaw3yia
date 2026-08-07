@@ -38,23 +38,23 @@ export default function RootLayout({
               style: {
                 fontFamily: "var(--font-cairo), sans-serif",
                 fontSize: "14px",
-                background: "rgba(15, 15, 35, 0.95)",
+                background: "#ffffff",
                 border: "1px solid rgba(124, 58, 237, 0.3)",
-                color: "#f1f5f9",
-                backdropFilter: "blur(20px)",
+                color: "#1e293b",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
               },
               success: {
                 style: {
-                  background: "rgba(15, 15, 35, 0.95)",
+                  background: "#ffffff",
                   border: "1px solid rgba(34, 197, 94, 0.4)",
-                  color: "#86efac",
+                  color: "#15803d",
                 },
               },
               error: {
                 style: {
-                  background: "rgba(15, 15, 35, 0.95)",
+                  background: "#ffffff",
                   border: "1px solid rgba(239, 68, 68, 0.4)",
-                  color: "#fca5a5",
+                  color: "#b91c1c",
                 },
               },
             }}

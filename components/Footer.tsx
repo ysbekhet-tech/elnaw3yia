@@ -21,15 +21,15 @@ export default function Footer() {
       </a>
 
       {/* كود الفوتر الأساسي */}
-      <footer style={{ background: "rgba(5,5,16,0.98)", borderTop: "1px solid rgba(124,58,237,0.2)" }} className="mt-16">
+      <footer style={{ background: "#f8fafc", borderTop: "1px solid rgba(124,58,237,0.15)" }} className="mt-16">
         <div className="max-w-7xl mx-auto px-4 py-14 grid grid-cols-1 md:grid-cols-3 gap-10">
 
           <div>
             <div className="text-2xl font-black mb-4">
-              <span className="text-white">المكتبة</span>
+              <span className="text-slate-800">المكتبة</span>
               <span className="gradient-text mr-1">النوعية</span>
             </div>
-            <p className="text-slate-500 text-sm leading-relaxed mb-5">
+            <p className="text-slate-600 text-sm leading-relaxed mb-5">
               متجرك الأول للأدوات المكتبية والمدرسية والهندسية. جودة عالية وأسعار منافسة في بورسعيد، مصر.
             </p>
             <div className="flex gap-2">
@@ -48,7 +48,7 @@ export default function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-9 h-9 rounded-xl flex items-center justify-center text-sm hover:scale-110 transition"
-                  style={{ background: "rgba(124,58,237,0.15)", border: "1px solid rgba(124,58,237,0.25)" }}
+                  style={{ background: "rgba(124,58,237,0.08)", border: "1px solid rgba(124,58,237,0.2)" }}
                 >
                   {social.icon}
                 </a>
@@ -57,7 +57,7 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-white font-black mb-5 text-sm">روابط سريعة</h4>
+            <h4 className="text-slate-800 font-black mb-5 text-sm">روابط سريعة</h4>
             <ul className="flex flex-col gap-3">
               {[
                 { name: "الصفحة الرئيسية", href: "/" },
@@ -70,7 +70,7 @@ export default function Footer() {
                 <li key={link.name}>
                   <Link
                     href={link.href}
-                    className="text-slate-500 text-sm hover:text-purple-400 transition font-medium"
+                    className="text-slate-600 text-sm hover:text-purple-600 transition font-medium"
                   >
                     {link.name}
                   </Link>
@@ -80,8 +80,8 @@ export default function Footer() {
           </div>
 
           <div>
-            <h4 className="text-white font-black mb-3 text-sm">النشرة البريدية</h4>
-            <p className="text-slate-500 text-xs mb-4">اشترك واحصل على آخر العروض</p>
+            <h4 className="text-slate-800 font-black mb-3 text-sm">النشرة البريدية</h4>
+            <p className="text-slate-600 text-xs mb-4">اشترك واحصل على آخر العروض</p>
             <div
               className="flex rounded-xl overflow-hidden"
               style={{ border: "1px solid rgba(124,58,237,0.3)" }}
@@ -89,8 +89,8 @@ export default function Footer() {
               <input
                 type="email"
                 placeholder="بريدك الإلكتروني..."
-                className="flex-1 px-3 py-2.5 text-xs text-white outline-none placeholder-slate-600"
-                style={{ background: "rgba(255,255,255,0.05)" }}
+                className="flex-1 px-3 py-2.5 text-xs text-slate-800 outline-none placeholder-slate-400"
+                style={{ background: "#ffffff" }}
               />
               <button className="gradient-bg px-4 text-white text-sm hover:opacity-90 transition">
                 ←
@@ -98,9 +98,9 @@ export default function Footer() {
             </div>
             
             <div className="mt-6">
-              <h4 className="text-white font-black mb-3 text-sm">تواصل معنا</h4>
-              <p className="text-slate-500 text-xs mb-2">📞 01201930025</p>
-              <p className="text-slate-500 text-xs mb-4">📍 بورسعيد، مصر</p>
+              <h4 className="text-slate-800 font-black mb-3 text-sm">تواصل معنا</h4>
+              <p className="text-slate-600 text-xs mb-2">📞 01201930025</p>
+              <p className="text-slate-600 text-xs mb-4">📍 بورسعيد، مصر</p>
               
               <a
                 href={`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`}
@@ -121,7 +121,7 @@ export default function Footer() {
           className="border-t py-5 px-4"
           style={{ borderColor: "rgba(124,58,237,0.15)" }}
         >
-          <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2 text-xs text-slate-600">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2 text-xs text-slate-500">
             <span>2026 المكتبة النوعية - جميع الحقوق محفوظة</span>
             <span>Visa | Mastercard | Vodafone Cash | InstaPay</span>
           </div>

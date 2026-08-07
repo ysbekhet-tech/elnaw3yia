@@ -202,18 +202,18 @@ export default function ProductDetails() {
 
         {/* ✅ اسم المنتج */}
         <div className="mb-2">
-          <p className="text-purple-400 font-bold text-sm mb-1">{product.category}</p>
-          <h1 className="text-2xl font-black text-white">{product.name}</h1>
+          <p className="text-purple-600 font-bold text-sm mb-1">{product.category}</p>
+          <h1 className="text-2xl font-black text-slate-800">{product.name}</h1>
         </div>
 
         {/* ✅ السعر (تحت الاسم) */}
         <div className="flex items-center gap-3 mb-6">
-          <span className="text-2xl font-black text-purple-400">{finalItemPrice} جنيه</span>
+          <span className="text-2xl font-black text-purple-600">{finalItemPrice} جنيه</span>
           {product.originalPrice && product.originalPrice > 0 && (
-            <span className="text-base text-slate-500 line-through">{product.originalPrice} جنيه</span>
+            <span className="text-base text-slate-400 line-through">{product.originalPrice} جنيه</span>
           )}
           {discount > 0 && (
-            <span className="bg-pink-500/20 text-pink-400 text-xs font-bold px-2 py-1 rounded-full border border-pink-500/30">
+            <span className="bg-pink-500/10 text-pink-600 text-xs font-bold px-2 py-1 rounded-full border border-pink-500/20">
               خصم {discount}%
             </span>
           )}
@@ -223,7 +223,7 @@ export default function ProductDetails() {
           {/* ✅ العمود الأيسر: صور + مخزون + كمية + زر */}
           <div className="flex flex-col gap-4">
             {/* مربع الصور */}
-            <div className="bg-slate-800 rounded-2xl overflow-hidden border border-slate-700 relative group h-[400px]">
+            <div className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm relative group h-[400px]">
               <div
                 className="relative h-full cursor-pointer overflow-hidden"
                 onClick={() => setShowFullImage(true)}
@@ -238,13 +238,13 @@ export default function ProductDetails() {
                     priority
                   />
                 ) : (
-                  <div className="w-full h-full bg-slate-700 flex items-center justify-center">
-                    <span className="text-slate-500">لا توجد صورة</span>
+                  <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+                    <span className="text-slate-400">لا توجد صورة</span>
                   </div>
                 )}
 
                 <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
-                  <span className="bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-lg text-sm font-bold">
+                  <span className="bg-white/90 backdrop-blur-sm text-slate-800 px-4 py-2 rounded-lg text-sm font-bold shadow-md">
                     اضغط لعرض الصورة
                   </span>
                 </div>
@@ -253,13 +253,13 @@ export default function ProductDetails() {
                   <>
                     <button
                       onClick={(e) => { e.stopPropagation(); prevImage(); }}
-                      className="absolute start-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-sm transition z-10"
+                      className="absolute start-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 hover:bg-white text-slate-700 flex items-center justify-center backdrop-blur-sm transition z-10 shadow-sm"
                     >
                       <ChevronRight size={20} className="rtl:rotate-180" />
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); nextImage(); }}
-                      className="absolute end-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center backdrop-blur-sm transition z-10"
+                      className="absolute end-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 hover:bg-white text-slate-700 flex items-center justify-center backdrop-blur-sm transition z-10 shadow-sm"
                     >
                       <ChevronLeft size={20} className="rtl:rotate-180" />
                     </button>
@@ -276,9 +276,9 @@ export default function ProductDetails() {
                       className="transition-all"
                     >
                       {currentImageIndex === idx ? (
-                        <CircleDot size={14} className="text-white fill-white" />
+                        <CircleDot size={14} className="text-purple-600 fill-purple-600" />
                       ) : (
-                        <Circle size={10} className="text-white/60 hover:text-white" />
+                        <Circle size={10} className="text-slate-400 hover:text-slate-600" />
                       )}
                     </button>
                   ))}
@@ -287,21 +287,21 @@ export default function ProductDetails() {
             </div>
 
             {/* المخزون */}
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex flex-col gap-2">
+            <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-3 flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <Package size={16} className="text-purple-400" />
-                <span className="text-slate-300 text-sm font-bold">
-                  المتوفر: <span className="text-white ms-2">{stock}</span>
+                <Package size={16} className="text-purple-600" />
+                <span className="text-slate-600 text-sm font-bold">
+                  المتوفر: <span className="text-slate-800 ms-2">{stock}</span>
                 </span>
               </div>
               {cartQuantity > 0 && (
-                <div className="flex items-center gap-2 text-sm text-amber-400">
+                <div className="flex items-center gap-2 text-sm text-amber-600 font-bold">
                   <ShoppingCart size={16} />
-                  <span>في السلة: <span className="font-bold">{cartQuantity}</span></span>
+                  <span>في السلة: <span>{cartQuantity}</span></span>
                 </div>
               )}
               <div className="flex items-center gap-2 text-sm">
-                <span className={`font-bold ${canAddMore > 0 ? "text-green-400" : "text-red-400"}`}>
+                <span className={`font-bold ${canAddMore > 0 ? "text-emerald-600" : "text-red-500"}`}>
                   {canAddMore > 0 ? `متاح للطلب: ${canAddMore}` : "نفذت الكمية"}
                 </span>
               </div>
@@ -311,21 +311,21 @@ export default function ProductDetails() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-10 h-10 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-purple-600 transition"
+                className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center hover:bg-purple-600 hover:text-white transition text-slate-700"
               >
                 <Minus size={16} />
               </button>
-              <span className="text-xl font-black min-w-[40px] text-center">{quantity}</span>
+              <span className="text-xl font-black min-w-[40px] text-center text-slate-800">{quantity}</span>
               <button
                 onClick={() => setQuantity((q) => Math.min(canAddMore || 1, q + 1))}
                 disabled={canAddMore <= 0}
-                className="w-10 h-10 rounded-lg bg-slate-700 border border-slate-600 flex items-center justify-center hover:bg-purple-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center hover:bg-purple-600 hover:text-white transition disabled:opacity-50 disabled:cursor-not-allowed text-slate-700"
               >
                 <Plus size={16} />
               </button>
-              <div className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 ms-auto">
-                <span className="text-slate-400 text-xs">الإجمالي: </span>
-                <span className="font-black text-purple-400 text-sm ms-1">{finalItemPrice * quantity} جنيه</span>
+              <div className="bg-white border border-slate-200 shadow-sm rounded-lg px-3 py-2 ms-auto">
+                <span className="text-slate-500 text-xs">الإجمالي: </span>
+                <span className="font-black text-purple-600 text-sm ms-1">{finalItemPrice * quantity} جنيه</span>
               </div>
             </div>
 
@@ -335,9 +335,9 @@ export default function ProductDetails() {
               disabled={canAddMore <= 0}
               className={`w-full h-12 rounded-xl font-bold flex items-center justify-center gap-2 transition text-sm ${
                 added
-                  ? "bg-green-500 text-white"
+                  ? "bg-green-600 text-white"
                   : canAddMore <= 0
-                    ? "bg-slate-700 text-slate-500 cursor-not-allowed"
+                    ? "bg-slate-200 text-slate-400 cursor-not-allowed"
                     : "bg-purple-600 hover:bg-purple-700 text-white"
               }`}
             >
@@ -350,24 +350,24 @@ export default function ProductDetails() {
           <div className="flex flex-col gap-4 h-full">
             {/* الوصف */}
             {product.description ? (
-              <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 h-[400px] overflow-y-auto">
-                <h3 className="text-sm font-bold text-purple-400 mb-2">الوصف</h3>
-                <p className="text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">
+              <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-4 h-[400px] overflow-y-auto">
+                <h3 className="text-sm font-bold text-purple-600 mb-2">الوصف</h3>
+                <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">
                   {product.description}
                 </p>
               </div>
             ) : (
-              <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 h-[400px] flex items-center justify-center">
-                <span className="text-slate-500 text-sm">لا يوجد وصف</span>
+              <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-4 h-[400px] flex items-center justify-center">
+                <span className="text-slate-400 text-sm">لا يوجد وصف</span>
               </div>
             )}
 
             {/* الألوان */}
             {product.colors && product.colors.length > 0 && (
-              <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                <h3 className="text-sm font-bold text-purple-400 mb-3">
+              <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-4">
+                <h3 className="text-sm font-bold text-purple-600 mb-3">
                   الألوان:
-                  <span className="text-white ms-1">{product.colors[selectedColorIndex].name}</span>
+                  <span className="text-slate-800 ms-1">{product.colors[selectedColorIndex].name}</span>
                 </h3>
                 <div className="flex flex-wrap gap-3">
                   {product.colors.map((color: ProductColor, index: number) => (
@@ -377,8 +377,8 @@ export default function ProductDetails() {
                       title={color.name}
                       className={`w-12 h-12 rounded-full transition-all duration-200 border-2 flex items-center justify-center ${
                         selectedColorIndex === index
-                          ? "border-purple-500 scale-110 shadow-lg shadow-purple-500/30"
-                          : "border-slate-600 hover:border-slate-400"
+                          ? "border-purple-600 scale-110 shadow-md shadow-purple-500/20"
+                          : "border-slate-300 hover:border-slate-400"
                       }`}
                       style={{ backgroundColor: color.hex }}
                     >
@@ -397,8 +397,8 @@ export default function ProductDetails() {
 
             {/* المقاسات */}
             {hasSizes && (
-              <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                <h3 className="text-sm font-bold text-purple-400 mb-3">المقاسات:</h3>
+              <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-4">
+                <h3 className="text-sm font-bold text-purple-600 mb-3">المقاسات:</h3>
                 <div
                   className="grid grid-cols-4 gap-2 overflow-y-auto"
                   style={{ maxHeight: "216px" }}
@@ -409,8 +409,8 @@ export default function ProductDetails() {
                       onClick={() => setSelectedSizeIndex(index)}
                       className={`aspect-square flex flex-col items-center justify-center rounded-xl border-2 transition-all duration-200 ${
                         selectedSizeIndex === index
-                          ? "border-purple-500 bg-purple-600 text-white font-bold"
-                          : "border-slate-600 hover:border-slate-400 bg-slate-700 text-slate-300"
+                          ? "border-purple-600 bg-purple-600 text-white font-bold"
+                          : "border-slate-200 hover:border-slate-300 bg-slate-50 text-slate-700"
                       }`}
                     >
                       <span className="text-[11px] font-bold whitespace-nowrap leading-tight">

@@ -84,12 +84,12 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
       <div
         className="rounded-2xl overflow-hidden flex flex-row h-40 relative"
         style={{
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(124,58,237,0.2)",
-          boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
+          background: "#ffffff",
+          border: "1px solid rgba(124,58,237,0.15)",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
         }}
       >
-        <Link href={`/products/${product.id}`} className="block relative w-32 aspect-square flex-shrink-0 overflow-hidden bg-slate-900/40">
+        <Link href={`/products/${product.id}`} className="block relative w-32 aspect-square flex-shrink-0 overflow-hidden bg-slate-50">
           <Image
             src={allImages[0]}
             alt={product.name}
@@ -111,11 +111,11 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
             {product.category}
           </Link>
           <Link href={`/products/${product.id}`}>
-            <h3 className="font-bold text-sm text-slate-200 hover:text-purple-400 transition line-clamp-1">{product.name}</h3>
+            <h3 className="font-bold text-sm text-slate-800 hover:text-purple-600 transition line-clamp-1">{product.name}</h3>
           </Link>
 
           <div className="mt-1">
-            <span className={`text-[10px] font-bold ${stockAvailable > 0 ? "text-emerald-400" : "text-red-400"}`}>
+            <span className={`text-[10px] font-bold ${stockAvailable > 0 ? "text-emerald-600" : "text-red-500"}`}>
               متاح: {stockAvailable}
             </span>
           </div>
@@ -124,21 +124,21 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
             <div className="flex items-center gap-1.5">
               {!hasSizes && (
                 <>
-                  <span className="text-base font-black text-white">{product.price} ج</span>
-                  {product.originalPrice && <span className="text-slate-500 line-through text-[10px]">{product.originalPrice} ج</span>}
+                  <span className="text-base font-black text-slate-800">{product.price} ج</span>
+                  {product.originalPrice && <span className="text-slate-400 line-through text-[10px]">{product.originalPrice} ج</span>}
                 </>
               )}
               {hasSizes && (
-                <span className="text-purple-400 text-xs font-bold">اضغط لاختيار المقاس</span>
+                <span className="text-purple-600 text-xs font-bold">اضغط لاختيار المقاس</span>
               )}
             </div>
 
             <div className="flex items-center gap-2">
               {!needsModal && (
-                <div className="flex items-center gap-1 bg-white/5 rounded-lg p-0.5 border border-purple-500/20">
-                  <button aria-label="تقليل الكمية" onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.max(1, q - 1)); }} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-purple-500/20"><Minus size={11} className="text-slate-300" /></button>
-                  <span className="text-xs font-black text-white min-w-[16px] text-center">{quantity}</span>
-                  <button aria-label="زيادة الكمية" onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.min(q + 1, stockAvailable)); }} disabled={quantity >= stockAvailable} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-purple-500/20"><Plus size={11} className="text-slate-300" /></button>
+                <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5 border border-purple-500/20">
+                  <button aria-label="تقليل الكمية" onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.max(1, q - 1)); }} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-purple-500/20"><Minus size={11} className="text-slate-700" /></button>
+                  <span className="text-xs font-black text-slate-800 min-w-[16px] text-center">{quantity}</span>
+                  <button aria-label="زيادة الكمية" onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.min(q + 1, stockAvailable)); }} disabled={quantity >= stockAvailable} className="w-6 h-6 rounded-md flex items-center justify-center hover:bg-purple-500/20"><Plus size={11} className="text-slate-700" /></button>
                 </div>
               )}
 
@@ -147,7 +147,7 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
                 onClick={handleAddToCart}
                 disabled={stockAvailable === 0}
                 className={`h-8 px-4 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
-                  stockAvailable === 0 ? "bg-gray-600 cursor-not-allowed opacity-50" : added ? "bg-green-500 text-white" : "gradient-bg text-white glow-purple"
+                  stockAvailable === 0 ? "bg-gray-400 cursor-not-allowed opacity-50 text-white" : added ? "bg-green-600 text-white" : "gradient-bg text-white glow-purple"
                 }`}
               >
                 <ShoppingCart size={13} />
@@ -166,12 +166,12 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
     <div
       className={`rounded-2xl overflow-hidden flex flex-col h-full relative transition-transform duration-300 ${isCompact ? "lg:hover:-translate-y-1" : "lg:hover:-translate-y-1.5"}`}
       style={{
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(124,58,237,0.2)",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
+        background: "#ffffff",
+        border: "1px solid rgba(124,58,237,0.15)",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
       }}
     >
-      <Link href={`/products/${product.id}`} className="block relative overflow-hidden aspect-square bg-slate-900/40">
+      <Link href={`/products/${product.id}`} className="block relative overflow-hidden aspect-square bg-slate-50">
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -195,19 +195,19 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
           </motion.div>
         </AnimatePresence>
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent pointer-events-none" />
 
         {allImages.length > 1 && !isCompact && (
           <>
-            <button onClick={prevImage} className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition z-10 border border-white/10">
+            <button onClick={prevImage} className="absolute left-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center text-slate-700 hover:bg-white transition z-10 border border-slate-200 shadow-sm">
               <ChevronRight size={14} className="rtl:rotate-180" />
             </button>
-            <button onClick={nextImage} className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/30 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/60 transition z-10 border border-white/10">
+            <button onClick={nextImage} className="absolute right-1.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/80 backdrop-blur-md flex items-center justify-center text-slate-700 hover:bg-white transition z-10 border border-slate-200 shadow-sm">
               <ChevronLeft size={14} className="rtl:rotate-180" />
             </button>
             <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1 z-10">
               {allImages.map((_, idx) => (
-                <button key={idx} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentImageIndex(idx); }} className={`h-1 rounded-full transition-all duration-300 ${currentImageIndex === idx ? "w-3 bg-white" : "w-1 bg-white/50"}`} />
+                <button key={idx} onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCurrentImageIndex(idx); }} className={`h-1 rounded-full transition-all duration-300 ${currentImageIndex === idx ? "w-3 bg-purple-600" : "w-1 bg-slate-300"}`} />
               ))}
             </div>
           </>
@@ -218,12 +218,12 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
         )}
 
         <div className="absolute top-2 left-2 flex flex-col gap-1.5 z-10">
-          <button className="w-7 h-7 rounded-lg flex items-center justify-center hover:scale-110 transition" style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.2)" }}>
-            <Heart size={13} className="text-white" />
+          <button className="w-7 h-7 rounded-lg flex items-center justify-center hover:scale-110 transition" style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(10px)", border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+            <Heart size={13} className="text-slate-700" />
           </button>
           {!isCompact && (
-            <button className="w-7 h-7 rounded-lg flex items-center justify-center hover:scale-110 transition" style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.2)" }}>
-              <Eye size={13} className="text-white" />
+            <button className="w-7 h-7 rounded-lg flex items-center justify-center hover:scale-110 transition" style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(10px)", border: "1px solid rgba(0,0,0,0.08)", boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }}>
+              <Eye size={13} className="text-slate-700" />
             </button>
           )}
         </div>
@@ -235,7 +235,7 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
         </Link>
 
         <Link href={`/products/${product.id}`}>
-          <h3 className={`font-bold text-slate-200 leading-relaxed line-clamp-2 hover:text-purple-400 transition ${isCompact ? "text-xs" : "text-sm"}`}>
+          <h3 className={`font-bold text-slate-800 leading-relaxed line-clamp-2 hover:text-purple-600 transition ${isCompact ? "text-xs" : "text-sm"}`}>
             {product.name}
           </h3>
         </Link>
@@ -243,33 +243,33 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
         <div className="flex items-center gap-2 mt-1.5">
           {!hasSizes && (
             <>
-              <span className={`${isCompact ? "text-sm" : "text-base"} font-black text-white`}>{product.price} ج</span>
-              {product.originalPrice && <span className="text-slate-500 line-through text-[10px]">{product.originalPrice} ج</span>}
+              <span className={`${isCompact ? "text-sm" : "text-base"} font-black text-slate-800`}>{product.price} ج</span>
+              {product.originalPrice && <span className="text-slate-400 line-through text-[10px]">{product.originalPrice} ج</span>}
             </>
           )}
           {hasSizes && (
-            <span className="text-purple-400 text-xs font-bold">اضغط لاختيار المقاس</span>
+            <span className="text-purple-600 text-xs font-bold">اضغط لاختيار المقاس</span>
           )}
         </div>
 
         {!isCompact && (
-          <div className="text-[10px] text-slate-400 mt-0.5">
-            المتاح: <span className={`font-bold ${stockAvailable > 0 ? "text-emerald-400" : "text-red-400"}`}>{stockAvailable}</span>
-            {stock !== stockAvailable && stock > 0 && <span className="text-slate-500 text-[8px] mr-0.5">(من أصل {stock})</span>}
+          <div className="text-[10px] text-slate-500 mt-0.5">
+            المتاح: <span className={`font-bold ${stockAvailable > 0 ? "text-emerald-600" : "text-red-500"}`}>{stockAvailable}</span>
+            {stock !== stockAvailable && stock > 0 && <span className="text-slate-400 text-[8px] mr-0.5">(من أصل {stock})</span>}
           </div>
         )}
 
         <div className="mt-auto pt-2">
           {!needsModal && !isCompact ? (
             <div className="flex items-center gap-2 mb-2">
-              <button aria-label="تقليل الكمية" onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.max(1, q - 1)); }} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-purple-500/20 transition" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(124,58,237,0.25)" }}>
-                <Minus size={11} className="text-slate-300" />
+              <button aria-label="تقليل الكمية" onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.max(1, q - 1)); }} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-purple-500/20 transition" style={{ background: "#f1f5f9", border: "1px solid rgba(124,58,237,0.2)" }}>
+                <Minus size={11} className="text-slate-700" />
               </button>
-              <span className="text-sm font-black text-white min-w-[20px] text-center">{quantity}</span>
-              <button aria-label="زيادة الكمية" onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.min(q + 1, stockAvailable)); }} disabled={quantity >= stockAvailable} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-purple-500/20 transition disabled:opacity-50" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(124,58,237,0.25)" }}>
-                <Plus size={11} className="text-slate-300" />
+              <span className="text-sm font-black text-slate-800 min-w-[20px] text-center">{quantity}</span>
+              <button aria-label="زيادة الكمية" onClick={(e) => { e.preventDefault(); setQuantity((q) => Math.min(q + 1, stockAvailable)); }} disabled={quantity >= stockAvailable} className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-purple-500/20 transition disabled:opacity-50" style={{ background: "#f1f5f9", border: "1px solid rgba(124,58,237,0.2)" }}>
+                <Plus size={11} className="text-slate-700" />
               </button>
-              <span className="text-[10px] text-slate-500">= <span className="font-bold gradient-text">{product.price * quantity} ج</span></span>
+              <span className="text-[10px] text-slate-400">= <span className="font-bold gradient-text">{product.price * quantity} ج</span></span>
             </div>
           ) : !isCompact && <div className="h-[28px] mb-2"></div>}
 
@@ -279,9 +279,9 @@ export default function ProductCard({ product, viewMode = "grid" }: { product: P
             disabled={stockAvailable === 0}
             className={`w-full ${isCompact ? "h-8 rounded-lg text-xs" : "h-9 rounded-xl text-sm"} font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 ${
               stockAvailable === 0
-                ? "bg-gray-600 text-white cursor-not-allowed opacity-50"
+                ? "bg-gray-400 text-white cursor-not-allowed opacity-50"
                 : added && !needsModal
-                ? "bg-green-500 text-white"
+                ? "bg-green-600 text-white"
                 : "gradient-bg text-white hover:opacity-90 glow-purple"
             }`}
           >

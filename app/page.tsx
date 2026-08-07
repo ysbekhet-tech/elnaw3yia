@@ -4,7 +4,7 @@ import FeaturedProducts from "@/components/FeaturedProducts";
 
 export default function Home() {
   return (
-    <main className="bg-[#0F0F23] min-h-screen">
+    <main className="bg-white min-h-screen">
       <HeroSection />
       <CategoriesSection />
       <FeaturedProducts />

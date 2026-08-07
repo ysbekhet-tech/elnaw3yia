@@ -61,31 +61,31 @@ export default function FeaturedProducts() {
       <div className="flex items-center justify-between mb-12">
         <div>
           <p className="gradient-text font-bold mb-2 text-sm">منتجات مختارة</p>
-          <h2 className="text-4xl font-black text-white">
+          <h2 className="text-4xl font-black text-slate-800">
             الأكثر مبيعًا
           </h2>
           <div className="w-16 h-1 rounded-full gradient-bg mt-3" />
         </div>
 
         {/* زرارات تغيير العرض */}
-        <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl p-1.5">
+        <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-2xl p-1.5">
           <button
             onClick={() => setViewMode("grid")}
-            className={`p-2.5 rounded-xl transition ${viewMode === "grid" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+            className={`p-2.5 rounded-xl transition ${viewMode === "grid" ? "bg-purple-600 text-white" : "text-slate-500 hover:text-slate-800"}`}
             title="عرض كروت كبيرة"
           >
             <LayoutGrid size={18} />
           </button>
           <button
             onClick={() => setViewMode("compact")}
-            className={`p-2.5 rounded-xl transition ${viewMode === "compact" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+            className={`p-2.5 rounded-xl transition ${viewMode === "compact" ? "bg-purple-600 text-white" : "text-slate-500 hover:text-slate-800"}`}
             title="عرض كروت صغيرة"
           >
             <Grid2x2 size={18} />
           </button>
           <button
             onClick={() => setViewMode("list")}
-            className={`p-2.5 rounded-xl transition ${viewMode === "list" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+            className={`p-2.5 rounded-xl transition ${viewMode === "list" ? "bg-purple-600 text-white" : "text-slate-500 hover:text-slate-800"}`}
             title="عرض قايمة"
           >
             <List size={18} />

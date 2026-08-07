@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState, Suspense, useCallback } from "react"; 
+import { useEffect, useState, Suspense, useCallback, useMemo } from "react"; 
 import { useSearchParams, useRouter } from "next/navigation";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Product } from "@/types";
 import ProductCard from "@/components/ProductCard";
-import { LayoutGrid, Grid2x2, List, Loader2, ChevronRight, ChevronLeft } from "lucide-react";
+import { LayoutGrid, Grid2x2, List, Loader2, ChevronRight, ChevronLeft, ArrowUpDown } from "lucide-react";
 
 interface Category {
   id: string;
@@ -28,6 +28,7 @@ function ProductsContent() {
   const [activeCategory, setActiveCategory] = useState("الكل");
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "compact" | "list">("grid");
+  const [sortBy, setSortBy] = useState("default");
   
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -95,14 +96,27 @@ function ProductsContent() {
     setCurrentPage(1);
   }, [activeCategory, search, allProducts]);
 
+  // ترتيب منفصل عن الفلترة عشان مايعملش re-fetch
+  const sortedFiltered = useMemo(() => {
+    const items = [...filtered];
+    switch (sortBy) {
+      case "price_asc":  items.sort((a, b) => a.price - b.price); break;
+      case "price_desc": items.sort((a, b) => b.price - a.price); break;
+      case "name_az":    items.sort((a, b) => a.name.localeCompare(b.name, "ar")); break;
+      case "newest":     items.sort((a, b) => ((b as any).createdAt?.seconds || 0) - ((a as any).createdAt?.seconds || 0)); break;
+      default: break;
+    }
+    return items;
+  }, [filtered, sortBy]);
+
   const handleCategoryClick = (catName: string) => {
     setActiveCategory(catName);
     const newUrl = catName === "الكل" ? "/products" : `/products?category=${catName}`;
     window.history.pushState({}, '', newUrl);
   };
 
-  const totalPages = Math.ceil(filtered.length / PRODUCTS_PER_PAGE);
-  const currentProducts = filtered.slice(
+  const totalPages = Math.ceil(sortedFiltered.length / PRODUCTS_PER_PAGE);
+  const currentProducts = sortedFiltered.slice(
     (currentPage - 1) * PRODUCTS_PER_PAGE,
     currentPage * PRODUCTS_PER_PAGE
   );
@@ -149,40 +163,61 @@ function ProductsContent() {
       <div className="flex items-center gap-3 mb-6">
         <div className="w-1 h-8 bg-purple-500 rounded"></div>
         <h1 className="text-3xl font-black text-slate-800">كل المنتجات</h1>
-        <span className="text-slate-400 text-sm">({filtered.length} منتج)</span>
+        <span className="text-slate-400 text-sm">({sortedFiltered.length} منتج)</span>
       </div>
 
-      {/* البحث وطريقة العرض */}
+      {/* البحث + الترتيب + طريقة العرض */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6">
-        <div className="flex items-center flex-1 max-w-lg bg-slate-900 border border-slate-700 rounded-2xl px-4 py-3">
-          <span className="text-slate-400 ms-2">🔍</span>
+        {/* بحث */}
+        <div className="flex items-center flex-1 max-w-lg bg-white border border-slate-200 shadow-sm rounded-2xl px-4 py-2.5 gap-2">
+          <span className="text-slate-400 text-sm">🔍</span>
           <input
             type="text"
             placeholder="ابحث عن منتج..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-transparent outline-none text-sm text-white placeholder-slate-500 me-2"
+            className="flex-1 bg-transparent outline-none text-sm text-slate-800 placeholder-slate-400"
           />
+          {search && (
+            <button onClick={() => setSearch("")} className="text-slate-400 hover:text-slate-700 text-xs">✕</button>
+          )}
         </div>
 
-        <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 rounded-2xl p-1.5 self-start sm:self-auto">
+        {/* ترتيب */}
+        <div className="flex items-center gap-2 bg-white border border-slate-200 shadow-sm rounded-2xl px-3 py-2">
+          <ArrowUpDown size={14} className="text-purple-600 flex-shrink-0" />
+          <select
+            value={sortBy}
+            onChange={(e) => { setSortBy(e.target.value); setCurrentPage(1); }}
+            className="bg-transparent text-sm text-slate-700 font-semibold outline-none cursor-pointer"
+          >
+            <option value="default">الترتيب الافتراضي</option>
+            <option value="newest">الأحدث أولاً</option>
+            <option value="price_asc">السعر: من الأرخص للأغلى</option>
+            <option value="price_desc">السعر: من الأغلى للأرخص</option>
+            <option value="name_az">الاسم: أبجدي (أ - ي)</option>
+          </select>
+        </div>
+
+        {/* طريقة العرض */}
+        <div className="flex items-center gap-1 bg-white border border-slate-200 shadow-sm rounded-2xl p-1.5 self-start sm:self-auto">
           <button 
             onClick={() => setViewMode("grid")} 
-            className={`p-2.5 rounded-xl transition ${viewMode === "grid" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+            className={`p-2.5 rounded-xl transition ${viewMode === "grid" ? "bg-purple-600 text-white" : "text-slate-500 hover:text-slate-800"}`}
             title="عرض كروت كبيرة"
           >
             <LayoutGrid size={18} />
           </button>
           <button 
             onClick={() => setViewMode("compact")} 
-            className={`p-2.5 rounded-xl transition ${viewMode === "compact" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+            className={`p-2.5 rounded-xl transition ${viewMode === "compact" ? "bg-purple-600 text-white" : "text-slate-500 hover:text-slate-800"}`}
             title="عرض كروت صغيرة"
           >
             <Grid2x2 size={18} />
           </button>
           <button 
             onClick={() => setViewMode("list")} 
-            className={`p-2.5 rounded-xl transition ${viewMode === "list" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+            className={`p-2.5 rounded-xl transition ${viewMode === "list" ? "bg-purple-600 text-white" : "text-slate-500 hover:text-slate-800"}`}
             title="عرض قايمة"
           >
             <List size={18} />

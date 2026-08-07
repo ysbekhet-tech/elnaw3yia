@@ -60,7 +60,7 @@ export default function ColorPickerModal({ product, isOpen, onClose }: ColorPick
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
 
       {/* ✅ Modal بأبعاد ثابتة */}
       <div
@@ -68,30 +68,30 @@ export default function ColorPickerModal({ product, isOpen, onClose }: ColorPick
         style={{
           width: "340px",
           height: "480px",
-          background: "rgba(15,15,30,0.98)",
-          border: "1px solid rgba(124,58,237,0.4)",
-          boxShadow: "0 0 40px rgba(124,58,237,0.2)",
+          background: "#ffffff",
+          border: "1px solid rgba(124,58,237,0.2)",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.15)",
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* ── Header ثابت ── */}
-        <div className="flex-shrink-0 px-5 pt-5 pb-4 border-b border-slate-800">
+        <div className="flex-shrink-0 px-5 pt-5 pb-4 border-b border-slate-100">
           <button
             onClick={onClose}
-            className="absolute top-4 left-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition"
+            className="absolute top-4 left-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition"
           >
-            <X size={16} className="text-slate-300" />
+            <X size={16} className="text-slate-600" />
           </button>
 
           <div className="flex items-center gap-3">
             <img
               src={product.images?.[0] || product.image || ""}
               alt={product.name}
-              className="w-12 h-12 rounded-xl object-cover border border-slate-700 flex-shrink-0"
+              className="w-12 h-12 rounded-xl object-cover border border-slate-200 flex-shrink-0"
             />
             <div className="min-w-0">
-              <h3 className="font-black text-white text-sm line-clamp-1">{product.name}</h3>
-              <p className="text-purple-400 font-bold text-base">{finalPrice} ج</p>
+              <h3 className="font-black text-slate-800 text-sm line-clamp-1">{product.name}</h3>
+              <p className="text-purple-600 font-bold text-base">{finalPrice} ج</p>
             </div>
           </div>
         </div>
@@ -102,7 +102,7 @@ export default function ColorPickerModal({ product, isOpen, onClose }: ColorPick
           {/* المقاسات - 4 في الصف */}
           {hasSizes && (
             <div>
-              <h4 className="text-xs font-bold text-slate-400 mb-2">اختر المقاس:</h4>
+              <h4 className="text-xs font-bold text-slate-600 mb-2">اختر المقاس:</h4>
               {/* ✅ grid 4 أعمدة - كل مربع عرضه وارتفاعه متساويين */}
               <div className="grid grid-cols-4 gap-2">
                 {product.sizes?.map((size: ProductSize, index: number) => (
@@ -111,8 +111,8 @@ export default function ColorPickerModal({ product, isOpen, onClose }: ColorPick
                     onClick={() => setSelectedSizeIndex(index)}
                     className={`aspect-square flex flex-col items-center justify-center rounded-xl border-2 transition-all duration-200 ${
                       selectedSizeIndex === index
-                        ? "border-purple-500 bg-purple-600 text-white font-bold"
-                        : "border-slate-600 hover:border-slate-400 bg-slate-800 text-slate-300"
+                        ? "border-purple-600 bg-purple-600 text-white font-bold"
+                        : "border-slate-200 hover:border-slate-300 bg-slate-50 text-slate-700"
                     }`}
                   >
                     <span className="text-[11px] font-bold whitespace-nowrap leading-tight">
@@ -128,9 +128,9 @@ export default function ColorPickerModal({ product, isOpen, onClose }: ColorPick
           {/* الألوان */}
           {hasColors && (
             <div>
-              <h4 className="text-xs font-bold text-slate-400 mb-2">
+              <h4 className="text-xs font-bold text-slate-600 mb-2">
                 اختر اللون:
-                <span className="text-purple-400 mr-1">{product.colors?.[selectedColorIndex]?.name}</span>
+                <span className="text-purple-600 mr-1">{product.colors?.[selectedColorIndex]?.name}</span>
               </h4>
               <div className="flex items-center gap-2 flex-wrap">
                 {product.colors?.map((color: ProductColor, index: number) => (
@@ -140,8 +140,8 @@ export default function ColorPickerModal({ product, isOpen, onClose }: ColorPick
                     title={color.name}
                     className={`relative w-9 h-9 rounded-full transition-all duration-200 border-2 flex items-center justify-center ${
                       selectedColorIndex === index
-                        ? "border-purple-500 scale-110 shadow-lg shadow-purple-500/30"
-                        : "border-slate-600 hover:border-slate-400"
+                        ? "border-purple-600 scale-110 shadow-md shadow-purple-500/20"
+                        : "border-slate-300 hover:border-slate-400"
                     }`}
                     style={{ backgroundColor: color.hex }}
                   >
@@ -159,41 +159,41 @@ export default function ColorPickerModal({ product, isOpen, onClose }: ColorPick
           )}
 
           {/* المتاح */}
-          <div className="text-xs text-slate-400">
+          <div className="text-xs text-slate-600">
             المتاح:
-            <span className={`font-bold mr-1 ${stockAvailable > 0 ? "text-emerald-400" : "text-red-400"}`}>
+            <span className={`font-bold mr-1 ${stockAvailable > 0 ? "text-emerald-600" : "text-red-500"}`}>
               {stockAvailable}
             </span>
             {totalStock !== stockAvailable && totalStock > 0 && (
-              <span className="text-slate-500 mr-1">(من أصل {totalStock})</span>
+              <span className="text-slate-400 mr-1">(من أصل {totalStock})</span>
             )}
           </div>
         </div>
 
         {/* ── Footer ثابت - الكمية وزرار الإضافة في صف واحد ── */}
-        <div className="flex-shrink-0 px-5 pb-5 pt-3 border-t border-slate-800">
+        <div className="flex-shrink-0 px-5 pb-5 pt-3 border-t border-slate-100">
           <div className="flex items-center gap-2">
 
             {/* عداد الكمية */}
-            <div className="flex items-center gap-1.5 bg-slate-800 rounded-xl px-2 py-1.5 border border-slate-700">
+            <div className="flex items-center gap-1.5 bg-slate-50 rounded-xl px-2 py-1.5 border border-slate-200">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-7 h-7 rounded-lg bg-slate-700 flex items-center justify-center hover:bg-purple-600 transition"
+                className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center hover:bg-purple-600 hover:text-white transition text-slate-700"
               >
                 <Minus size={13} />
               </button>
-              <span className="text-sm font-black min-w-[22px] text-center text-white">{quantity}</span>
+              <span className="text-sm font-black min-w-[22px] text-center text-slate-800">{quantity}</span>
               <button
                 onClick={() => setQuantity((q) => Math.min(stockAvailable, q + 1))}
                 disabled={quantity >= stockAvailable}
-                className="w-7 h-7 rounded-lg bg-slate-700 flex items-center justify-center hover:bg-purple-600 transition disabled:opacity-50"
+                className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center hover:bg-purple-600 hover:text-white transition disabled:opacity-50 text-slate-700"
               >
                 <Plus size={13} />
               </button>
             </div>
 
             {/* السعر الإجمالي */}
-            <span className="text-sm font-black text-purple-400 whitespace-nowrap">
+            <span className="text-sm font-black text-purple-600 whitespace-nowrap">
               {finalPrice * quantity} ج
             </span>
 
@@ -203,7 +203,7 @@ export default function ColorPickerModal({ product, isOpen, onClose }: ColorPick
               disabled={stockAvailable === 0 || added}
               className={`flex-1 h-10 rounded-xl font-bold flex items-center justify-center gap-1.5 transition text-xs ${
                 stockAvailable === 0
-                  ? "bg-gray-600 text-white opacity-50 cursor-not-allowed"
+                  ? "bg-gray-400 text-white opacity-50 cursor-not-allowed"
                   : added
                   ? "bg-green-600 text-white"
                   : "bg-purple-600 hover:bg-purple-700 text-white"

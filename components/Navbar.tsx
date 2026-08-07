@@ -65,23 +65,14 @@ export default function Navbar() {
     return () => document.removeEventListener("click", handleClickOutside);
   }, [open]);
 
-  useEffect(() => {
-    // ✅ بيغلق القوائم عند الـ scroll بس لو حاجة منهم مفتوحة
-    if (!categoriesOpen && !open) return;
-    function handleScroll() {
-      if (categoriesOpen) setCategoriesOpen(false);
-      if (open) setOpen(false);
-    }
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [categoriesOpen, open]);
+  // ✅ تم إزالة الـ scroll listener عشان مايمنعش الـ scroll جوه القائمة
 
   return (
     <header className="sticky top-0 z-50">
 
       <div
         className="glass border-b"
-        style={{ borderColor: "rgba(124,58,237,0.2)", background: "rgba(5,5,16,0.85)" }}
+        style={{ borderColor: "rgba(124,58,237,0.2)", background: "rgba(255,255,255,0.92)" }}
       >
         <div className="max-w-7xl mx-auto px-4 h-20 flex items-center gap-5">
 
@@ -90,21 +81,21 @@ export default function Navbar() {
             className="flex flex-row items-center gap-2 leading-none group"
             onClick={() => { setOpen(false); setCategoriesOpen(false); }}
           >
-            <span className="text-2xl font-black text-white group-hover:text-purple-300 transition">المكتبة</span>
+            <span className="text-2xl font-black text-slate-800 group-hover:text-purple-600 transition">المكتبة</span>
             <span className="text-2xl font-black gradient-text">النوعية</span>
           </Link>
 
           <form
             onSubmit={handleSearch}
             className="hidden md:flex flex-1 items-center rounded-2xl overflow-hidden border"
-            style={{ background: "rgba(255,255,255,0.05)", borderColor: "rgba(124,58,237,0.3)" }}
+            style={{ background: "#f8fafc", borderColor: "rgba(124,58,237,0.3)" }}
           >
             <input
               type="text"
               placeholder="ابحث عن منتج..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 bg-transparent px-5 py-3 outline-none text-sm text-slate-300 placeholder-slate-500"
+              className="flex-1 bg-transparent px-5 py-3 outline-none text-sm text-slate-800 placeholder-slate-400"
             />
             <button type="submit" className="gradient-bg px-5 py-3 text-white hover:opacity-90 transition">
               <Search size={18} />
@@ -113,18 +104,18 @@ export default function Navbar() {
 
           <div className="flex items-center gap-3">
             <button
-              className="hidden sm:flex w-11 h-11 rounded-2xl items-center justify-center transition hover:scale-110"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+              className="hidden sm:flex w-11 h-11 rounded-2xl items-center justify-center transition hover:scale-110 hover:bg-slate-100"
+              style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.08)" }}
             >
-              <Heart size={19} className="text-slate-300" />
+              <Heart size={19} className="text-slate-700" />
             </button>
 
             <button
               onClick={openCart}
-              className="relative w-11 h-11 rounded-2xl flex items-center justify-center transition hover:scale-110"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+              className="relative w-11 h-11 rounded-2xl flex items-center justify-center transition hover:scale-110 hover:bg-slate-100"
+              style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.08)" }}
             >
-              <ShoppingCart size={19} className="text-slate-300" />
+              <ShoppingCart size={19} className="text-slate-700" />
               {cartCount > 0 && (
                 <span className="absolute -top-1 -left-1 w-5 h-5 rounded-full gradient-bg text-white text-[10px] flex items-center justify-center font-bold pulse-glow">
                   {cartCount}
@@ -133,31 +124,31 @@ export default function Navbar() {
             </button>
 
             <button
-              className="hidden sm:flex w-11 h-11 rounded-2xl items-center justify-center transition hover:scale-110"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+              className="hidden sm:flex w-11 h-11 rounded-2xl items-center justify-center transition hover:scale-110 hover:bg-slate-100"
+              style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.08)" }}
             >
-              <User size={19} className="text-slate-300" />
+              <User size={19} className="text-slate-700" />
             </button>
 
             <button
               ref={menuBtnRef}
               onClick={() => setOpen(!open)}
               className="md:hidden w-11 h-11 rounded-2xl flex items-center justify-center"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+              style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.08)" }}
             >
-              {open ? <X size={20} className="text-white" /> : <Menu size={20} className="text-white" />}
+              {open ? <X size={20} className="text-slate-800" /> : <Menu size={20} className="text-slate-800" />}
             </button>
           </div>
         </div>
 
         <div className="hidden md:block border-t" style={{ borderColor: "rgba(124,58,237,0.15)" }}>
-          <div className="max-w-7xl mx-auto px-4 flex items-center gap-1 h-12 text-sm font-semibold text-slate-400">
+          <div className="max-w-7xl mx-auto px-4 flex items-center gap-1 h-12 text-sm font-semibold text-slate-600">
 
             <div className="relative" ref={categoriesRef}>
               <button
                 ref={categoriesBtnRef}
                 onClick={() => setCategoriesOpen(!categoriesOpen)}
-                className="flex items-center gap-1 px-4 py-2 rounded-xl transition hover:text-purple-400 hover:bg-purple-500/10"
+                className="flex items-center gap-1 px-4 py-2 rounded-xl transition hover:text-purple-600 hover:bg-purple-500/10"
               >
                 كل الأقسام
                 <ChevronDown size={15} className={`transition-transform ${categoriesOpen ? "rotate-180" : ""}`} />
@@ -165,42 +156,65 @@ export default function Navbar() {
 
               {categoriesOpen && (
                 <div
-                  className="absolute top-full right-0 mt-2 rounded-2xl shadow-2xl w-56 z-50 overflow-hidden"
+                  className="absolute top-full right-0 mt-0 z-50 rounded-b-2xl"
                   style={{
-                    background: "rgba(10,10,25,0.98)",
-                    border: "1px solid rgba(124,58,237,0.3)",
-                    boxShadow: "0 25px 50px rgba(124,58,237,0.2)"
+                    background: "#ffffff",
+                    border: "1px solid rgba(124,58,237,0.15)",
+                    borderTop: "none",
+                    boxShadow: "0 24px 48px rgba(0,0,0,0.12)",
+                    width: "min(860px, 90vw)",
                   }}
                 >
-                  <Link
-                    href="/products"
-                    onClick={() => setCategoriesOpen(false)}
-                    className="flex items-center gap-3 px-4 py-3 hover:bg-purple-500/10 hover:text-purple-400 transition border-b text-slate-300 font-bold"
-                    style={{ borderColor: "rgba(255,255,255,0.05)" }}
-                  >
-                    <LayoutGrid size={16} />
-                    <span>جميع المنتجات</span>
-                  </Link>
-
-                  {categories.map((cat) => (
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: "rgba(124,58,237,0.1)" }}>
+                    <span className="text-sm font-black text-slate-500 uppercase tracking-wider">تصفح الأقسام</span>
                     <Link
-                      key={cat.id}
-                      href={`/products?category=${cat.name}`}
+                      href="/products"
                       onClick={() => setCategoriesOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-purple-500/10 hover:text-purple-400 transition border-b text-slate-300"
-                      style={{ borderColor: "rgba(255,255,255,0.05)" }}
+                      className="flex items-center gap-1.5 text-xs font-bold text-purple-600 hover:text-purple-800 transition"
                     >
-                      {cat.imageUrl ? (
-                        <img src={cat.imageUrl} alt={cat.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-                      ) : (
-                        <span className="text-base">{cat.icon}</span>
-                      )}
-                      <span>{cat.name}</span>
+                      <LayoutGrid size={13} />
+                      جميع المنتجات
                     </Link>
-                  ))}
-                  {categories.length === 0 && (
-                    <div className="px-4 py-3 text-slate-500 text-xs">لا توجد أقسام بعد</div>
-                  )}
+                  </div>
+
+                  {/* Mega Grid — قابل للـ scroll */}
+                  <div
+                    className="p-4 grid grid-cols-6 gap-1 overflow-y-auto"
+                    style={{ maxHeight: "55vh", scrollbarWidth: "thin", scrollbarColor: "rgba(124,58,237,0.3) transparent" }}
+                  >
+                    {categories.map((cat) => (
+                      <Link
+                        key={cat.id}
+                        href={`/products?category=${cat.name}`}
+                        onClick={() => setCategoriesOpen(false)}
+                        className="flex flex-col items-center gap-2 px-2 py-3 rounded-xl hover:bg-purple-50 hover:text-purple-700 transition group text-center"
+                      >
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-slate-100 group-hover:bg-purple-100 transition">
+                          {cat.imageUrl ? (
+                            <img src={cat.imageUrl} alt={cat.name} className="w-8 h-8 rounded-lg object-cover" />
+                          ) : (
+                            <span className="text-xl">{cat.icon}</span>
+                          )}
+                        </div>
+                        <span className="text-xs font-semibold text-slate-700 group-hover:text-purple-700 transition line-clamp-2 leading-tight">{cat.name}</span>
+                      </Link>
+                    ))}
+                    {categories.length === 0 && (
+                      <div className="col-span-6 px-4 py-6 text-center text-slate-400 text-sm">لا توجد أقسام بعد</div>
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  <div className="px-6 py-3 border-t flex justify-center" style={{ borderColor: "rgba(124,58,237,0.08)", background: "#fafafa", borderRadius: "0 0 16px 16px" }}>
+                    <Link
+                      href="/products"
+                      onClick={() => setCategoriesOpen(false)}
+                      className="text-xs text-slate-500 hover:text-purple-600 transition font-semibold"
+                    >
+                      عرض كل المنتجات ({categories.length} قسم)
+                    </Link>
+                  </div>
                 </div>
               )}
             </div>
@@ -214,7 +228,7 @@ export default function Navbar() {
                 key={item.name}
                 href={item.href}
                 onClick={() => setCategoriesOpen(false)}
-                className="px-4 py-2 rounded-xl hover:text-purple-400 hover:bg-purple-500/10 transition"
+                className="px-4 py-2 rounded-xl hover:text-purple-600 hover:bg-purple-500/10 transition"
               >
                 {item.name}
               </Link>
@@ -224,16 +238,16 @@ export default function Navbar() {
 
         <div ref={mobileMenuRef}>
           {open && (
-            <div className="md:hidden border-t" style={{ borderColor: "rgba(124,58,237,0.2)", background: "rgba(5,5,16,0.98)" }}>
+            <div className="md:hidden border-t flex flex-col" style={{ borderColor: "rgba(124,58,237,0.2)", background: "rgba(255,255,255,0.98)", maxHeight: "80vh" }}>
 
-              <form onSubmit={handleSearch} className="p-4 border-b" style={{ borderColor: "rgba(255,255,255,0.05)" }}>
-                <div className="flex items-center rounded-xl overflow-hidden border" style={{ background: "rgba(255,255,255,0.05)", borderColor: "rgba(124,58,237,0.3)" }}>
+              <form onSubmit={handleSearch} className="p-4 border-b flex-shrink-0" style={{ borderColor: "rgba(0,0,0,0.05)" }}>
+                <div className="flex items-center rounded-xl overflow-hidden border" style={{ background: "#f8fafc", borderColor: "rgba(124,58,237,0.3)" }}>
                   <input
                     type="text"
                     placeholder="ابحث عن منتج..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 bg-transparent px-4 py-2.5 outline-none text-sm text-slate-300 placeholder-slate-500"
+                    className="flex-1 bg-transparent px-4 py-2.5 outline-none text-sm text-slate-800 placeholder-slate-400"
                   />
                   <button type="submit" className="gradient-bg px-4 py-2.5 text-white hover:opacity-90 transition">
                     <Search size={16} />
@@ -241,32 +255,34 @@ export default function Navbar() {
                 </div>
               </form>
 
-              <Link
-                href="/products"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-purple-400 hover:bg-purple-500/10 border-b text-sm font-bold transition"
-                style={{ borderColor: "rgba(255,255,255,0.05)" }}
-              >
-                <LayoutGrid size={16} />
-                <span>جميع المنتجات</span>
-              </Link>
-
-              {categories.map((cat) => (
+              <div className="overflow-y-auto">
                 <Link
-                  key={cat.id}
-                  href={`/products?category=${cat.name}`}
+                  href="/products"
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:text-purple-400 hover:bg-purple-500/10 border-b text-sm transition"
-                  style={{ borderColor: "rgba(255,255,255,0.05)" }}
+                  className="flex items-center gap-3 px-4 py-3 text-slate-800 hover:text-purple-600 hover:bg-purple-500/10 border-b text-sm font-bold transition"
+                  style={{ borderColor: "rgba(0,0,0,0.05)" }}
                 >
-                  {cat.imageUrl ? (
-                    <img src={cat.imageUrl} alt={cat.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
-                  ) : (
-                    <span className="text-base">{cat.icon}</span>
-                  )}
-                  <span>{cat.name}</span>
+                  <LayoutGrid size={16} />
+                  <span>جميع المنتجات</span>
                 </Link>
-              ))}
+
+                {categories.map((cat) => (
+                  <Link
+                    key={cat.id}
+                    href={`/products?category=${cat.name}`}
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 text-slate-700 hover:text-purple-600 hover:bg-purple-500/10 border-b text-sm transition"
+                    style={{ borderColor: "rgba(0,0,0,0.05)" }}
+                  >
+                    {cat.imageUrl ? (
+                      <img src={cat.imageUrl} alt={cat.name} className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                    ) : (
+                      <span className="text-base">{cat.icon}</span>
+                    )}
+                    <span>{cat.name}</span>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
         </div>

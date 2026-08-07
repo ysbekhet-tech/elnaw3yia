@@ -46,11 +46,11 @@ export default function CategoriesSection() {
         transition={{ duration: 0.6 }}
         className="flex items-center justify-between mb-8 relative z-10"
       >
-        <h2 className="text-3xl font-black text-white flex items-center gap-3">
+        <h2 className="text-3xl font-black text-slate-800 flex items-center gap-3">
           تسوق حسب القسم
           <div className="h-1 w-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full" />
         </h2>
-        <Link href="/products" className="text-purple-400 hover:text-purple-300 hover:underline transition-colors text-sm font-bold bg-purple-500/10 px-4 py-2 rounded-xl">
+        <Link href="/products" className="text-purple-600 hover:text-purple-700 hover:underline transition-colors text-sm font-bold bg-purple-50 px-4 py-2 rounded-xl">
           كل الأقسام
         </Link>
       </motion.div>
@@ -62,7 +62,7 @@ export default function CategoriesSection() {
         {/* زرار الرجوع لليمين */}
         <button 
           onClick={() => scroll("right")}
-          className="absolute start-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/10 backdrop-blur-md text-white/70 flex items-center justify-center hover:bg-purple-500 hover:text-white hover:scale-110 transition-all duration-300 shadow-lg border border-white/5 opacity-0 group-hover/slider:opacity-100"
+          className="absolute start-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white text-slate-700 flex items-center justify-center hover:bg-purple-600 hover:text-white hover:scale-110 transition-all duration-300 shadow-md border border-slate-200 opacity-0 group-hover/slider:opacity-100"
           aria-label="Scroll Right"
         >
           <ChevronRight size={18} strokeWidth={2.5} />
@@ -71,7 +71,7 @@ export default function CategoriesSection() {
         {/* زرار التقدم لليسار */}
         <button 
           onClick={() => scroll("left")}
-          className="absolute end-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white/10 backdrop-blur-md text-white/70 flex items-center justify-center hover:bg-purple-500 hover:text-white hover:scale-110 transition-all duration-300 shadow-lg border border-white/5 opacity-0 group-hover/slider:opacity-100"
+          className="absolute end-2 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-white text-slate-700 flex items-center justify-center hover:bg-purple-600 hover:text-white hover:scale-110 transition-all duration-300 shadow-md border border-slate-200 opacity-0 group-hover/slider:opacity-100"
           aria-label="Scroll Left"
         >
           <ChevronLeft size={18} strokeWidth={2.5} />
@@ -96,12 +96,12 @@ export default function CategoriesSection() {
             <motion.div key={cat.id} variants={itemVariants} className="flex-shrink-0">
               <Link
                 href={`/category/${encodeURIComponent(cat.name)}`}
-                className="relative flex flex-col items-center justify-center gap-3 bg-white/5 border border-white/10 rounded-3xl p-3 transition-all duration-500 group/cat cursor-pointer w-[110px] h-[130px] overflow-hidden backdrop-blur-md hover:-translate-y-2 hover:bg-white/10 hover:border-purple-500/50 hover:shadow-[0_8px_30px_rgba(168,85,247,0.25)]"
+                className="relative flex flex-col items-center justify-center gap-3 bg-white border border-slate-200 shadow-sm rounded-3xl p-3 transition-all duration-500 group/cat cursor-pointer w-[110px] h-[130px] overflow-hidden hover:-translate-y-2 hover:border-purple-500/50 hover:shadow-[0_8px_30px_rgba(168,85,247,0.15)]"
               >
                 {/* تأثير الإضاءة المتحركة داخل البطاقة عند الـ Hover */}
-                <div className="absolute inset-0 bg-gradient-to-t from-purple-500/20 to-transparent opacity-0 group-hover/cat:opacity-100 transition-opacity duration-500 pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-purple-500/10 to-transparent opacity-0 group-hover/cat:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
-                <div className="relative w-16 h-16 flex items-center justify-center rounded-full bg-slate-800/80 border border-slate-700/50 shadow-inner group-hover/cat:shadow-[0_0_15px_rgba(168,85,247,0.5)] group-hover/cat:border-purple-500/50 transition-all duration-500">
+                <div className="relative w-16 h-16 flex items-center justify-center rounded-full bg-slate-50 border border-slate-200 shadow-inner group-hover/cat:shadow-[0_0_15px_rgba(168,85,247,0.3)] group-hover/cat:border-purple-500/50 transition-all duration-500">
                   {cat.imageUrl ? (
                     <img src={cat.imageUrl} alt={cat.name} className="w-full h-full rounded-full object-cover group-hover/cat:scale-110 transition-transform duration-500" />
                   ) : (
@@ -109,7 +109,7 @@ export default function CategoriesSection() {
                   )}
                 </div>
                 
-                <span className="text-[12px] font-extrabold text-slate-300 text-center w-full line-clamp-2 group-hover/cat:text-white transition-colors duration-300 relative z-10">{cat.name}</span>
+                <span className="text-[12px] font-extrabold text-slate-700 text-center w-full line-clamp-2 group-hover/cat:text-purple-600 transition-colors duration-300 relative z-10">{cat.name}</span>
               </Link>
             </motion.div>
           ))}

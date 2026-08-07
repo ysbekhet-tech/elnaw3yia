@@ -162,7 +162,7 @@ export default function HeroSection() {
 
   return (
     <section className="max-w-7xl mx-auto px-4 py-6">
-      <div className="relative overflow-hidden rounded-[40px] min-h-[540px] group bg-[#151530]">
+      <div className="relative overflow-hidden rounded-[40px] min-h-[540px] group bg-slate-100 shadow-xl border border-slate-200/60">
         <AnimatePresence>
           <motion.div
             key={currentSlide.id}

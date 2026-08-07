@@ -72,29 +72,29 @@ export default function CartDrawer() {
         transition={{ type: "spring", damping: 25, stiffness: 200 }}
         className="fixed top-0 right-0 h-full w-full max-w-md z-50 flex flex-col"
         style={{
-          background: "rgba(8,8,20,0.98)",
+          background: "rgba(255,255,255,0.98)",
           backdropFilter: "blur(30px)",
-          borderLeft: "1px solid rgba(124,58,237,0.25)",
-          boxShadow: "-20px 0 60px rgba(0,0,0,0.5)",
+          borderLeft: "1px solid rgba(124,58,237,0.15)",
+          boxShadow: "-20px 0 60px rgba(0,0,0,0.1)",
         }}
       >
         {/* Header */}
         <div
           className="flex justify-between items-center p-5 border-b"
-          style={{ borderColor: "rgba(124,58,237,0.2)" }}
+          style={{ borderColor: "rgba(124,58,237,0.15)" }}
         >
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl gradient-bg flex items-center justify-center">
               <ShoppingBag size={20} className="text-white" />
             </div>
-            <h2 className="text-xl font-black text-white">سلة التسوق</h2>
+            <h2 className="text-xl font-black text-slate-800">سلة التسوق</h2>
           </div>
           <button
             onClick={closeCart}
-            className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/10 transition"
-            style={{ border: "1px solid rgba(255,255,255,0.1)" }}
+            className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-slate-100 transition"
+            style={{ border: "1px solid rgba(0,0,0,0.08)" }}
           >
-            <X size={18} className="text-slate-400" />
+            <X size={18} className="text-slate-600" />
           </button>
         </div>
 
@@ -105,7 +105,7 @@ export default function CartDrawer() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              className="bg-red-500/20 border-b border-red-500/30 px-4 py-2 flex items-center gap-2 text-red-400 text-sm font-bold"
+              className="bg-red-500/10 border-b border-red-500/20 px-4 py-2 flex items-center gap-2 text-red-600 text-sm font-bold"
             >
               <AlertTriangle size={16} />
               {errorMsg}
@@ -117,7 +117,7 @@ export default function CartDrawer() {
         <div className="flex-1 p-4 space-y-3 overflow-y-auto">
           {cart.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-4">
-              <ShoppingBag size={64} className="text-slate-700" />
+              <ShoppingBag size={64} className="text-slate-300" />
               <p className="text-slate-500 font-bold text-lg">السلة فارغة</p>
               <button
                 onClick={closeCart}
@@ -146,30 +146,30 @@ export default function CartDrawer() {
                   transition={{ duration: 0.25 }}
                   className="flex gap-3 p-3 rounded-2xl"
                   style={{
-                    background: "rgba(255,255,255,0.04)",
+                    background: "#f8fafc",
                     border: "1px solid rgba(124,58,237,0.15)",
                   }}
                 >
                   <img
                     src={item.images?.[0] || item.image || "https://via.placeholder.com/60"}
-                    className="w-16 h-16 object-cover rounded-xl"
+                    className="w-16 h-16 object-cover rounded-xl border border-slate-200"
                     alt={item.name}
                   />
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-slate-200 text-sm line-clamp-1">
+                    <h3 className="font-bold text-slate-800 text-sm line-clamp-1">
                       {item.name}
                     </h3>
 
                     {/* ✅ اللون */}
                     {item.selectedColor && (
-                      <span className="text-purple-400 text-xs">
+                      <span className="text-purple-600 text-xs">
                         اللون: {item.selectedColor}
                       </span>
                     )}
 
                     {/* ✅ المقاس - ده الجديد */}
                     {item.selectedSize && (
-                      <span className="text-blue-400 text-xs block">
+                      <span className="text-blue-600 text-xs block">
                         المقاس: {item.selectedSize.length} × {item.selectedSize.width} سم
                       </span>
                     )}
@@ -189,12 +189,12 @@ export default function CartDrawer() {
                         }}
                         className={`w-7 h-7 flex items-center justify-center rounded-lg transition ${
                           item.quantity === 1
-                            ? "bg-red-500/20 text-red-400 border border-red-500/30"
-                            : "text-slate-400 hover:bg-white/10"
+                            ? "bg-red-50 text-red-500 border border-red-200"
+                            : "text-slate-600 hover:bg-slate-200"
                         }`}
                         style={
                           item.quantity !== 1
-                            ? { border: "1px solid rgba(255,255,255,0.1)" }
+                            ? { border: "1px solid rgba(0,0,0,0.08)" }
                             : {}
                         }
                       >
@@ -208,7 +208,7 @@ export default function CartDrawer() {
                             : { scale: 1 }
                         }
                         transition={{ duration: 0.2 }}
-                        className="min-w-[24px] text-center font-black text-white"
+                        className="min-w-[24px] text-center font-black text-slate-800"
                       >
                         {item.quantity}
                       </motion.span>
@@ -227,9 +227,9 @@ export default function CartDrawer() {
                             showError(`نفذت الكمية المتاحة من ${item.name}`);
                           }
                         }}
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:bg-white/10 transition"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-600 hover:bg-slate-200 transition"
                         style={{
-                          border: "1px solid rgba(255,255,255,0.1)",
+                          border: "1px solid rgba(0,0,0,0.08)",
                         }}
                       >
                         <Plus size={13} />
@@ -240,7 +240,7 @@ export default function CartDrawer() {
                     onClick={() =>
                       deleteFromCart(item.id!, item.selectedColor || "", item.selectedSize)
                     }
-                    className="text-slate-600 hover:text-red-400 transition self-start mt-1"
+                    className="text-slate-400 hover:text-red-500 transition self-start mt-1"
                   >
                     <Trash2 size={18} />
                   </button>
@@ -255,12 +255,12 @@ export default function CartDrawer() {
           <div
             className="p-5 border-t"
             style={{
-              borderColor: "rgba(124,58,237,0.2)",
-              background: "rgba(5,5,16,0.9)",
+              borderColor: "rgba(124,58,237,0.15)",
+              background: "#ffffff",
             }}
           >
             <div className="flex justify-between mb-4">
-              <span className="text-slate-400 font-semibold">الإجمالي</span>
+              <span className="text-slate-600 font-semibold">الإجمالي</span>
               <span className="text-xl font-black gradient-text">
                 {cartTotal} ج
               </span>

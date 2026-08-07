@@ -18,35 +18,35 @@ export default function ConfirmModal({ isOpen, title, message, confirmText = "ت
   return (
     <div 
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+      style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)" }}
     >
       <div 
         className="w-full max-w-sm rounded-3xl p-8 relative text-center"
         style={{
-          background: "rgba(15,15,30,0.98)",
-          border: "1px solid rgba(124,58,237,0.4)",
-          boxShadow: "0 0 60px rgba(124,58,237,0.2)"
+          background: "#ffffff",
+          border: "1px solid rgba(124,58,237,0.2)",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.15)"
         }}
       >
         {/* أيقونة التحذير */}
         <div className="flex justify-center mb-5">
           <div 
             className="w-16 h-16 rounded-full flex items-center justify-center"
-            style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)" }}
+            style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)" }}
           >
-            <AlertTriangle size={32} className="text-red-400" />
+            <AlertTriangle size={32} className="text-red-500" />
           </div>
         </div>
 
-        <h3 className="text-xl font-black text-white mb-2">{title}</h3>
-        <p className="text-slate-400 text-sm mb-8 leading-relaxed">{message}</p>
+        <h3 className="text-xl font-black text-slate-800 mb-2">{title}</h3>
+        <p className="text-slate-600 text-sm mb-8 leading-relaxed">{message}</p>
 
         {/* الأزرار */}
         <div className="flex gap-3 justify-center">
           <button
             onClick={onCancel}
-            className="px-6 py-3 rounded-xl font-bold text-sm transition hover:bg-slate-700"
-            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", color: "#94a3b8" }}
+            className="px-6 py-3 rounded-xl font-bold text-sm transition hover:bg-slate-200"
+            style={{ background: "#f1f5f9", border: "1px solid rgba(0,0,0,0.08)", color: "#475569" }}
           >
             {cancelText}
           </button>

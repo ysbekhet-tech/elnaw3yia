@@ -6,8 +6,8 @@ html {
 }
 
 body {
-  background: #050510;
-  color: #f1f5f9;
+  background: #ffffff;
+  color: #1e293b;
   overflow-x: hidden;
   /* ✅ يستخدم CSS variable من next/font/google بدل @import المباشر */
   font-family: var(--font-cairo), sans-serif;
@@ -26,7 +26,7 @@ body {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0a1a;
+  background: #f8fafc;
 }
 ::-webkit-scrollbar-thumb {
   background: #7c3aed;
@@ -34,10 +34,10 @@ body {
 }
 
 .glass {
-  background: rgba(255,255,255,0.05);
+  background: rgba(255,255,255,0.85);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.08);
+  border: 1px solid rgba(0,0,0,0.08);
 }
 
 .glow-purple {

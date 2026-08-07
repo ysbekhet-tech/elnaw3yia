@@ -351,12 +351,12 @@ export default function CheckoutPage() {
   if (success) {
     return (
       <div className="max-w-lg mx-auto px-4 py-20 text-center">
-        <div className="bg-slate-800 rounded-3xl p-10 shadow-lg border border-slate-700">
-          <CheckCircle size={64} className="text-green-400 mx-auto mb-4" />
-          <h1 className="text-3xl font-black text-white mb-2">تم استلام طلبك!</h1>
-          <p className="text-slate-400 mb-2">رقم الطلب:</p>
-          <p className="text-purple-400 font-bold text-sm mb-6 break-all">{orderId}</p>
-          <p className="text-slate-400 mb-8">سنتواصل معك قريباً على رقم الهاتف المسجل</p>
+        <div className="bg-white rounded-3xl p-10 shadow-lg border border-slate-200">
+          <CheckCircle size={64} className="text-green-500 mx-auto mb-4" />
+          <h1 className="text-3xl font-black text-slate-800 mb-2">تم استلام طلبك!</h1>
+          <p className="text-slate-500 mb-2">رقم الطلب:</p>
+          <p className="text-purple-600 font-bold text-sm mb-6 break-all">{orderId}</p>
+          <p className="text-slate-500 mb-8">سنتواصل معك قريباً على رقم الهاتف المسجل</p>
           <button onClick={() => router.push("/")} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-2xl transition">
             العودة للرئيسية
           </button>
@@ -368,8 +368,8 @@ export default function CheckoutPage() {
   if (cart.length === 0) {
     return (
       <div className="max-w-lg mx-auto px-4 py-20 text-center">
-        <ShoppingCart size={64} className="text-slate-600 mx-auto mb-4" />
-        <h1 className="text-2xl font-black text-white mb-4">السلة فاضية!</h1>
+        <ShoppingCart size={64} className="text-slate-300 mx-auto mb-4" />
+        <h1 className="text-2xl font-black text-slate-800 mb-4">السلة فاضية!</h1>
         <button onClick={() => router.push("/")} className="bg-purple-600 text-white font-bold px-8 py-3 rounded-2xl hover:bg-purple-700 transition">
           تسوق الآن
         </button>
@@ -379,7 +379,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">
-      <h1 className="text-3xl font-black text-white mb-8">إتمام الشراء</h1>
+      <h1 className="text-3xl font-black text-slate-800 mb-8">إتمام الشراء</h1>
       <div id="recaptcha-container"></div>
 
       {stockError && (
@@ -399,34 +399,34 @@ export default function CheckoutPage() {
         <div className="flex flex-col gap-5">
           {step === "form" && (
             <form onSubmit={handleSendOtp} className="flex flex-col gap-5">
-              <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700">
-                <h2 className="text-xl font-black text-white mb-5 flex items-center gap-2">
-                  <User size={20} className="text-purple-400" /> بيانات التوصيل
+              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+                <h2 className="text-xl font-black text-slate-800 mb-5 flex items-center gap-2">
+                  <User size={20} className="text-purple-600" /> بيانات التوصيل
                 </h2>
                 <div className="flex flex-col gap-4">
                   <div>
-                    <label className="text-sm font-bold text-slate-300 mb-1 block">الاسم الكامل *</label>
-                    <input type="text" required placeholder="اكتب اسمك الكامل" value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition text-white" />
+                    <label className="text-sm font-bold text-slate-700 mb-1 block">الاسم الكامل *</label>
+                    <input type="text" required placeholder="اكتب اسمك الكامل" value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-600 transition text-slate-800 placeholder-slate-400" />
                   </div>
 
                   <div>
-                    <label className="text-sm font-bold text-slate-300 mb-1 block">
+                    <label className="text-sm font-bold text-slate-700 mb-1 block">
                       <Phone size={14} className="inline ml-1" /> رقم الهاتف *
                     </label>
-                    <input type="tel" required placeholder="01012345678" value={form.customerPhone} onChange={(e) => setForm({ ...form, customerPhone: e.target.value })} className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition text-white" />
+                    <input type="tel" required placeholder="01012345678" value={form.customerPhone} onChange={(e) => setForm({ ...form, customerPhone: e.target.value })} className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-600 transition text-slate-800 placeholder-slate-400" />
                   </div>
 
                   <div>
-                    <label className="text-sm font-bold text-slate-300 mb-1 block">
+                    <label className="text-sm font-bold text-slate-700 mb-1 block">
                       <MapPin size={14} className="inline ml-1" /> المحافظة *
                     </label>
                     {shippingLoading ? (
-                      <div className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm text-slate-500">جاري التحميل...</div>
+                      <div className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-sm text-slate-400">جاري التحميل...</div>
                     ) : (
-                      <select required value={selectedGovId} onChange={(e) => { setSelectedGovId(e.target.value); setSelectedZoneId(""); }} className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition text-white">
-                        <option value="" className="bg-slate-700">اختر المحافظة...</option>
+                      <select required value={selectedGovId} onChange={(e) => { setSelectedGovId(e.target.value); setSelectedZoneId(""); }} className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-600 transition text-slate-800">
+                        <option value="" className="bg-white text-slate-800">اختر المحافظة...</option>
                         {governorates.map((gov) => (
-                          <option key={gov.id} value={gov.id} className="bg-slate-700">
+                          <option key={gov.id} value={gov.id} className="bg-white text-slate-800">
                             {/* ✅ إصلاح: إضافة ? قبل length */}
                             {gov.name}{(!gov.zones || gov.zones.length === 0) ? ` — شحن ${gov.shipping} ج` : ""}
                           </option>
@@ -438,13 +438,13 @@ export default function CheckoutPage() {
                   {/* ✅ إصلاح: إضافة ? قبل length */}
                   {selectedGov && selectedGov.zones && selectedGov.zones.length > 0 && (
                     <div>
-                      <label className="text-sm font-bold text-slate-300 mb-1 block">
+                      <label className="text-sm font-bold text-slate-700 mb-1 block">
                         <MapPin size={14} className="inline ml-1" /> المنطقة *
                       </label>
-                      <select required value={selectedZoneId} onChange={(e) => setSelectedZoneId(e.target.value)} className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition text-white">
-                        <option value="" className="bg-slate-700">اختر المنطقة...</option>
+                      <select required value={selectedZoneId} onChange={(e) => setSelectedZoneId(e.target.value)} className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-600 transition text-slate-800">
+                        <option value="" className="bg-white text-slate-800">اختر المنطقة...</option>
                         {selectedGov.zones.map((zone) => (
-                          <option key={zone.id} value={zone.id} className="bg-slate-700">
+                          <option key={zone.id} value={zone.id} className="bg-white text-slate-800">
                             {zone.name} — شحن {zone.shipping} ج
                           </option>
                         ))}
@@ -453,20 +453,20 @@ export default function CheckoutPage() {
                   )}
 
                   <div>
-                    <label className="text-sm font-bold text-slate-300 mb-1 block">العنوان بالتفصيل *</label>
-                    <textarea required placeholder="اسم الشارع، رقم البناية، الدور..." value={form.customerAddress} onChange={(e) => setForm({ ...form, customerAddress: e.target.value })} className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition resize-none h-20 text-white" />
+                    <label className="text-sm font-bold text-slate-700 mb-1 block">العنوان بالتفصيل *</label>
+                    <textarea required placeholder="اسم الشارع، رقم البناية، الدور..." value={form.customerAddress} onChange={(e) => setForm({ ...form, customerAddress: e.target.value })} className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-600 transition resize-none h-20 text-slate-800 placeholder-slate-400" />
                   </div>
 
                   <div>
-                    <label className="text-sm font-bold text-slate-300 mb-1 block">
+                    <label className="text-sm font-bold text-slate-700 mb-1 block">
                       <FileText size={14} className="inline ml-1" /> ملاحظات (اختياري)
                     </label>
-                    <textarea placeholder="أي ملاحظات إضافية..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-400 transition resize-none h-16 text-white" />
+                    <textarea placeholder="أي ملاحظات إضافية..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className="w-full bg-white border border-slate-300 rounded-xl px-4 py-3 text-sm outline-none focus:border-purple-600 transition resize-none h-16 text-slate-800 placeholder-slate-400" />
                   </div>
                 </div>
               </div>
 
-              <button type="submit" disabled={loading || !isFormValid} className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-900 disabled:opacity-60 text-white font-bold py-4 rounded-2xl text-lg transition flex items-center justify-center gap-2">
+              <button type="submit" disabled={loading || !isFormValid} className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-purple-300 disabled:opacity-60 text-white font-bold py-4 rounded-2xl text-lg transition flex items-center justify-center gap-2">
                 {loading ? "جاري المعالجة..." : "إتمام الشراء"}
               </button>
             </form>
@@ -474,30 +474,30 @@ export default function CheckoutPage() {
 
           {step === "otp" && (
             <form onSubmit={handleSubmitOrder} className="flex flex-col gap-5">
-              <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700">
-                <button type="button" onClick={() => { setStep("form"); setOtp(["", "", "", "", "", ""]); setOtpError(""); setStockError(null); }} className="text-slate-400 hover:text-white flex items-center gap-1 mb-4 text-sm">
+              <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+                <button type="button" onClick={() => { setStep("form"); setOtp(["", "", "", "", "", ""]); setOtpError(""); setStockError(null); }} className="text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-4 text-sm font-bold">
                   <ArrowRight size={16} /> تعديل البيانات
                 </button>
-                <h2 className="text-xl font-black text-white mb-2 flex items-center gap-2">
-                  <ShieldCheck size={24} className="text-purple-400" /> تأكيد رقم الهاتف
+                <h2 className="text-xl font-black text-slate-800 mb-2 flex items-center gap-2">
+                  <ShieldCheck size={24} className="text-purple-600" /> تأكيد رقم الهاتف
                 </h2>
-                <p className="text-slate-400 text-sm mb-6">
+                <p className="text-slate-600 text-sm mb-6">
                   تم إرسال كود مكون من 6 أرقام إلى رقمك
-                  <span className="text-white font-bold mr-1">{form.customerPhone}</span>
+                  <span className="text-slate-900 font-bold mr-1">{form.customerPhone}</span>
                 </p>
                 <div className="flex justify-center gap-2 mb-4" dir="ltr">
                   {otp.map((data, index) => (
-                    <input key={index} type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={1} ref={(el) => { otpRefs.current[index] = el; }} value={data} onChange={(e) => handleOtpChange(e.target, index)} onKeyDown={(e) => handleOtpKeyDown(e, index)} onFocus={(e) => e.target.select()} className="w-12 h-14 bg-slate-700 border-2 border-slate-600 rounded-xl text-center text-white text-xl font-black outline-none focus:border-purple-400 transition" />
+                    <input key={index} type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={1} ref={(el) => { otpRefs.current[index] = el; }} value={data} onChange={(e) => handleOtpChange(e.target, index)} onKeyDown={(e) => handleOtpKeyDown(e, index)} onFocus={(e) => e.target.select()} className="w-12 h-14 bg-slate-50 border-2 border-slate-300 rounded-xl text-center text-slate-800 text-xl font-black outline-none focus:border-purple-600 transition" />
                   ))}
                 </div>
-                {otpError && <p className="text-red-400 text-sm text-center mb-2">{otpError}</p>}
+                {otpError && <p className="text-red-500 text-sm text-center mb-2">{otpError}</p>}
                 <div className="text-center">
-                  <button type="button" onClick={() => { setStep("form"); setOtp(["", "", "", "", "", ""]); setOtpError(""); }} className="text-purple-400 text-sm hover:underline">
+                  <button type="button" onClick={() => { setStep("form"); setOtp(["", "", "", "", "", ""]); setOtpError(""); }} className="text-purple-600 text-sm hover:underline font-bold">
                     لم تستلم الكود؟ إعادة الإرسال
                   </button>
                 </div>
               </div>
-              <button type="submit" disabled={loading} className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-900 text-white font-bold py-4 rounded-2xl text-lg transition flex items-center justify-center gap-2">
+              <button type="submit" disabled={loading} className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white font-bold py-4 rounded-2xl text-lg transition flex items-center justify-center gap-2">
                 {loading ? "جاري التحقق وإرسال الطلب..." : `تأكيد الطلب — ${grandTotal} ج`}
               </button>
             </form>
@@ -505,32 +505,32 @@ export default function CheckoutPage() {
         </div>
 
         {/* ---- ملخص الطلب ---- */}
-        <div className="bg-slate-800 rounded-3xl p-6 border border-slate-700 h-fit sticky top-24">
-          <h2 className="text-xl font-black text-white mb-5">ملخص الطلب</h2>
+        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm h-fit sticky top-24">
+          <h2 className="text-xl font-black text-slate-800 mb-5">ملخص الطلب</h2>
           <div className="flex flex-col gap-3 mb-5">
             {cart.map((item) => {
               const itemPrice = Number(item.price) || 0;
               const itemQuantity = Number(item.quantity) || 0;
 
               return (
-                <div key={`${item.id}-${item.selectedColor || ""}-${item.selectedSize?.length || ""}-${item.selectedSize?.width || ""}`} className="flex items-center gap-3 bg-slate-700 p-3 rounded-xl">
-                  <img src={item.images?.[0] || item.image || "https://via.placeholder.com/60"} alt={item.name} className="w-14 h-14 object-cover rounded-lg flex-shrink-0" />
+                <div key={`${item.id}-${item.selectedColor || ""}-${item.selectedSize?.length || ""}-${item.selectedSize?.width || ""}`} className="flex items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <img src={item.images?.[0] || item.image || "https://via.placeholder.com/60"} alt={item.name} className="w-14 h-14 object-cover rounded-lg flex-shrink-0 border border-slate-200" />
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold text-white text-sm line-clamp-1">{item.name}</p>
+                    <p className="font-bold text-slate-800 text-sm line-clamp-1">{item.name}</p>
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {item.selectedColor && <span className="text-purple-400 text-[10px] bg-purple-500/20 px-2 py-0.5 rounded-full">{item.selectedColor}</span>}
-                      {item.selectedSize && <span className="text-blue-400 text-[10px] bg-blue-500/20 px-2 py-0.5 rounded-full">{item.selectedSize.length} × {item.selectedSize.width}</span>}
+                      {item.selectedColor && <span className="text-purple-600 text-[10px] bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">{item.selectedColor}</span>}
+                      {item.selectedSize && <span className="text-blue-600 text-[10px] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">{item.selectedSize.length} × {item.selectedSize.width}</span>}
                     </div>
-                    <p className="text-purple-400 text-xs font-bold mt-1">{itemPrice} ج للقطعة</p>
+                    <p className="text-purple-600 text-xs font-bold mt-1">{itemPrice} ج للقطعة</p>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    <p className="font-black text-purple-400 text-sm whitespace-nowrap">{itemPrice * itemQuantity} ج</p>
+                    <p className="font-black text-purple-600 text-sm whitespace-nowrap">{itemPrice * itemQuantity} ج</p>
                     <div className="flex items-center gap-1">
-                      <button type="button" onClick={() => { if (!item.id) return; removeFromCart(item.id, item.selectedColor, item.selectedSize); }} className="w-6 h-6 rounded-lg bg-slate-600 hover:bg-red-500/30 hover:text-red-400 flex items-center justify-center text-slate-300 transition">
+                      <button type="button" onClick={() => { if (!item.id) return; removeFromCart(item.id, item.selectedColor, item.selectedSize); }} className="w-6 h-6 rounded-lg bg-slate-200 hover:bg-red-100 hover:text-red-600 flex items-center justify-center text-slate-700 transition">
                         <Minus size={11} />
                       </button>
-                      <span className="text-sm font-black text-white min-w-[20px] text-center">{itemQuantity}</span>
-                      <button type="button" onClick={async () => { const success = await addToCart(item, false, item.selectedColor, 1, item.selectedSize); if (!success) alert("نفذت الكمية المتاحة"); }} className="w-6 h-6 rounded-lg bg-slate-600 hover:bg-purple-500/30 hover:text-purple-400 flex items-center justify-center text-slate-300 transition">
+                      <span className="text-sm font-black text-slate-800 min-w-[20px] text-center">{itemQuantity}</span>
+                      <button type="button" onClick={async () => { const success = await addToCart(item, false, item.selectedColor, 1, item.selectedSize); if (!success) alert("نفذت الكمية المتاحة"); }} className="w-6 h-6 rounded-lg bg-slate-200 hover:bg-purple-100 hover:text-purple-600 flex items-center justify-center text-slate-700 transition">
                         <Plus size={11} />
                       </button>
                     </div>
@@ -539,17 +539,17 @@ export default function CheckoutPage() {
               );
             })}
           </div>
-          <div className="border-t border-slate-600 pt-4 flex flex-col gap-2">
-            <div className="flex justify-between text-sm text-slate-400"><span>المنتجات</span><span>{cartTotal} ج</span></div>
-            <div className="flex justify-between text-sm text-slate-400">
+          <div className="border-t border-slate-200 pt-4 flex flex-col gap-2">
+            <div className="flex justify-between text-sm text-slate-600"><span>المنتجات</span><span>{cartTotal} ج</span></div>
+            <div className="flex justify-between text-sm text-slate-600">
               <span>مصاريف الشحن</span>
               {selectedGovId ? (
                 // ✅ إصلاح: إضافة ? قبل length وتأمين الشرط
-                (selectedGov?.zones?.length || 0) > 0 && !selectedZoneId ? <span className="text-slate-500">اختر المنطقة أولاً</span> : <span className="text-orange-400 font-bold">{shippingCost} ج</span>
-              ) : <span className="text-slate-500">اختر المحافظة أولاً</span>}
+                (selectedGov?.zones?.length || 0) > 0 && !selectedZoneId ? <span className="text-slate-400">اختر المنطقة أولاً</span> : <span className="text-amber-600 font-bold">{shippingCost} ج</span>
+              ) : <span className="text-slate-400">اختر المحافظة أولاً</span>}
             </div>
-            <div className="flex justify-between text-sm text-slate-400"><span>طريقة الدفع</span><span className="text-green-400 font-bold">كاش عند الاستلام</span></div>
-            <div className="flex justify-between text-xl font-black text-white mt-2 pt-2 border-t border-slate-600"><span>الإجمالي</span><span className="text-purple-400">{grandTotal} ج</span></div>
+            <div className="flex justify-between text-sm text-slate-600"><span>طريقة الدفع</span><span className="text-green-600 font-bold">كاش عند الاستلام</span></div>
+            <div className="flex justify-between text-xl font-black text-slate-800 mt-2 pt-2 border-t border-slate-200"><span>الإجمالي</span><span className="text-purple-600">{grandTotal} ج</span></div>
           </div>
         </div>
       </div>

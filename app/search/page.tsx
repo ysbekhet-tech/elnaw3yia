@@ -91,16 +91,16 @@ function SearchContent() {
   };
 
   return (
-    <div className="min-h-screen" style={{ background: "#050510" }}>
+    <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto px-4 py-10">
 
         {/* عنوان البحث */}
         <div className="mb-10">
-          <h1 className="text-3xl font-black text-white flex items-center gap-3">
-            <Search size={28} className="text-purple-400" />
+          <h1 className="text-3xl font-black text-slate-800 flex items-center gap-3">
+            <Search size={28} className="text-purple-600" />
             نتائج البحث عن: <span className="gradient-text">&quot;{query_}&quot;</span>
           </h1>
-          <p className="text-slate-500 mt-2">
+          <p className="text-slate-600 mt-2">
             {loading ? "جاري البحث..." : `تم العثور على ${allResults.length} منتج`}
           </p>
         </div>
@@ -115,14 +115,14 @@ function SearchContent() {
           </div>
         ) : !query_.trim() ? (
           <div className="text-center py-20">
-            <Search size={64} className="mx-auto text-slate-700 mb-4" />
-            <h2 className="text-2xl font-black text-white mb-2">ابحث عن منتجاتك المفضلة</h2>
+            <Search size={64} className="mx-auto text-slate-300 mb-4" />
+            <h2 className="text-2xl font-black text-slate-800 mb-2">ابحث عن منتجاتك المفضلة</h2>
             <p className="text-slate-500">استخدم شريط البحث أعلاه للعثور على ما تريد</p>
           </div>
         ) : allResults.length === 0 ? (
           <div className="text-center py-20">
-            <PackageOpen size={64} className="mx-auto text-slate-700 mb-4" />
-            <h2 className="text-2xl font-black text-white mb-2">مفيش نتائج</h2>
+            <PackageOpen size={64} className="mx-auto text-slate-300 mb-4" />
+            <h2 className="text-2xl font-black text-slate-800 mb-2">مفيش نتائج</h2>
             <p className="text-slate-500 mb-6">جرب تدور بكلمة تانية أو تصفح الأقسام</p>
             <Link
               href="/products"
@@ -159,8 +159,8 @@ function SearchContent() {
                   disabled={currentPage === 1}
                   className={`p-2 rounded-lg transition ${
                     currentPage === 1
-                      ? "text-slate-700 cursor-not-allowed"
-                      : "text-slate-300 hover:bg-purple-500/10 hover:text-purple-400"
+                      ? "text-slate-300 cursor-not-allowed"
+                      : "text-slate-600 hover:bg-purple-50 hover:text-purple-600"
                   }`}
                 >
                   <ChevronRight size={18} />
@@ -173,7 +173,7 @@ function SearchContent() {
                     className={`w-9 h-9 rounded-lg text-sm font-bold transition ${
                       currentPage === page
                         ? "gradient-bg text-white"
-                        : "text-slate-300 hover:bg-purple-500/10 hover:text-purple-400"
+                        : "text-slate-600 hover:bg-purple-50 hover:text-purple-600"
                     }`}
                   >
                     {page}
@@ -185,8 +185,8 @@ function SearchContent() {
                   disabled={currentPage === totalPages}
                   className={`p-2 rounded-lg transition ${
                     currentPage === totalPages
-                      ? "text-slate-700 cursor-not-allowed"
-                      : "text-slate-300 hover:bg-purple-500/10 hover:text-purple-400"
+                      ? "text-slate-300 cursor-not-allowed"
+                      : "text-slate-600 hover:bg-purple-50 hover:text-purple-600"
                   }`}
                 >
                   <ChevronLeft size={18} />
@@ -208,7 +208,7 @@ export default function SearchPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center" style={{ background: "#050510" }}>
+        <div className="min-h-screen flex items-center justify-center bg-white">
           <div
             className="w-12 h-12 rounded-full animate-spin"
             style={{ border: "3px solid rgba(124,58,237,0.2)", borderTop: "3px solid #7c3aed" }}

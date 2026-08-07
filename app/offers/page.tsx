@@ -54,42 +54,42 @@ export default function OffersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "#050510" }}>
-        <Loader2 className="animate-spin text-purple-400" size={40} />
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="animate-spin text-purple-600" size={40} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen py-12 px-4" style={{ background: "#050510" }}>
+    <div className="min-h-screen py-12 px-4 bg-white">
       <div className="max-w-7xl mx-auto">
         
         {/* ✅ الهيدر مع أزرار العرض وعدد المنتجات */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-3">
-            <Tag size={30} className="text-yellow-400" />
-            <h1 className="text-3xl font-black text-white">العروض والتخفيضات</h1>
+            <Tag size={30} className="text-amber-500" />
+            <h1 className="text-3xl font-black text-slate-800">العروض والتخفيضات</h1>
             <span className="text-slate-500 text-sm">({filtered.length} منتج)</span>
           </div>
 
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl p-1.5 self-start sm:self-auto">
+          <div className="flex items-center gap-2 bg-slate-100 border border-slate-200 rounded-2xl p-1.5 self-start sm:self-auto">
             <button 
               onClick={() => setViewMode("grid")} 
-              className={`p-2.5 rounded-xl transition ${viewMode === "grid" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+              className={`p-2.5 rounded-xl transition ${viewMode === "grid" ? "bg-purple-600 text-white" : "text-slate-500 hover:text-slate-800"}`}
               title="عرض كروت كبيرة"
             >
               <LayoutGrid size={16} />
             </button>
             <button 
               onClick={() => setViewMode("compact")} 
-              className={`p-2.5 rounded-xl transition ${viewMode === "compact" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+              className={`p-2.5 rounded-xl transition ${viewMode === "compact" ? "bg-purple-600 text-white" : "text-slate-500 hover:text-slate-800"}`}
               title="عرض كروت صغيرة"
             >
               <Grid2x2 size={16} />
             </button>
             <button 
               onClick={() => setViewMode("list")} 
-              className={`p-2.5 rounded-xl transition ${viewMode === "list" ? "bg-purple-600 text-white" : "text-slate-400 hover:text-white"}`}
+              className={`p-2.5 rounded-xl transition ${viewMode === "list" ? "bg-purple-600 text-white" : "text-slate-500 hover:text-slate-800"}`}
               title="عرض قايمة"
             >
               <List size={16} />
@@ -100,18 +100,18 @@ export default function OffersPage() {
         {/* ✅ مستطيل البحث (نفس تصميم صفحة الجديد مع تغيير اللون للبنفسجي ليناسب العروض) */}
         <div className="mb-8">
           <div className="relative max-w-lg">
-            <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <Search size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               placeholder="ابحث في العروض..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full h-11 pr-9 pl-4 rounded-2xl text-sm outline-none bg-slate-800/50 border border-slate-700 focus:border-purple-400 text-white placeholder:text-slate-500 transition"
+              className="w-full h-11 pr-9 pl-4 rounded-2xl text-sm outline-none bg-white border border-slate-200 shadow-sm focus:border-purple-600 text-slate-800 placeholder:text-slate-400 transition"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs"
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs"
               >
                 ✕
               </button>
@@ -122,13 +122,13 @@ export default function OffersPage() {
         {filtered.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-5xl mb-4">{searchTerm ? '🔍' : '🏷️'}</p>
-            <p className="text-slate-400 text-lg font-bold">
+            <p className="text-slate-600 text-lg font-bold">
               {searchTerm ? 'لا توجد نتائج للبحث في العروض' : 'لا توجد عروض متاحة حالياً'}
             </p>
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="mt-4 text-purple-400 font-bold hover:underline"
+                className="mt-4 text-purple-600 font-bold hover:underline"
               >
                 عرض كل التخفيضات
               </button>
