@@ -46,7 +46,9 @@ function SearchContent() {
       const filtered = allProducts.filter((p) =>
         p.name?.toLowerCase().includes(lowerSearch) ||
         p.category?.toLowerCase().includes(lowerSearch) ||
-        p.description?.toLowerCase().includes(lowerSearch)
+        p.description?.toLowerCase().includes(lowerSearch) ||
+        p.barcode === searchTerm ||
+        p.barcode?.toLowerCase().includes(lowerSearch)
       );
 
       setAllResults(filtered);

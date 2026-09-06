@@ -8,7 +8,8 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const query = searchParams.get('q')?.toLowerCase() || '';
+  const rawQuery = searchParams.get('q') || '';
+  const query = rawQuery.toLowerCase();
 
   if (!query) {
     return NextResponse.json([]);
@@ -25,7 +26,9 @@ export async function GET(request: Request) {
     const filtered = cachedProducts.filter((p) =>
       p.name?.toLowerCase().includes(query) ||
       p.category?.toLowerCase().includes(query) ||
-      p.description?.toLowerCase().includes(query)
+      p.description?.toLowerCase().includes(query) ||
+      p.barcode === rawQuery ||
+      p.barcode?.toLowerCase().includes(query)
     );
 
     return NextResponse.json(filtered.slice(0, 50));

@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Circle,
   CircleDot,
+  Barcode,
 } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
 import { useProductStock } from "../../../hooks/useProductStock";
@@ -420,6 +421,19 @@ export default function ProductDetails() {
                     </button>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* الباركود */}
+            {product.barcode && (
+              <div className="bg-white border border-slate-200 shadow-sm rounded-xl p-4">
+                <h3 className="text-sm font-bold text-purple-600 mb-2 flex items-center gap-1.5">
+                  <Barcode size={15} />
+                  الباركود
+                </h3>
+                <span className="font-mono text-slate-700 text-sm bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg inline-block tracking-widest select-all">
+                  {product.barcode}
+                </span>
               </div>
             )}
           </div>
